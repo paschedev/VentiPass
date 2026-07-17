@@ -1,0 +1,45 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { Resend } from 'resend';
+
+@Injectable()
+export class MailService {
+  private resend: Resend;
+  private readonly logger = new Logger(MailService.name);
+
+  constructor() {
+    this.resend = new Resend(process.env.RESEND_API_KEY || 're_test_key');
+  }
+
+  async sendTicketsEmail(to: string, name: string, tickets: any[]) {
+    try {
+      const ticketsHtml = tickets.map(t => `
+        <div style="border: 1px solid #ccc; padding: 20px; margin-bottom: 20px; border-radius: 8px;">
+          <h2>${t.eventName} - ${t.ticketTypeName}</h2>
+          <p>Muestra este código QR en la entrada:</p>
+          <img src="${t.qrDataUrl}" alt="Ticket QR" width="200" height="200" />
+        </div>
+      `).join('');
+
+      const { data, error } = await this.resend.emails.send({
+        from: 'WePass <entradas@wepass.dev>',
+        to: [to],
+        subject: '¡Tus entradas para el evento están listas!',
+        html: `
+          <h1>Hola ${name},</h1>
+          <p>¡Gracias por tu compra! Aquí tienes tus entradas:</p>
+          ${ticketsHtml}
+          <p>Disfruta del evento,</p>
+          <p>El equipo de WePass</p>
+        `,
+      });
+
+      if (error) {
+        this.logger.error('Resend error', error);
+      } else {
+        this.logger.log(`Tickets email sent to ${to} with ID ${data?.id}`);
+      }
+    } catch (error) {
+      this.logger.error('Failed to send tickets email', error);
+    }
+  }
+}

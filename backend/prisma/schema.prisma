@@ -1,0 +1,276 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  ORGANIZER
+  SCANNER
+  CUSTOMER
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  PAUSED
+  FINISHED
+  CANCELLED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  CANCELLED
+  EXPIRED
+}
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REFUNDED
+}
+
+enum TicketStatus {
+  VALID
+  USED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentProvider {
+  MERCADO_PAGO
+}
+
+enum StaffRole {
+  SCANNER
+  PROMOTER
+  MANAGER
+}
+
+enum CommissionType {
+  PERCENTAGE
+  FIXED
+}
+
+enum BatchStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  ENDED
+}
+
+enum TicketCategory {
+  GENERAL
+  VIP
+}
+
+model User {
+  id           String      @id @default(uuid())
+  email        String      @unique
+  passwordHash String
+  name         String
+  role         UserRole    @default(CUSTOMER)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @default(now()) @updatedAt
+
+  // Mercado Pago
+  mercadoPagoAccessToken String?
+  mercadoPagoPublicKey   String?
+  mercadoPagoUserId      String?
+
+  // Password Reset
+  passwordResetToken   String?   @unique
+  passwordResetExpires DateTime?
+
+  // Relations
+  orders       Order[]
+  tickets      Ticket[]    // Tickets currently owned by the user
+  checkIns     CheckIn[]   // Scans performed by this user
+  organizedEvents Event[]  @relation("EventOrganizer")
+  organizerProfile OrganizerProfile?
+  eventStaff   EventStaff[]
+}
+
+model OrganizerProfile {
+  id         String   @id @default(uuid())
+  cuil       String   @unique
+  cbuOrAlias String
+  country    String
+  province   String
+  city       String
+  street     String
+  number     String
+  zipCode    String
+  phone      String
+  
+  userId     String   @unique
+  user       User     @relation(fields: [userId], references: [id])
+}
+
+model Event {
+  id          String      @id @default(uuid())
+  title       String
+  description String
+  startDate   DateTime
+  endDate     DateTime
+  status      EventStatus @default(DRAFT)
+  createdAt   DateTime    @default(now())
+
+  venueName     String?
+  venueAddress  String?
+  venueCity     String?
+  venueCapacity Int?
+
+  wePassFeePercentage Decimal @default(10.0) @db.Decimal(5, 2)
+
+  organizerId   String
+  organizer     User          @relation("EventOrganizer", fields: [organizerId], references: [id])
+  ticketBatches TicketBatch[]
+  ticketTypes   TicketType[]
+  discountCodes DiscountCode[]
+  staff         EventStaff[]
+}
+
+model TicketBatch {
+  id                         String      @id @default(uuid())
+  eventId                    String
+  event                      Event       @relation(fields: [eventId], references: [id])
+  name                       String      // ej: "Preventa", "Lote 1"
+  status                     BatchStatus @default(DRAFT)
+  publishAt                  DateTime?
+  closeAt                    DateTime?
+  publishWhenPreviousSoldOut Boolean     @default(false)
+  showTimer                  Boolean     @default(false)
+  createdAt                  DateTime    @default(now())
+  updatedAt                  DateTime    @updatedAt
+  ticketTypes                TicketType[]
+}
+
+model TicketType {
+  id          String         @id @default(uuid())
+  eventId     String
+  event       Event          @relation(fields: [eventId], references: [id])
+  batchId     String?
+  batch       TicketBatch?   @relation(fields: [batchId], references: [id])
+  category    TicketCategory @default(GENERAL)
+  name        String
+  description String?
+  price       Decimal        @db.Decimal(10, 2)
+  stock       Int
+  sold        Int            @default(0)
+  reserved    Int            @default(0)
+  saleStart   DateTime
+  saleEnd     DateTime
+
+  tickets     Ticket[]
+  orderItems  OrderItem[]
+}
+
+model DiscountCode {
+  id          String      @id @default(uuid())
+  code        String      @unique
+  percentage  Int
+  maxUses     Int
+  usedCount   Int         @default(0)
+  expiresAt   DateTime
+
+  eventId     String
+  event       Event       @relation(fields: [eventId], references: [id])
+}
+
+model Order {
+  id          String      @id @default(uuid())
+  status      OrderStatus @default(PENDING)
+  totalAmount Decimal     @db.Decimal(10, 2)
+  serviceFee  Decimal     @default(0) @db.Decimal(10, 2)
+  ticketAmount Decimal    @default(0) @db.Decimal(10, 2)
+  createdAt   DateTime    @default(now())
+  expiresAt   DateTime
+
+  userId      String
+  user        User        @relation(fields: [userId], references: [id])
+  
+  promoterId  String?
+  promoter    EventStaff? @relation("OrderPromoter", fields: [promoterId], references: [id])
+
+  payment     Payment?
+  orderItems  OrderItem[]
+  tickets     Ticket[]
+}
+
+model OrderItem {
+  id           String     @id @default(uuid())
+  quantity     Int
+  unitPrice    Decimal    @db.Decimal(10, 2)
+
+  orderId      String
+  order        Order      @relation(fields: [orderId], references: [id])
+  ticketTypeId String
+  ticketType   TicketType @relation(fields: [ticketTypeId], references: [id])
+}
+
+model Payment {
+  id                String          @id @default(uuid())
+  provider          PaymentProvider @default(MERCADO_PAGO)
+  providerPaymentId String?
+  status            PaymentStatus   @default(PENDING)
+  amount            Decimal         @db.Decimal(10, 2)
+  createdAt         DateTime        @default(now())
+
+  orderId           String          @unique
+  order             Order           @relation(fields: [orderId], references: [id])
+}
+
+model Ticket {
+  id        String       @id @default(uuid())
+  qrCode    String       @unique @default(uuid())
+  status    TicketStatus @default(VALID)
+  isGuestList Boolean    @default(false)
+  createdAt DateTime     @default(now())
+  usedAt    DateTime?
+
+  orderId      String?
+  order        Order?     @relation(fields: [orderId], references: [id])
+  ticketTypeId String
+  ticketType   TicketType @relation(fields: [ticketTypeId], references: [id])
+  checkIn      CheckIn?
+  
+  userId       String?    // Current owner of the ticket (for transfers)
+  user         User?      @relation(fields: [userId], references: [id])
+}
+
+model CheckIn {
+  id          String   @id @default(uuid())
+  checkedAt   DateTime @default(now())
+  deviceInfo  String?
+
+  ticketId    String   @unique
+  ticket      Ticket   @relation(fields: [ticketId], references: [id])
+  scannerId   String
+  scanner     User     @relation(fields: [scannerId], references: [id])
+}
+
+model EventStaff {
+  id              String          @id @default(uuid())
+  eventId         String
+  userId          String
+  role            StaffRole
+  
+  // Especifico para Promotores (RPP)
+  commissionType  CommissionType?
+  commissionValue Decimal?        @db.Decimal(10, 2)
+  totalEarned     Decimal         @default(0) @db.Decimal(10, 2)
+  totalPaid       Decimal         @default(0) @db.Decimal(10, 2)
+  
+  event           Event           @relation(fields: [eventId], references: [id])
+  user            User            @relation(fields: [userId], references: [id])
+  orders          Order[]         @relation("OrderPromoter")
+  
+  @@unique([eventId, userId])
+}
