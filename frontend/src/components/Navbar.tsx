@@ -55,9 +55,14 @@ export default function Navbar() {
   return (
     <header className="fixed top-0 z-[100] w-full border-b border-white/5 bg-black/40 backdrop-blur-xl">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        <Link href="/" className="font-outfit text-2xl font-black tracking-tighter text-white hover:opacity-80 transition-opacity">
-          We<span className="text-indigo-500">Pass</span>
-        </Link>
+        <div className="flex items-center">
+          <Link href="/" className="hidden md:block font-outfit text-2xl font-black tracking-tighter text-white hover:opacity-80 transition-opacity">
+            We<span className="text-indigo-500">Pass</span>
+          </Link>
+          <div className="md:hidden font-outfit text-2xl font-black tracking-tighter text-white select-none">
+            We<span className="text-indigo-500">Pass</span>
+          </div>
+        </div>
         
         <nav className="flex gap-4 items-center">
           <Link href="/eventos" className="hidden md:block text-sm font-medium text-neutral-400 hover:text-white transition-colors">
@@ -70,8 +75,7 @@ export default function Navbar() {
           )}
           <div className="hidden md:block w-px h-4 bg-white/10 mx-2" />
           
-          {isMounted ? (
-            user ? (
+          {isMounted && user ? (
               <div className="flex items-center gap-4 md:gap-6">
                 
                 {/* Notifications Bell */}
@@ -91,7 +95,7 @@ export default function Navbar() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
                         transition={{ duration: 0.15 }}
-                        className="absolute right-0 mt-2 w-72 md:w-80 bg-neutral-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden origin-top-right"
+                        className="absolute -right-12 sm:right-0 mt-2 w-[calc(100vw-2rem)] sm:w-80 bg-neutral-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden origin-top-right z-50"
                       >
                         <div className="p-4 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
                           <h3 className="font-semibold text-sm">Notificaciones</h3>
@@ -168,16 +172,14 @@ export default function Navbar() {
                   </AnimatePresence>
                 </div>
               </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Link href="/login" className="text-sm font-medium text-neutral-300 hover:text-white px-2 md:px-4 py-2 transition-colors">Ingresar</Link>
+          ) : (
+              <div className="flex items-center gap-2 md:gap-4">
+                <Link href="/login" className="text-sm font-medium text-neutral-300 hover:text-white px-2 py-2 transition-colors">Ingresar</Link>
                 <Link href="/registro" className="text-sm font-medium bg-white text-black px-4 md:px-5 py-2 rounded-full hover:bg-neutral-200 hover:scale-105 active:scale-95 transition-all shadow-lg shadow-white/10">
-                  Crear cuenta
+                  <span className="md:hidden">Registro</span>
+                  <span className="hidden md:inline">Crear cuenta</span>
                 </Link>
               </div>
-            )
-          ) : (
-            <div className="w-24 md:w-48 h-10" /> 
           )}
         </nav>
       </div>

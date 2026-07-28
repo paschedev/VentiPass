@@ -9,6 +9,7 @@ export class EventsService {
   async findAll() {
     return this.prisma.event.findMany({
       include: {
+        ticketBatches: { include: { ticketTypes: true } },
         ticketTypes: true,
       },
     });
@@ -18,12 +19,14 @@ export class EventsService {
     return this.prisma.event.findUnique({
       where: { id },
       include: {
+        ticketBatches: { include: { ticketTypes: true } },
         ticketTypes: true,
       },
     });
   }
 
-  async create(userId: string, data: Prisma.EventCreateInput) {
+  async create(userId: string, data: any) {
+    const { batches, ...eventData } = data;
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
@@ -33,18 +36,140 @@ export class EventsService {
       throw new BadRequestException('Debes vincular Mercado Pago antes de crear un evento');
     }
 
-    return this.prisma.event.create({
-      data,
+    const event = await this.prisma.event.create({
+      data: {
+        ...eventData,
+        organizerId: userId
+      },
     });
+
+    if (batches && batches.length > 0) {
+      await this.updateBatches(event.id, userId, batches);
+    }
+    return event;
+  }
+
+  async update(id: string, organizerId: string, data: any) {
+    const { batches, ...eventData } = data;
+    const event = await this.prisma.event.findUnique({ where: { id } });
+    if (!event || event.organizerId !== organizerId) {
+      throw new BadRequestException('No tienes permiso para editar este evento');
+    }
+
+    const updatedEvent = await this.prisma.event.update({
+      where: { id },
+      data: eventData,
+    });
+
+    if (batches) {
+      await this.updateBatches(id, organizerId, batches);
+    }
+    return updatedEvent;
   }
 
   async findByOrganizer(userId: string) {
     return this.prisma.event.findMany({
       where: { organizerId: userId },
       include: {
+        ticketBatches: { include: { ticketTypes: true } },
         ticketTypes: true,
       },
       orderBy: { createdAt: 'desc' }
+    });
+  }
+
+  async updateBatches(eventId: string, organizerId: string, batchesData: any[]) {
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      include: { ticketBatches: { include: { ticketTypes: true } } }
+    });
+
+    if (!event || event.organizerId !== organizerId) {
+      throw new BadRequestException('No tienes permiso sobre este evento');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const incomingBatchIds = batchesData.filter(b => b.id).map(b => b.id);
+      
+      const batchesToDelete = event.ticketBatches.filter(b => !incomingBatchIds.includes(b.id));
+      for (const b of batchesToDelete) {
+        const totalSold = b.ticketTypes.reduce((acc, tt) => acc + tt.sold, 0);
+        if (totalSold > 0) {
+          throw new BadRequestException(`No puedes eliminar la tanda "${b.name}" porque ya tiene entradas vendidas. Pausa su venta en su lugar.`);
+        }
+        await tx.ticketType.deleteMany({ where: { batchId: b.id } });
+        await tx.ticketBatch.delete({ where: { id: b.id } });
+      }
+
+      for (const batch of batchesData) {
+        let savedBatch;
+        if (batch.id) {
+          savedBatch = await tx.ticketBatch.update({
+            where: { id: batch.id },
+            data: {
+              name: batch.name,
+              status: batch.status,
+              publishAt: batch.publishAt ? new Date(batch.publishAt) : null,
+              closeAt: batch.closeAt ? new Date(batch.closeAt) : null,
+              publishWhenPreviousSoldOut: batch.publishWhenPreviousSoldOut || false,
+            }
+          });
+        } else {
+          savedBatch = await tx.ticketBatch.create({
+            data: {
+              eventId,
+              name: batch.name,
+              status: batch.status || 'DRAFT',
+              publishAt: batch.publishAt ? new Date(batch.publishAt) : null,
+              closeAt: batch.closeAt ? new Date(batch.closeAt) : null,
+              publishWhenPreviousSoldOut: batch.publishWhenPreviousSoldOut || false,
+            }
+          });
+        }
+
+        const incomingTypeIds = batch.ticketTypes.filter((t: any) => t.id).map((t: any) => t.id);
+        const existingTypes = batch.id ? event.ticketBatches.find(b => b.id === batch.id)?.ticketTypes || [] : [];
+        const typesToDelete = existingTypes.filter((t: any) => !incomingTypeIds.includes(t.id));
+
+        for (const t of typesToDelete) {
+          if (t.sold > 0) {
+            throw new BadRequestException(`No puedes eliminar el ticket "${t.name}" porque ya tiene ventas. Pon su stock en 0 en su lugar.`);
+          }
+          await tx.ticketType.delete({ where: { id: t.id } });
+        }
+
+        for (const tType of batch.ticketTypes) {
+          if (tType.id) {
+            await tx.ticketType.update({
+              where: { id: tType.id },
+              data: {
+                name: tType.name,
+                price: tType.price,
+                stock: tType.stock,
+                saleStart: savedBatch.publishAt || new Date(),
+                saleEnd: savedBatch.closeAt || new Date(Date.now() + 31536000000),
+              }
+            });
+          } else {
+            await tx.ticketType.create({
+              data: {
+                eventId,
+                batchId: savedBatch.id,
+                name: tType.name,
+                price: tType.price,
+                stock: tType.stock,
+                saleStart: savedBatch.publishAt || new Date(),
+                saleEnd: savedBatch.closeAt || new Date(Date.now() + 31536000000),
+              }
+            });
+          }
+        }
+      }
+
+      return tx.event.findUnique({
+        where: { id: eventId },
+        include: { ticketBatches: { include: { ticketTypes: true } } }
+      });
     });
   }
 

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { UserPlus } from 'lucide-react';
+import CustomSelect from '@/components/CustomSelect';
 
 export default function RegistroPage() {
   const router = useRouter();
@@ -11,6 +12,21 @@ export default function RegistroPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [isOrganizer, setIsOrganizer] = useState(false);
+  const [country, setCountry] = useState('');
+  const [province, setProvince] = useState('');
+  const [cuil, setCuil] = useState('');
+
+  const handleCuilChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/\D/g, '');
+    let formatted = val;
+    if (val.length > 2) {
+      formatted = val.slice(0, 2) + '-' + val.slice(2);
+    }
+    if (val.length > 10) {
+      formatted = formatted.slice(0, 11) + '-' + val.slice(10, 11);
+    }
+    setCuil(formatted);
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -126,7 +142,7 @@ export default function RegistroPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-neutral-400 mb-1">CUIL</label>
-                  <input name="cuil" type="text" pattern="\d{2}-\d{8}-\d{1}" title="El formato debe ser XX-XXXXXXXX-X" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="20-12345678-9" />
+                  <input name="cuil" type="text" value={cuil} onChange={handleCuilChange} maxLength={13} pattern="\d{2}-\d{8}-\d{1}" title="El formato debe ser XX-XXXXXXXX-X" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="20-12345678-9" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-neutral-400 mb-1">Teléfono</label>
@@ -140,42 +156,52 @@ export default function RegistroPage() {
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-neutral-400 mb-1">País</label>
-                  <select name="country" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors [&>option]:bg-neutral-900 appearance-none">
-                    <option value="" disabled selected>País</option>
-                    <option value="Argentina">Argentina</option>
-                    <option value="Uruguay">Uruguay</option>
-                    <option value="Chile">Chile</option>
-                  </select>
+                  <CustomSelect 
+                    name="country"
+                    value={country}
+                    onChange={setCountry}
+                    placeholder="País"
+                    options={[
+                      { value: "Argentina", label: "Argentina" },
+                      { value: "Uruguay", label: "Uruguay" },
+                      { value: "Chile", label: "Chile" }
+                    ]}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-neutral-400 mb-1">Provincia</label>
-                  <select name="province" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors [&>option]:bg-neutral-900 appearance-none">
-                    <option value="" disabled selected>Provincia</option>
-                    <option value="Buenos Aires">Buenos Aires</option>
-                    <option value="Ciudad Autónoma de Buenos Aires">CABA</option>
-                    <option value="Catamarca">Catamarca</option>
-                    <option value="Chaco">Chaco</option>
-                    <option value="Chubut">Chubut</option>
-                    <option value="Córdoba">Córdoba</option>
-                    <option value="Corrientes">Corrientes</option>
-                    <option value="Entre Ríos">Entre Ríos</option>
-                    <option value="Formosa">Formosa</option>
-                    <option value="Jujuy">Jujuy</option>
-                    <option value="La Pampa">La Pampa</option>
-                    <option value="La Rioja">La Rioja</option>
-                    <option value="Mendoza">Mendoza</option>
-                    <option value="Misiones">Misiones</option>
-                    <option value="Neuquén">Neuquén</option>
-                    <option value="Río Negro">Río Negro</option>
-                    <option value="Salta">Salta</option>
-                    <option value="San Juan">San Juan</option>
-                    <option value="San Luis">San Luis</option>
-                    <option value="Santa Cruz">Santa Cruz</option>
-                    <option value="Santa Fe">Santa Fe</option>
-                    <option value="Santiago del Estero">Santiago del Estero</option>
-                    <option value="Tierra del Fuego">Tierra del Fuego</option>
-                    <option value="Tucumán">Tucumán</option>
-                  </select>
+                  <CustomSelect 
+                    name="province"
+                    value={province}
+                    onChange={setProvince}
+                    placeholder="Provincia"
+                    options={[
+                      { value: "Buenos Aires", label: "Buenos Aires" },
+                      { value: "Ciudad Autónoma de Buenos Aires", label: "CABA" },
+                      { value: "Catamarca", label: "Catamarca" },
+                      { value: "Chaco", label: "Chaco" },
+                      { value: "Chubut", label: "Chubut" },
+                      { value: "Córdoba", label: "Córdoba" },
+                      { value: "Corrientes", label: "Corrientes" },
+                      { value: "Entre Ríos", label: "Entre Ríos" },
+                      { value: "Formosa", label: "Formosa" },
+                      { value: "Jujuy", label: "Jujuy" },
+                      { value: "La Pampa", label: "La Pampa" },
+                      { value: "La Rioja", label: "La Rioja" },
+                      { value: "Mendoza", label: "Mendoza" },
+                      { value: "Misiones", label: "Misiones" },
+                      { value: "Neuquén", label: "Neuquén" },
+                      { value: "Río Negro", label: "Río Negro" },
+                      { value: "Salta", label: "Salta" },
+                      { value: "San Juan", label: "San Juan" },
+                      { value: "San Luis", label: "San Luis" },
+                      { value: "Santa Cruz", label: "Santa Cruz" },
+                      { value: "Santa Fe", label: "Santa Fe" },
+                      { value: "Santiago del Estero", label: "Santiago del Estero" },
+                      { value: "Tierra del Fuego", label: "Tierra del Fuego" },
+                      { value: "Tucumán", label: "Tucumán" }
+                    ]}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-neutral-400 mb-1">Localidad</label>

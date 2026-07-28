@@ -1,27 +1,45 @@
 "use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Calendar, MapPin, Info, Image as ImageIcon, Video, Save, UploadCloud } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import { Calendar, MapPin, Info, Image as ImageIcon, Video, Edit, Save, UploadCloud } from 'lucide-react';
 import toast from 'react-hot-toast';
 import TandasManager from '@/components/TandasManager';
 
-export default function CrearEventoPage() {
+export default function EditarEventoPage() {
   const router = useRouter();
+  const { id } = useParams();
+  
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
   const [imageUrl, setImageUrl] = useState<string>('');
+  const [eventData, setEventData] = useState<any>(null);
   const [batches, setBatches] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/events/${id}`)
+      .then(res => res.json())
+      .then(data => {
+        setEventData(data);
+        if (data.imageUrl) setImageUrl(data.imageUrl);
+        if (data.ticketBatches) {
+          const mappedBatches = data.ticketBatches.map((b: any) => ({
+            ...b,
+            status: b.status === 'SCHEDULED' ? 'PUBLISHED' : b.status
+          }));
+          setBatches(mappedBatches);
+        }
+        setFetching(false);
+      })
+      .catch(err => {
+        console.error(err);
+        toast.error('Error al cargar el evento');
+        setFetching(false);
+      });
+  }, [id]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
-    // Validate batches
-    const invalidBatch = batches.find(b => b.status === 'SCHEDULED' && !b.publishAt);
-    if (invalidBatch) {
-      toast.error('Las tandas programadas deben tener una fecha de inicio de venta.');
-      return;
-    }
-
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
@@ -34,13 +52,12 @@ export default function CrearEventoPage() {
       endDate: new Date(formData.get('endDate') as string).toISOString(),
       venueName: formData.get('venueName'),
       venueAddress: formData.get('venueAddress'),
-      status: 'PUBLISHED',
-      batches: batches // Send batches to backend
+      batches: batches, // Send batches to backend
     };
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/events`, {
-        method: 'POST',
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/events/${id}`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -51,10 +68,10 @@ export default function CrearEventoPage() {
       const responseData = await response.json();
 
       if (response.ok) {
-        toast.success('Evento creado exitosamente.');
-        router.push(`/panel?tab=events`);
+        toast.success('Evento actualizado exitosamente');
+        router.push('/panel?tab=events');
       } else {
-        toast.error(responseData.message || 'Error al crear el evento');
+        toast.error(responseData.message || 'Error al actualizar');
         setLoading(false);
       }
     } catch (error) {
@@ -93,9 +110,14 @@ export default function CrearEventoPage() {
     }
   };
 
+  if (fetching) return <div className="text-center py-20 text-neutral-400">Cargando datos del evento...</div>;
+  if (!eventData) return <div className="text-center py-20 text-red-400">Evento no encontrado.</div>;
+
   return (
     <div className="max-w-3xl mx-auto px-4 md:px-0 pb-32">
-      <h1 className="font-outfit text-3xl font-bold mb-8">Crear Nuevo Evento</h1>
+      <h1 className="font-outfit text-3xl font-bold mb-8 flex items-center gap-3">
+        <Edit className="w-8 h-8 text-indigo-400" /> Editar Evento
+      </h1>
 
       <form onSubmit={handleSubmit} className="space-y-8">
         <div className="bg-black/40 border border-white/10 rounded-2xl p-6 md:p-8">
@@ -131,15 +153,15 @@ export default function CrearEventoPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-neutral-400 mb-1">Nombre del evento</label>
-              <input name="title" required type="text" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Ej: Tech Meetup 2026" />
+              <input name="title" defaultValue={eventData.title} required type="text" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-neutral-400 mb-1 flex items-center gap-2"><Video className="w-4 h-4"/> Link de YouTube (Opcional)</label>
-              <input name="youtubeLink" type="url" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Ej: https://youtube.com/watch?v=..." />
+              <label className="block text-sm font-medium text-neutral-400 mb-1 flex items-center gap-2"><Video className="w-4 h-4"/> Link de YouTube</label>
+              <input name="youtubeLink" defaultValue={eventData.youtubeLink || ''} type="url" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" />
             </div>
             <div>
               <label className="block text-sm font-medium text-neutral-400 mb-1">Descripción</label>
-              <textarea name="description" required rows={4} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Contá de qué trata el evento..." />
+              <textarea name="description" defaultValue={eventData.description} required rows={4} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" />
             </div>
           </div>
         </div>
@@ -149,11 +171,11 @@ export default function CrearEventoPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label className="block text-sm font-medium text-neutral-400 mb-1">Inicio</label>
-              <input name="startDate" required type="datetime-local" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors [color-scheme:dark]" />
+              <input name="startDate" defaultValue={new Date(eventData.startDate).toISOString().slice(0, 16)} required type="datetime-local" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors [color-scheme:dark]" />
             </div>
             <div>
               <label className="block text-sm font-medium text-neutral-400 mb-1">Fin</label>
-              <input name="endDate" required type="datetime-local" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors [color-scheme:dark]" />
+              <input name="endDate" defaultValue={new Date(eventData.endDate).toISOString().slice(0, 16)} required type="datetime-local" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors [color-scheme:dark]" />
             </div>
           </div>
         </div>
@@ -163,11 +185,11 @@ export default function CrearEventoPage() {
           <div className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-neutral-400 mb-1">Nombre del lugar</label>
-              <input name="venueName" required type="text" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Ej: Centro de Convenciones" />
+              <input name="venueName" defaultValue={eventData.venueName} required type="text" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" />
             </div>
             <div>
               <label className="block text-sm font-medium text-neutral-400 mb-1">Dirección</label>
-              <input name="venueAddress" required type="text" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Ej: Av. Principal 1234, CABA" />
+              <input name="venueAddress" defaultValue={eventData.venueAddress} required type="text" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" />
             </div>
           </div>
         </div>
@@ -182,8 +204,8 @@ export default function CrearEventoPage() {
           </button>
           <button type="submit" disabled={loading} className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 md:px-8 py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50">
             <Save className="w-5 h-5" />
-            <span className="md:hidden">{loading ? 'Creando...' : 'Publicar'}</span>
-            <span className="hidden md:inline">{loading ? 'Creando...' : 'Publicar Evento'}</span>
+            <span className="md:hidden">{loading ? 'Guardando...' : 'Guardar'}</span>
+            <span className="hidden md:inline">{loading ? 'Guardando...' : 'Guardar Cambios'}</span>
           </button>
         </div>
       </form>

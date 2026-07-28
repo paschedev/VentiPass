@@ -100,7 +100,13 @@ export class OrdersService {
       // Note: In a real environment you'd want the preference creation outside the DB transaction if it's slow, 
       // but keeping it here guarantees we rollback reserved stock if MP fails.
       const organizer = order.orderItems[0].ticketType.event.organizer;
-      const { initPoint } = await this.paymentsService.createPreference(order.id, mpItems, serviceFee, organizer.mercadoPagoAccessToken || undefined);
+      let initPoint = '';
+      try {
+        const res = await this.paymentsService.createPreference(order.id, mpItems, serviceFee, organizer.mercadoPagoAccessToken || undefined);
+        initPoint = res.initPoint || '';
+      } catch (error) {
+        throw new BadRequestException('Fallo de conexión con Mercado Pago. Es posible que el token del organizador sea inválido o haya caducado.');
+      }
 
       return { orderId: order.id, checkoutUrl: initPoint };
     });

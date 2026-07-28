@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UnauthorizedException, Get, UseGuards, Req } from '@nestjs/common';
+import { Controller, Post, Body, UnauthorizedException, Get, UseGuards, Req, Query } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterUserDto } from './dto/register-user.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
@@ -41,5 +41,11 @@ export class AuthController {
   @Post('reset-password')
   resetPassword(@Body() body: any) {
     return this.authService.resetPassword(body.token, body.newPassword);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('users/search')
+  searchUsers(@Query('q') query: string) {
+    return this.authService.searchUsers(query);
   }
 }

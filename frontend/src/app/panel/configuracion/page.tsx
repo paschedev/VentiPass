@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Link2, Save, Key, Mail, Lock } from 'lucide-react';
+import { Link2, Save, Key, Lock, Ticket } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 export default function ConfiguracionPage() {
   const [mpToken, setMpToken] = useState('');
@@ -19,6 +19,7 @@ export default function ConfiguracionPage() {
   const [loadingPwd, setLoadingPwd] = useState(false);
   
   const searchParams = useSearchParams();
+  const router = useRouter();
   const resetToken = searchParams.get('token');
 
   useEffect(() => {
@@ -280,6 +281,29 @@ export default function ConfiguracionPage() {
           </button>
         </form>
       </div>
+
+      {/* Ticket Presets Section */}
+      {user?.role === 'ORGANIZER' && (
+        <div className="bg-white/5 border border-white/10 rounded-3xl p-8 mb-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-pink-500/20 rounded-xl flex items-center justify-center text-pink-400">
+                <Ticket className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">Plantillas de Tickets</h2>
+                <p className="text-neutral-400 text-sm">Gestiona tus presets rápidos para los eventos</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => router.push('/panel/configuracion/presets')}
+              className="bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-xl text-sm font-medium transition-colors"
+            >
+              Administrar Plantillas
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -75,19 +75,24 @@ export class PaymentsService {
     const preference = new Preference(client);
 
     try {
-      const response = await preference.create({
-        body: {
-          items: items,
-          external_reference: orderId,
-          back_urls: {
-            success: `${process.env.FRONTEND_URL}/checkout/success`,
-            failure: `${process.env.FRONTEND_URL}/checkout/failure`,
-            pending: `${process.env.FRONTEND_URL}/checkout/pending`,
-          },
-          auto_return: 'approved',
-          notification_url: `${process.env.BACKEND_URL}/payments/webhook`,
-          marketplace_fee: feeAmount, // This is the split payment fee (10%) that goes to the platform
+      const bodyParams: any = {
+        items: items,
+        external_reference: orderId,
+        back_urls: {
+          success: `${process.env.FRONTEND_URL}/checkout/success`,
+          failure: `${process.env.FRONTEND_URL}/checkout/failure`,
+          pending: `${process.env.FRONTEND_URL}/checkout/pending`,
         },
+        auto_return: 'approved',
+        notification_url: `${process.env.BACKEND_URL}/payments/webhook`,
+      };
+
+      if (organizerToken && feeAmount > 0) {
+        bodyParams.marketplace_fee = feeAmount;
+      }
+
+      const response = await preference.create({
+        body: bodyParams,
       });
 
       return { initPoint: response.init_point };

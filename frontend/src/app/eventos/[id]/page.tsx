@@ -4,6 +4,14 @@ import { useEffect, useState, Suspense } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Calendar, MapPin, Ticket, CreditCard, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
+import CustomSelect from '@/components/CustomSelect';
+
+const getYouTubeEmbedUrl = (url: string) => {
+  if (!url) return null;
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}?playsinline=1&rel=0` : null;
+};
 
 function EventContent() {
   const { id } = useParams();
@@ -14,10 +22,8 @@ function EventContent() {
   const [event, setEvent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [buying, setBuying] = useState(false);
-  const [showGuestModal, setShowGuestModal] = useState(false);
-  const [guestEmail, setGuestEmail] = useState('');
-  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [selectedRpp, setSelectedRpp] = useState<string>(rppFromUrl || '');
+  const [cart, setCart] = useState<Record<string, number>>({});
 
   // Mock promoters para la UI de Phase 6
   const promoters = [
@@ -38,13 +44,29 @@ function EventContent() {
       });
   }, [id]);
 
-  const initiateCheckout = async (ticketTypeId: string, email?: string) => {
+  const handleQuantityChange = (ticketTypeId: string, delta: number, maxStock: number) => {
+    setCart(prev => {
+      const current = prev[ticketTypeId] || 0;
+      const next = current + delta;
+      if (next < 0) return prev;
+      if (next > maxStock) return prev;
+      const newCart = { ...prev };
+      if (next === 0) delete newCart[ticketTypeId];
+      else newCart[ticketTypeId] = next;
+      return newCart;
+    });
+  };
+
+  const getTotalItems = () => Object.values(cart).reduce((a, b) => a + b, 0);
+
+  const initiateCheckout = async (email?: string) => {
+    const items = Object.entries(cart).map(([ticketTypeId, quantity]) => ({ ticketTypeId, quantity }));
+    if (items.length === 0) return toast.error('Selecciona al menos una entrada');
+    
     setBuying(true);
     try {
       const userStr = localStorage.getItem('user');
-      const payload: any = {
-        items: [{ ticketTypeId, quantity: 1 }]
-      };
+      const payload: any = { items };
 
       if (userStr) {
         payload.userId = JSON.parse(userStr).id;
@@ -69,7 +91,7 @@ function EventContent() {
 
       const data = await response.json();
       
-      if (response.ok && data.checkoutUrl) { // checkoutUrl is returned by backend now
+      if (response.ok && data.checkoutUrl) {
         window.location.href = data.checkoutUrl;
       } else {
         toast.error(data.message || 'Error al iniciar el pago');
@@ -82,24 +104,15 @@ function EventContent() {
     }
   };
 
-  const handleBuy = (ticketTypeId: string) => {
+  const handleBuy = () => {
+    const items = Object.entries(cart).map(([ticketTypeId, quantity]) => ({ ticketTypeId, quantity }));
+    if (items.length === 0) return toast.error('Selecciona al menos una entrada');
+
     const userStr = localStorage.getItem('user');
     if (!userStr) {
-      setSelectedTicketId(ticketTypeId);
-      setShowGuestModal(true);
+      router.push(`/login?callbackUrl=/eventos/${id}`);
     } else {
-      initiateCheckout(ticketTypeId);
-    }
-  };
-
-  const handleGuestConfirm = () => {
-    if (!guestEmail || !guestEmail.includes('@')) {
-      toast.error('Por favor ingresa un correo válido');
-      return;
-    }
-    setShowGuestModal(false);
-    if (selectedTicketId) {
-      initiateCheckout(selectedTicketId, guestEmail);
+      initiateCheckout();
     }
   };
 
@@ -109,8 +122,11 @@ function EventContent() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-12">
       <div className="bg-black/40 border border-white/10 rounded-3xl overflow-hidden">
-        <div className="h-64 md:h-96 bg-gradient-to-br from-indigo-900/60 to-purple-900/60 relative flex items-end p-8 md:p-12">
-          <div className="absolute inset-0 bg-black/20" />
+        <div className="h-64 md:h-96 bg-gradient-to-br from-indigo-900/60 to-purple-900/60 relative flex items-end p-8 md:p-12 overflow-hidden">
+          {event.imageUrl && (
+            <img src={event.imageUrl} alt={event.title} className="absolute inset-0 w-full h-full object-cover opacity-60" />
+          )}
+          <div className="absolute inset-0 bg-black/30 bg-gradient-to-t from-black/80 to-transparent" />
           <div className="relative z-10 w-full">
             <div className="inline-block bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full text-sm font-medium mb-4 border border-white/20">
               {event.status === 'PUBLISHED' ? '🎫 Entradas a la venta' : 'Próximamente'}
@@ -119,12 +135,25 @@ function EventContent() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 p-8 md:p-12">
-          <div className="lg:col-span-2 space-y-8">
+        <div className="flex flex-col gap-12 p-8 md:p-12">
+          <div className="space-y-8">
             <div>
               <h2 className="text-xl font-bold mb-4">Acerca del evento</h2>
               <p className="text-neutral-300 leading-relaxed whitespace-pre-wrap">{event.description}</p>
             </div>
+            
+            {event.youtubeLink && getYouTubeEmbedUrl(event.youtubeLink) && (
+              <div className="w-full aspect-video shadow-2xl shadow-indigo-500/10 relative z-20">
+                <iframe
+                  src={getYouTubeEmbedUrl(event.youtubeLink)!}
+                  title="YouTube video player"
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="w-full h-full rounded-2xl border border-white/5"
+                ></iframe>
+              </div>
+            )}
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white/5 rounded-2xl p-6 border border-white/5">
               <div>
@@ -148,9 +177,9 @@ function EventContent() {
             </div>
           </div>
 
-          <div className="lg:col-span-1">
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 sticky top-24 shadow-2xl">
-              <h3 className="font-bold text-lg mb-6 flex items-center gap-2"><Ticket className="w-5 h-5 text-indigo-400"/> Comprar Entradas</h3>
+          <div>
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 md:p-8 shadow-2xl">
+              <h3 className="font-bold text-xl mb-6 flex items-center gap-2"><Ticket className="w-6 h-6 text-indigo-400"/> Comprar Entradas</h3>
               
               {/* RPP Selector */}
               <div className="mb-6 bg-black/40 p-4 rounded-xl border border-white/5">
@@ -158,20 +187,16 @@ function EventContent() {
                   <Users className="w-4 h-4 text-purple-400" />
                   RPP (Opcional)
                 </label>
-                <select 
+                <CustomSelect 
                   value={selectedRpp} 
-                  onChange={(e) => setSelectedRpp(e.target.value)}
+                  onChange={setSelectedRpp}
                   disabled={!!rppFromUrl}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed appearance-none [&>option]:bg-neutral-900"
-                >
-                  <option value="">Seleccione un RPP...</option>
-                  {rppFromUrl && !promoters.find(p => p.id === rppFromUrl) && (
-                    <option value={rppFromUrl}>Promotor Referido (Bloqueado)</option>
-                  )}
-                  {promoters.map(p => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
+                  placeholder="Seleccione un RPP..."
+                  options={[
+                    ...(rppFromUrl && !promoters.find(p => p.id === rppFromUrl) ? [{ value: rppFromUrl, label: 'Promotor Referido (Bloqueado)' }] : []),
+                    ...promoters.map(p => ({ value: p.id, label: p.name }))
+                  ]}
+                />
                 {rppFromUrl && (
                   <p className="text-[11px] text-emerald-400 mt-2 font-medium flex items-center gap-1">
                     ✓ Promotor fijado por link de invitación
@@ -180,73 +205,75 @@ function EventContent() {
               </div>
 
               <div className="space-y-4">
-                {event.ticketTypes && event.ticketTypes.length > 0 ? (
-                  event.ticketTypes.map((ticket: any) => (
-                    <div key={ticket.id} className="bg-black/40 border border-white/10 rounded-xl p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="font-medium text-white">{ticket.name}</div>
-                        <div className="font-bold text-lg text-emerald-400">${ticket.price}</div>
+                {(() => {
+                  const activeBatches = (event.ticketBatches || []).filter((b: any) => {
+                    if (b.status === 'PUBLISHED') {
+                      if (b.publishAt && new Date(b.publishAt) > new Date()) return false;
+                      if (b.closeAt && new Date(b.closeAt) < new Date()) return false;
+                      return true;
+                    }
+                    if (b.status === 'SCHEDULED' && b.publishAt && new Date(b.publishAt) <= new Date()) return true;
+                    return false;
+                  });
+
+                  if (activeBatches.length === 0) {
+                    return <div className="text-center text-neutral-500 py-4">No hay entradas a la venta actualmente</div>;
+                  }
+
+                  return activeBatches.map((batch: any) => (
+                    <div key={batch.id} className="mb-6 last:mb-0">
+                      <h4 className="text-white font-bold mb-3 uppercase tracking-wide text-xs">{batch.name}</h4>
+                      <div className="bg-black/40 border border-white/10 rounded-xl flex flex-col divide-y divide-white/5">
+                        {batch.ticketTypes?.map((ticket: any) => {
+                          const available = ticket.stock - ticket.sold;
+                          const qty = cart[ticket.id] || 0;
+                          return (
+                            <div key={ticket.id} className="p-4 flex flex-col gap-3 hover:bg-white/[0.02] transition-colors first:rounded-t-xl last:rounded-b-xl">
+                              <div className="flex justify-between items-start gap-4">
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-medium text-white break-words">{ticket.name}</div>
+                                  <div className="text-xs text-neutral-500">Disponibles: {available}</div>
+                                </div>
+                                <div className="font-bold text-lg text-emerald-400 shrink-0">${ticket.price}</div>
+                              </div>
+                              <div className="flex items-center justify-between mt-1">
+                                <div className="text-sm font-medium text-neutral-400">Cantidad</div>
+                                <div className="flex items-center gap-3 bg-white/5 rounded-lg p-1">
+                                  <button onClick={() => handleQuantityChange(ticket.id, -1, available)} className="w-8 h-8 flex items-center justify-center text-white hover:bg-white/10 rounded-md transition-colors disabled:opacity-50" disabled={qty <= 0}>-</button>
+                                  <span className="w-6 text-center text-white font-bold">{qty}</span>
+                                  <button onClick={() => handleQuantityChange(ticket.id, 1, available)} className="w-8 h-8 flex items-center justify-center text-white hover:bg-white/10 rounded-md transition-colors disabled:opacity-50" disabled={qty >= available}>+</button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                      <div className="text-xs text-neutral-500 mb-4">
-                        Disponibles: {ticket.stock - ticket.sold}
-                      </div>
-                      <button 
-                        onClick={() => handleBuy(ticket.id)}
-                        disabled={buying || ticket.stock - ticket.sold <= 0}
-                        className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                      >
-                        {buying ? 'Procesando...' : <><CreditCard className="w-4 h-4"/> Comprar ahora</>}
-                      </button>
                     </div>
-                  ))
-                ) : (
-                  <div className="text-center text-neutral-500 py-4">No hay entradas configuradas</div>
-                )}
+                  ));
+                })()}
+              </div>
+
+              {/* Checkout Button Global */}
+              <div className="pt-4 mt-6 border-t border-white/10">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-neutral-400">Total</span>
+                  <span className="text-2xl font-bold text-emerald-400">
+                    ${(event.ticketBatches || []).flatMap((b: any) => b.ticketTypes || []).reduce((sum: number, t: any) => sum + (cart[t.id] || 0) * t.price, 0).toLocaleString('es-AR')}
+                  </span>
+                </div>
+                <button 
+                  onClick={handleBuy}
+                  disabled={buying || getTotalItems() === 0}
+                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3.5 rounded-xl font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {buying ? 'Procesando...' : <><CreditCard className="w-5 h-5"/> Comprar {getTotalItems() > 0 ? `(${getTotalItems()})` : ''}</>}
+                </button>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {showGuestModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-neutral-900 border border-white/10 p-6 rounded-2xl w-full max-w-md relative">
-            <h2 className="text-xl font-bold mb-4">Comprar como invitado</h2>
-            <p className="text-sm text-neutral-400 mb-6">
-              Ingresa tu correo electrónico para recibir las entradas. <br/>
-              <span className="text-amber-400 font-medium">⚠️ Asegúrate de escribirlo correctamente, ya que los tickets se enviarán allí. Si lo escribes mal, podrías perder tu compra.</span>
-            </p>
-            <input 
-              type="email" 
-              value={guestEmail}
-              onChange={(e) => setGuestEmail(e.target.value)}
-              placeholder="tu@correo.com" 
-              className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white mb-6 focus:border-indigo-500 outline-none"
-            />
-            <div className="flex gap-3">
-              <button 
-                onClick={() => setShowGuestModal(false)}
-                className="flex-1 bg-white/5 hover:bg-white/10 text-white py-3 rounded-xl font-medium transition-colors"
-              >
-                Cancelar
-              </button>
-              <button 
-                onClick={handleGuestConfirm} 
-                disabled={!guestEmail}
-                className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white py-3 rounded-xl font-medium transition-colors"
-              >
-                Continuar al Pago
-              </button>
-            </div>
-            <div className="mt-4 text-center">
-              <p className="text-xs text-neutral-500">
-                ¿Prefieres crear una cuenta para gestionar tus entradas más fácil? 
-                <button onClick={() => router.push(`/registro?callbackUrl=/eventos/${id}`)} className="text-indigo-400 hover:text-indigo-300 ml-1">Regístrate</button>
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -9,7 +9,9 @@ import { MailModule } from './mail/mail.module';
 import { TicketsModule } from './tickets/tickets.module';
 import { BullModule } from '@nestjs/bullmq';
 import { AuthModule } from './auth/auth.module';
+import { PresetsModule } from './presets/presets.module';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
 
 @Module({
@@ -30,7 +32,9 @@ import { APP_GUARD } from '@nestjs/core';
     PaymentsModule, 
     MailModule, 
     TicketsModule, 
-    AuthModule
+    AuthModule,
+    PresetsModule,
+    ScheduleModule.forRoot()
   ],
   controllers: [AppController],
   providers: [

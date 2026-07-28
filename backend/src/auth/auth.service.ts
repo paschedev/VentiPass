@@ -79,6 +79,13 @@ export class AuthService {
           phone: data.phone,
         }
       };
+      
+      userCreateInput.ticketPresets = {
+        create: [
+          { name: 'General', price: 5000 },
+          { name: 'VIP', price: 15000 }
+        ]
+      };
     }
 
     const user = await this.prisma.user.create({
@@ -176,5 +183,19 @@ export class AuthService {
     });
 
     return { message: 'Contraseña restablecida con éxito' };
+  }
+
+  async searchUsers(query: string) {
+    if (!query || query.length < 3) return [];
+    return this.prisma.user.findMany({
+      where: {
+        OR: [
+          { name: { contains: query, mode: 'insensitive' } },
+          { email: { contains: query, mode: 'insensitive' } },
+        ]
+      },
+      select: { id: true, name: true, email: true, role: true },
+      take: 10
+    });
   }
 }

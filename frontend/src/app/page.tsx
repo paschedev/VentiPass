@@ -1,17 +1,22 @@
 "use client";
 
 import Link from 'next/link';
-import { Calendar, Ticket, ShieldCheck, ArrowRight, Star } from 'lucide-react';
+import { Calendar, Ticket, ShieldCheck, ArrowRight, Star, LayoutDashboard, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useRouter } from 'next/navigation';
 
 export default function Home() {
   const [isLogged, setIsLogged] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     setIsMounted(true);
+    
+    // The forced redirect to /eventos on mobile was causing a deadend. Let users stay on the landing page.
+
     const token = localStorage.getItem('token');
     const userStr = localStorage.getItem('user');
     
@@ -24,7 +29,7 @@ export default function Home() {
         console.error("Error parsing user from localStorage", e);
       }
     }
-  }, []);
+  }, [router]);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -44,9 +49,8 @@ export default function Home() {
               Descubrí los mejores eventos, comprá tus entradas de forma segura en segundos y preparate para disfrutar. Sin complicaciones, solo diversión.
             </p>
             
-            <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto h-[60px] items-center justify-center">
+            <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto min-h-[60px] items-center justify-center">
               <AnimatePresence mode="wait">
-                {isMounted && (
                   <motion.div
                     key="buttons"
                     initial={{ opacity: 0, y: 10 }}
@@ -59,7 +63,7 @@ export default function Home() {
                       <ArrowRight className="w-5 h-5 relative z-10 group-hover:translate-x-1 transition-transform" />
                     </Link>
                     
-                    {isLogged ? (
+                    {isMounted && isLogged ? (
                       <Link 
                         href={userRole === 'ORGANIZER' || userRole === 'ADMIN' ? '/panel' : userRole === 'PROMOTER' ? '/panel/rpp' : '/panel/tickets'} 
                         className="inline-flex w-max items-center justify-center gap-2 bg-indigo-600 border border-indigo-500 text-white px-6 py-3 md:px-8 md:py-4 rounded-full font-semibold text-base md:text-lg transition-all hover:bg-indigo-500 active:scale-95 shadow-lg shadow-indigo-600/20"
@@ -67,12 +71,16 @@ export default function Home() {
                         {userRole === 'ORGANIZER' || userRole === 'ADMIN' ? 'Ir a mi Panel' : userRole === 'PROMOTER' ? 'Panel RPP' : 'Mis Tickets'}
                       </Link>
                     ) : (
-                      <Link href="/registro?isOrganizer=true" className="inline-flex w-max items-center justify-center gap-2 bg-white/5 border border-white/10 text-white px-6 py-3 md:px-8 md:py-4 rounded-full font-semibold text-base md:text-lg transition-all hover:bg-white/10 active:scale-95">
-                        Soy organizador
-                      </Link>
+                      <>
+                        <Link href="/login" className="inline-flex w-max items-center justify-center gap-2 bg-indigo-600 border border-indigo-500 text-white px-6 py-3 md:px-8 md:py-4 rounded-full font-semibold text-base md:text-lg transition-all hover:bg-indigo-500 active:scale-95 shadow-lg shadow-indigo-600/20">
+                          Ingresar
+                        </Link>
+                        <Link href="/registro" className="inline-flex w-max items-center justify-center gap-2 bg-white/5 border border-white/10 text-white px-6 py-3 md:px-8 md:py-4 rounded-full font-semibold text-base md:text-lg transition-all hover:bg-white/10 active:scale-95">
+                          Crear cuenta
+                        </Link>
+                      </>
                     )}
                   </motion.div>
-                )}
               </AnimatePresence>
             </div>
           </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { DollarSign, Ticket, Activity, TrendingUp, Calendar as CalendarIcon, Link2, Copy, Check } from 'lucide-react';
+import { DollarSign, Ticket, Activity, TrendingUp, Calendar as CalendarIcon, Link2, Copy, Check, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -10,6 +10,7 @@ export default function RppDashboard() {
   const router = useRouter();
   const [stats, setStats] = useState({ totalEarned: 0, totalPaid: 0, totalTicketsSold: 0 });
   const [copiedLink, setCopiedLink] = useState('');
+  const [navigatingId, setNavigatingId] = useState<string | null>(null);
   
   // Mock Data
   const events = [
@@ -39,9 +40,8 @@ export default function RppDashboard() {
       </div>
 
       {/* Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        <MetricCard title="Dinero Generado (Total)" value={`$${stats.totalEarned.toLocaleString('es-AR')}`} icon={<DollarSign className="text-emerald-400 w-6 h-6" />} color="emerald" />
-        <MetricCard title="Dinero a Cobrar (Pendiente)" value={`$${(stats.totalEarned - stats.totalPaid).toLocaleString('es-AR')}`} icon={<Activity className="text-pink-400 w-6 h-6" />} color="pink" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+        <MetricCard title="Dinero Total Generado" value={`$${stats.totalEarned.toLocaleString('es-AR')}`} icon={<DollarSign className="text-emerald-400 w-6 h-6" />} color="emerald" />
         <MetricCard title="Tickets Vendidos (Histórico)" value={stats.totalTicketsSold.toString()} icon={<Ticket className="text-indigo-400 w-6 h-6" />} color="indigo" />
       </div>
 
@@ -68,13 +68,24 @@ export default function RppDashboard() {
                 </div>
               </div>
               
-              <div className="w-full md:w-auto">
+              <div className="w-full md:w-auto flex flex-col md:flex-row gap-3">
+                <button 
+                  onClick={() => {
+                    setNavigatingId(ev.id);
+                    router.push(`/panel/rpp/${ev.id}`);
+                  }}
+                  disabled={navigatingId === ev.id}
+                  className="w-full md:w-44 bg-white/5 hover:bg-white/10 text-white border border-white/10 px-6 py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 whitespace-nowrap active:scale-95 disabled:opacity-50"
+                >
+                  {navigatingId === ev.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <Activity className="w-5 h-5" />}
+                  {navigatingId === ev.id ? 'Cargando...' : 'Ver Detalles'}
+                </button>
                 <button 
                   disabled={ev.status !== 'Activo'}
                   onClick={() => handleCopy(ev.id)} 
-                  className="w-full md:w-auto bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:hover:bg-indigo-600 text-white px-6 py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 active:scale-95 whitespace-nowrap"
+                  className="w-full md:w-44 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:hover:bg-indigo-600 text-white px-6 py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 active:scale-95 whitespace-nowrap"
                 >
-                  {copiedLink === ev.id ? <Check className="w-6 h-6" /> : <Link2 className="w-6 h-6" />}
+                  {copiedLink === ev.id ? <Check className="w-5 h-5" /> : <Link2 className="w-5 h-5" />}
                   {copiedLink === ev.id ? '¡Copiado!' : 'Copiar Link'}
                 </button>
               </div>

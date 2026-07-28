@@ -95,6 +95,7 @@ model User {
   organizedEvents Event[]  @relation("EventOrganizer")
   organizerProfile OrganizerProfile?
   eventStaff   EventStaff[]
+  ticketPresets TicketPreset[] @relation("OrganizerPresets")
 }
 
 model OrganizerProfile {
@@ -126,6 +127,11 @@ model Event {
   venueAddress  String?
   venueCity     String?
   venueCapacity Int?
+  latitude      Float?
+  longitude     Float?
+
+  imageUrl      String?
+  youtubeLink   String?
 
   wePassFeePercentage Decimal @default(10.0) @db.Decimal(5, 2)
 
@@ -170,6 +176,15 @@ model TicketType {
 
   tickets     Ticket[]
   orderItems  OrderItem[]
+}
+
+model TicketPreset {
+  id          String   @id @default(uuid())
+  organizerId String
+  name        String
+  price       Decimal  @db.Decimal(10, 2)
+  
+  organizer   User     @relation("OrganizerPresets", fields: [organizerId], references: [id])
 }
 
 model DiscountCode {

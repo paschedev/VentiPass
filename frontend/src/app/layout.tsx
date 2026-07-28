@@ -3,6 +3,7 @@ import { Inter, Outfit } from 'next/font/google';
 import './globals.css';
 import Navbar from '@/components/Navbar';
 import BottomNav from '@/components/BottomNav';
+import ClientLayoutWrapper from '@/components/ClientLayoutWrapper';
 import { Toaster } from 'react-hot-toast';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
@@ -26,7 +27,9 @@ export default function RootLayout({
           <div className="absolute top-0 -left-10 w-96 h-96 bg-indigo-600/20 rounded-full blur-[128px] -z-10 pointer-events-none" />
           <div className="absolute top-1/2 right-0 w-96 h-96 bg-purple-600/10 rounded-full blur-[128px] -z-10 pointer-events-none" />
           <Navbar />
-          {children}
+          <ClientLayoutWrapper>
+            {children}
+          </ClientLayoutWrapper>
           <BottomNav />
           <Toaster position="bottom-center" toastOptions={{ style: { background: '#171717', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' } }} />
         </main>

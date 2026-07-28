@@ -31,7 +31,7 @@ export default function EventosPage() {
   });
 
   return (
-    <div className="container mx-auto px-4 py-12 pt-28 pb-24">
+    <div className="container mx-auto px-4 py-12 pt-6 pb-24">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
         <div>
           <h1 className="font-outfit text-4xl md:text-5xl font-bold mb-3 text-white">Descubrir Eventos</h1>
@@ -76,7 +76,10 @@ export default function EventosPage() {
             >
               <Link href={`/eventos/${event.id}`} className="group block bg-black/40 border border-white/10 rounded-3xl overflow-hidden hover:border-indigo-500/50 transition-all hover:-translate-y-1 hover:shadow-2xl hover:shadow-indigo-500/10 h-full flex flex-col">
                 <div className="h-56 bg-gradient-to-br from-indigo-900/40 to-purple-900/40 relative overflow-hidden">
-                  <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors duration-500" />
+                  {event.imageUrl && (
+                    <img src={event.imageUrl} alt={event.title} className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity duration-500" />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent group-hover:from-black/60 transition-colors duration-500" />
                   <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-4 py-2 rounded-full text-xs font-bold text-white border border-white/10 flex items-center gap-2 shadow-lg">
                     <Calendar className="w-3 h-3 text-indigo-400" />
                     {new Date(event.startDate).toLocaleDateString('es-AR', { month: 'short', day: 'numeric' })}

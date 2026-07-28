@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, UseGuards, Req } from '@nestjs/common';
 import { EventsService } from './events.service';
 import { Prisma, StaffRole, CommissionType } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -36,14 +36,26 @@ export class EventsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ORGANIZER', 'ADMIN')
   @Post()
-  create(@Body() createEventDto: Prisma.EventCreateInput, @Req() req: any) {
-    const eventData = {
-      ...createEventDto,
-      organizer: {
-        connect: { id: req.user.userId }
-      }
-    };
-    return this.eventsService.create(req.user.userId, eventData);
+  create(@Body() body: any, @Req() req: any) {
+    return this.eventsService.create(req.user.userId, body);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ORGANIZER', 'ADMIN')
+  @Put(':id')
+  update(@Param('id') id: string, @Body() body: any, @Req() req: any) {
+    return this.eventsService.update(id, req.user.userId, body);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ORGANIZER', 'ADMIN')
+  @Put(':id/batches')
+  updateBatches(
+    @Param('id') eventId: string, 
+    @Body() body: { batches: any[] }, 
+    @Req() req: any
+  ) {
+    return this.eventsService.updateBatches(eventId, req.user.userId, body.batches);
   }
 
   // --- STAFF ENDPOINTS ---
