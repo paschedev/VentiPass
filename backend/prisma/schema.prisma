@@ -101,7 +101,6 @@ model User {
 model OrganizerProfile {
   id         String   @id @default(uuid())
   cuil       String   @unique
-  cbuOrAlias String
   country    String
   province   String
   city       String

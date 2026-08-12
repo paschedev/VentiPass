@@ -17,6 +17,9 @@ export default function ConfiguracionPage() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loadingPwd, setLoadingPwd] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [manualToken, setManualToken] = useState('');
+  const [isSavingManual, setIsSavingManual] = useState(false);
   
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -33,37 +36,47 @@ export default function ConfiguracionPage() {
     }
   }, []);
 
-  const handleSaveToken = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!mpToken) return;
+  const handleConnectMp = () => {
+    if (!user) return;
     
-    setLoadingMp(true);
+    const clientId = process.env.NEXT_PUBLIC_MP_CLIENT_ID;
+    const redirectUri = `${process.env.NEXT_PUBLIC_REDIRECT_URI || 'http://localhost:3000/panel/configuracion'}`;
+    const authUrl = `https://auth.mercadopago.com/authorization?client_id=${clientId}&response_type=code&platform_id=mp&redirect_uri=${redirectUri}&state=${user.id}`;
+    
+    window.location.href = authUrl;
+  };
+
+  const handleManualTokenSubmit = async () => {
+    if (!manualToken.trim()) return;
+    setIsSavingManual(true);
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/payments/oauth/manual`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` 
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify({ token: mpToken }),
+        body: JSON.stringify({ token: manualToken.trim() })
       });
       if (response.ok) {
-        toast.success('Cuenta de Mercado Pago actualizada con éxito!');
-        setHasLinkedMp(true);
-        if (user) {
-          const updatedUser = { ...user, hasLinkedMp: true };
-          localStorage.setItem('user', JSON.stringify(updatedUser));
-          setUser(updatedUser);
+        // Actualizar el estado local para que la UI refleje el cambio inmediatamente
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+          const userObj = JSON.parse(userStr);
+          userObj.hasLinkedMp = true;
+          localStorage.setItem('user', JSON.stringify(userObj));
         }
-        setMpToken('');
+        toast.success('Token de prueba vinculado correctamente');
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
       } else {
-        toast.error('Hubo un error al actualizar la cuenta.');
+        toast.error('Error al vincular token');
       }
-    } catch (e) {
+    } catch (error) {
       toast.error('Error de conexión');
     } finally {
-      setLoadingMp(false);
+      setIsSavingManual(false);
     }
   };
 
@@ -250,36 +263,54 @@ export default function ConfiguracionPage() {
           </div>
         </div>
 
-        {hasLinkedMp && (
+        {hasLinkedMp ? (
           <div className="mb-6 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
-            <p className="text-emerald-400 text-sm font-medium flex items-center gap-2">
+            <p className="text-emerald-400 text-sm font-medium flex items-center gap-2 mb-4">
               <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
-              Ya tienes una cuenta vinculada. Puedes actualizarla ingresando un nuevo token.
+              Ya tienes una cuenta de Mercado Pago vinculada.
             </p>
+            <button 
+              onClick={handleConnectMp}
+              className="bg-white/5 hover:bg-white/10 text-white px-6 py-3 rounded-xl text-sm font-medium transition-colors flex items-center gap-2"
+            >
+              Cambiar Cuenta Vinculada
+            </button>
+          </div>
+        ) : (
+          <div className="mb-6">
+            <p className="text-sm text-neutral-400 mb-6 leading-relaxed">
+              Al conectar tu cuenta de Mercado Pago autorizarás a WePass a procesar las ventas en tu nombre. El dinero del valor de tus entradas irá <strong>directamente a tu cuenta</strong> sin descuentos. El cargo por servicio de la plataforma se le cobra como un extra directamente al comprador final.
+            </p>
+            <button 
+              onClick={handleConnectMp}
+              className="w-full bg-[#009EE3] hover:bg-[#0089C7] text-white py-4 rounded-full font-bold transition-all shadow-lg shadow-[#009EE3]/20 flex items-center justify-center gap-2 mb-6"
+            >
+              Conectar con Mercado Pago (Producción)
+            </button>
+            
+            {/* DEVELOPMENT MODE: Manual Token Input */}
+            <div className="border border-white/10 rounded-2xl p-6 bg-black/20">
+              <h3 className="text-sm font-bold text-neutral-300 mb-2">Solo para Desarrollo (Test)</h3>
+              <p className="text-xs text-neutral-500 mb-4">Ingresá tu "Access Token de Prueba" de Mercado Pago directamente para evitar la redirección OAuth mientras estamos en entorno local.</p>
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  placeholder="APP_USR-..." 
+                  value={manualToken}
+                  onChange={(e) => setManualToken(e.target.value)}
+                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500"
+                />
+                <button 
+                  onClick={handleManualTokenSubmit}
+                  disabled={!manualToken.trim() || isSavingManual}
+                  className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white px-6 py-3 rounded-xl font-bold transition-colors text-sm"
+                >
+                  {isSavingManual ? 'Vinculando...' : 'Vincular'}
+                </button>
+              </div>
+            </div>
           </div>
         )}
-
-        <form onSubmit={handleSaveToken} className="space-y-4 max-w-md">
-          <div>
-            <label className="block text-sm font-medium text-neutral-400 mb-2">Access Token de Producción</label>
-            <input 
-              type="text" 
-              value={mpToken}
-              onChange={(e) => setMpToken(e.target.value)}
-              required
-              className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors font-mono text-sm" 
-              placeholder="APP_USR-..." 
-            />
-          </div>
-          
-          <button 
-            type="submit" 
-            disabled={loadingMp || !mpToken} 
-            className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
-          >
-            {loadingMp ? 'Guardando...' : <><Save className="w-4 h-4"/> Guardar Cambios</>}
-          </button>
-        </form>
       </div>
 
       {/* Ticket Presets Section */}

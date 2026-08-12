@@ -13,8 +13,10 @@ export default function MisEntradasPage() {
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
   const [qrRevealed, setQrRevealed] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
-  const [transferEmail, setTransferEmail] = useState('');
   const [transferring, setTransferring] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
 
   const fetchTickets = async () => {
     const token = localStorage.getItem('token');
@@ -27,7 +29,24 @@ export default function MisEntradasPage() {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
-        setTickets(await res.json());
+        const data = await res.json();
+        // TODO: REMOVE FAKE TICKETS BEFORE PROD
+        if (data.length === 0) {
+          data.push({
+            id: 'fake-tkt-1234-abcd',
+            qrCode: 'we-pass-valid-qr-123',
+            status: 'VALID',
+            ticketType: {
+              name: 'General VIP',
+              event: {
+                title: 'Fiesta Sunset Bresh',
+                startDate: new Date(Date.now() + 86400000).toISOString(), // Mañana
+                venueName: 'Complejo Art Media'
+              }
+            }
+          });
+        }
+        setTickets(data);
       }
     } catch (e) {
       console.error(e);
@@ -44,15 +63,30 @@ export default function MisEntradasPage() {
     setSelectedTicket(ticket);
     setQrRevealed(false);
     setShowTransfer(false);
-    setTransferEmail('');
+    setSearchTerm('');
+    setSelectedUser(null);
   };
 
   const closeTicket = () => {
     setSelectedTicket(null);
   };
 
+  useEffect(() => {
+    if (searchTerm.length >= 3) {
+      const delayFn = setTimeout(() => {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/auth/users/search?q=${searchTerm}`)
+          .then(res => res.ok ? res.json() : [])
+          .then(data => setSearchResults(data))
+          .catch(() => {});
+      }, 300);
+      return () => clearTimeout(delayFn);
+    } else {
+      setSearchResults([]);
+    }
+  }, [searchTerm]);
+
   const handleTransfer = async () => {
-    if (!transferEmail) return;
+    if (!selectedUser) return;
     setTransferring(true);
     const token = localStorage.getItem('token');
     
@@ -63,7 +97,7 @@ export default function MisEntradasPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}` 
         },
-        body: JSON.stringify({ targetEmail: transferEmail })
+        body: JSON.stringify({ targetEmail: selectedUser.email })
       });
       
       const data = await res.json();
@@ -225,25 +259,67 @@ export default function MisEntradasPage() {
                     </button>
                   ) : (
                     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
-                      <p className="text-sm text-neutral-400">Ingresa el email del usuario al que deseas transferir esta entrada. El usuario debe estar registrado en WePass.</p>
-                      <input 
-                        type="email" 
-                        value={transferEmail}
-                        onChange={(e) => setTransferEmail(e.target.value)}
-                        placeholder="email@ejemplo.com"
-                        className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-indigo-500 outline-none"
-                      />
+                      <p className="text-sm text-neutral-400">Ingresa el email o usuario al que deseas transferir esta entrada.</p>
+                      
+                      {!selectedUser ? (
+                        <div className="relative">
+                          <input 
+                            type="text" 
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Buscar usuario o email..."
+                            className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-indigo-500 outline-none transition-colors"
+                          />
+                          {searchResults.length > 0 && (
+                            <div className="absolute top-full mt-2 left-0 right-0 bg-neutral-800 border border-white/10 rounded-xl shadow-2xl overflow-hidden z-10 max-h-48 overflow-y-auto">
+                              {searchResults.map(u => (
+                                <button
+                                  key={u.id}
+                                  onClick={() => {
+                                    setSelectedUser(u);
+                                    setSearchTerm('');
+                                    setSearchResults([]);
+                                  }}
+                                  className="w-full text-left px-4 py-3 hover:bg-white/5 flex items-center justify-between transition-colors border-b border-white/5 last:border-0"
+                                >
+                                  <div>
+                                    <div className="text-white font-medium text-sm">{u.name}</div>
+                                    <div className="text-neutral-400 text-xs">{u.email}</div>
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl p-3 px-4">
+                          <div>
+                            <div className="text-white font-medium text-sm">{selectedUser.name}</div>
+                            <div className="text-neutral-400 text-xs">{selectedUser.email}</div>
+                          </div>
+                          <button 
+                            onClick={() => setSelectedUser(null)}
+                            className="text-neutral-500 hover:text-red-400 p-2 transition-colors"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+
                       <div className="flex gap-3">
                         <button 
-                          onClick={() => setShowTransfer(false)}
+                          onClick={() => {
+                            setShowTransfer(false);
+                            setSelectedUser(null);
+                          }}
                           className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium transition-colors"
                         >
                           Cancelar
                         </button>
                         <button 
                           onClick={handleTransfer}
-                          disabled={transferring || !transferEmail}
-                          className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-medium transition-colors"
+                          disabled={!selectedUser || transferring}
+                          className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition-all active:scale-95 disabled:opacity-50"
                         >
                           {transferring ? 'Transfiriendo...' : 'Confirmar'}
                         </button>

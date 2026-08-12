@@ -50,7 +50,6 @@ export default function RegistroPage() {
 
     if (isOrganizer) {
       payload.cuil = formData.get('cuil');
-      payload.cbuOrAlias = formData.get('cbuOrAlias');
       payload.country = formData.get('country');
       payload.province = formData.get('province');
       payload.city = formData.get('city');
@@ -96,11 +95,11 @@ export default function RegistroPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-neutral-950 p-4 relative overflow-hidden">
+    <div className="min-h-screen flex bg-neutral-950 p-4 py-12 relative overflow-x-hidden">
       <div className="absolute top-0 left-0 w-96 h-96 bg-indigo-600/10 rounded-full blur-[128px] -z-10 pointer-events-none" />
       <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-600/10 rounded-full blur-[128px] -z-10 pointer-events-none" />
 
-      <div className="w-full max-w-md bg-black/50 border border-white/10 p-8 rounded-3xl backdrop-blur-xl">
+      <div className="w-full max-w-md bg-black/50 border border-white/10 p-8 rounded-3xl backdrop-blur-xl m-auto z-10">
         <div className="text-center mb-8">
           <Link href="/" className="font-outfit text-3xl font-bold tracking-tighter inline-block mb-2">
             We<span className="text-indigo-500">Pass</span>
@@ -149,10 +148,7 @@ export default function RegistroPage() {
                   <input name="phone" type="text" pattern="^\+?[0-9\s\-]{8,20}$" title="Debe contener entre 8 y 20 números, permitiendo espacios, guiones y un + al inicio" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="+54 9 11..." />
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-neutral-400 mb-1">CBU o Alias</label>
-                <input name="cbuOrAlias" type="text" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="tu.alias.mp" />
-              </div>
+
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-neutral-400 mb-1">País</label>

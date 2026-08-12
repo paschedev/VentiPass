@@ -20,7 +20,7 @@ export class PaymentsService {
   async exchangeOAuthCode(userId: string, code: string) {
     const clientId = process.env.MERCADOPAGO_CLIENT_ID;
     const clientSecret = process.env.MERCADOPAGO_CLIENT_SECRET;
-    const redirectUri = `${process.env.BACKEND_URL}/payments/oauth/callback`;
+    const redirectUri = `${process.env.BACKEND_URL || 'http://localhost:3001'}/payments/oauth/callback`;
 
     try {
       const response = await fetch('https://api.mercadopago.com/oauth/token', {
@@ -88,7 +88,16 @@ export class PaymentsService {
       };
 
       if (organizerToken && feeAmount > 0) {
-        bodyParams.marketplace_fee = feeAmount;
+        // Podemos detectarlos si la app está en desarrollo o si no pasamos validaciones estrictas.
+        const isTestToken = organizerToken.includes('test') || organizerToken.startsWith('TEST');
+        if (!isTestToken && !process.env.BACKEND_URL?.includes('localhost')) {
+           bodyParams.marketplace_fee = feeAmount;
+        }
+      }
+
+      // MP bloquea webhooks a localhost, lo omitimos en desarrollo local
+      if (process.env.BACKEND_URL?.includes('localhost') || process.env.BACKEND_URL?.includes('127.0.0.1')) {
+        delete bodyParams.notification_url;
       }
 
       const response = await preference.create({

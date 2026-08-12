@@ -94,7 +94,7 @@ export default function CrearEventoPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 md:px-0 pb-32">
+    <div className="max-w-3xl mx-auto px-4 md:px-0 pb-24">
       <h1 className="font-outfit text-3xl font-bold mb-8">Crear Nuevo Evento</h1>
 
       <form onSubmit={handleSubmit} className="space-y-8">

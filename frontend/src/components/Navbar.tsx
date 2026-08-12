@@ -18,10 +18,7 @@ export default function Navbar() {
   const pathname = usePathname();
 
   // Mocks de notificaciones para UI/UX visual (se conectará al backend luego)
-  const notifications = [
-    { id: 1, type: 'INVITE', text: 'El organizador "Bresh" te ofrece 15% de comisión.', time: 'Hace 5 min' },
-    { id: 2, type: 'ALERT', text: 'Tu lote "Preventa" se activará mañana a las 10:00.', time: 'Hace 2 horas' },
-  ];
+  const notifications: any[] = [];
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -85,7 +82,9 @@ export default function Navbar() {
                     className="relative p-2 text-neutral-400 hover:text-white transition-colors rounded-full hover:bg-white/5"
                   >
                     <Bell className="w-5 h-5" />
-                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-pink-500 rounded-full animate-pulse" />
+                    {notifications.filter(n => !n.read).length > 0 && (
+                      <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-pink-500 rounded-full animate-pulse" />
+                    )}
                   </button>
                   
                   <AnimatePresence>
@@ -99,23 +98,33 @@ export default function Navbar() {
                       >
                         <div className="p-4 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
                           <h3 className="font-semibold text-sm">Notificaciones</h3>
-                          <span className="text-xs text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full">2 nuevas</span>
+                          {notifications.filter(n => !n.read).length > 0 && (
+                            <span className="text-xs text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full">
+                              {notifications.filter(n => !n.read).length} nuevas
+                            </span>
+                          )}
                         </div>
                         <div className="max-h-[300px] overflow-y-auto">
-                          {notifications.map(n => (
-                            <div key={n.id} className="p-4 border-b border-white/5 hover:bg-white/5 cursor-pointer transition-colors group">
-                              <p className="text-sm text-neutral-300 group-hover:text-white transition-colors">{n.text}</p>
-                              <div className="flex items-center justify-between mt-2">
-                                <span className="text-xs text-neutral-500">{n.time}</span>
-                                {n.type === 'INVITE' && (
-                                  <div className="flex gap-2">
-                                    <button className="text-xs bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded hover:bg-indigo-500 hover:text-white transition-colors">Aceptar</button>
-                                    <button className="text-xs bg-white/5 text-neutral-400 px-2 py-1 rounded hover:bg-white/10 transition-colors">Rechazar</button>
-                                  </div>
-                                )}
-                              </div>
+                          {notifications.filter(n => !n.read).length === 0 ? (
+                            <div className="p-6 text-center text-sm text-neutral-500">
+                              No hay notificaciones nuevas.
                             </div>
-                          ))}
+                          ) : (
+                            notifications.filter(n => !n.read).slice(0, 5).map(n => (
+                              <div key={n.id} className="p-4 border-b border-white/5 hover:bg-white/5 cursor-pointer transition-colors group">
+                                <p className="text-sm text-neutral-300 group-hover:text-white transition-colors">{n.text}</p>
+                                <div className="flex items-center justify-between mt-2">
+                                  <span className="text-xs text-neutral-500">{n.time}</span>
+                                  {n.type === 'INVITE' && (
+                                    <div className="flex gap-2">
+                                      <button className="text-xs bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded hover:bg-indigo-500 hover:text-white transition-colors">Aceptar</button>
+                                      <button className="text-xs bg-white/5 text-neutral-400 px-2 py-1 rounded hover:bg-white/10 transition-colors">Rechazar</button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))
+                          )}
                         </div>
                         <Link href="/panel/notificaciones" className="block w-full p-3 text-center text-xs text-neutral-400 hover:text-white hover:bg-white/5 transition-colors">
                           Ver todas

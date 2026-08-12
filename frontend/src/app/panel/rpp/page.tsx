@@ -13,14 +13,11 @@ export default function RppDashboard() {
   const [navigatingId, setNavigatingId] = useState<string | null>(null);
   
   // Mock Data
-  const events = [
-    { id: 'ev_123', name: 'Fiesta Bresh - Edición Invierno', commission: '15%', earned: 45000, sold: 150, status: 'Activo' },
-    { id: 'ev_456', name: 'Sunset Party', commission: '$500 x entrada', earned: 12000, sold: 24, status: 'Finalizado' },
-  ];
+  const events: any[] = [];
 
   useEffect(() => {
     // Simulamos carga de metricas
-    setStats({ totalEarned: 57000, totalPaid: 12000, totalTicketsSold: 174 });
+    setStats({ totalEarned: 0, totalPaid: 0, totalTicketsSold: 0 });
   }, []);
 
   const handleCopy = (eventId: string) => {
@@ -32,7 +29,7 @@ export default function RppDashboard() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 pt-8 pb-24 md:py-8">
       {/* Header */}
       <div className="mb-8">
         <h1 className="font-outfit text-4xl font-bold text-white mb-2">Mi Panel de Promotor</h1>

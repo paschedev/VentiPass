@@ -114,7 +114,7 @@ export default function EditarEventoPage() {
   if (!eventData) return <div className="text-center py-20 text-red-400">Evento no encontrado.</div>;
 
   return (
-    <div className="max-w-3xl mx-auto px-4 md:px-0 pb-32">
+    <div className="max-w-3xl mx-auto px-4 md:px-0 pb-24">
       <h1 className="font-outfit text-3xl font-bold mb-8 flex items-center gap-3">
         <Edit className="w-8 h-8 text-indigo-400" /> Editar Evento
       </h1>

@@ -69,7 +69,6 @@ export class AuthService {
       userCreateInput.organizerProfile = {
         create: {
           cuil: data.cuil,
-          cbuOrAlias: data.cbuOrAlias,
           country: data.country,
           province: data.province,
           city: data.city,

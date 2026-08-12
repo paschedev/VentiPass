@@ -7,6 +7,7 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import CustomSelect from '@/components/CustomSelect';
+import { apiFetch } from '@/utils/api';
 
 function OrganizerDashboardContent() {
   const router = useRouter();
@@ -27,6 +28,9 @@ function OrganizerDashboardContent() {
   const [searchTxTerm, setSearchTxTerm] = useState('');
   const [myEvents, setMyEvents] = useState<any[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
+  const [myStaff, setMyStaff] = useState<any[]>([]);
+  const [loadingStaff, setLoadingStaff] = useState(false);
   const [inviteEventId, setInviteEventId] = useState('');
   const [inviteRole, setInviteRole] = useState<'SCANNER'|'RPP'>('SCANNER');
   const [inviteCommType, setInviteCommType] = useState<'PERCENTAGE'|'FIXED'>('PERCENTAGE');
@@ -52,38 +56,69 @@ function OrganizerDashboardContent() {
     setIsOrganizer(true);
     setHasLinkedMp(parsedUser.hasLinkedMp || false);
     
-    // Simulate real fetching
-    setStats({ totalEvents: 3, totalTicketsSold: 1250, totalRevenue: 8500000, activeEvents: 1 });
-  }, [router]);
+    const loadStats = async () => {
+      try {
+        const data = await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/events/organizer/stats`).then(res => res.json());
+        setStats(data);
+      } catch (err) {
+        console.error('Error fetching stats:', err);
+      }
+    };
+    loadStats();
+
+    if (searchParams.get('mp_success') === 'true') {
+      toast.success('Cuenta de Mercado Pago vinculada con éxito');
+      parsedUser.hasLinkedMp = true;
+      localStorage.setItem('user', JSON.stringify(parsedUser));
+      setHasLinkedMp(true);
+      window.history.replaceState(null, '', '/panel');
+    } else if (searchParams.get('mp_error') === 'true') {
+      toast.error('Hubo un error al vincular la cuenta de Mercado Pago');
+      window.history.replaceState(null, '', '/panel');
+    }
+  }, [router, searchParams]);
 
   const fetchEvents = async () => {
     setLoadingEvents(true);
+    setFetchError(false);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/events/organizer/me`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
+      const res = await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/events/organizer/me`);
       if (res.ok) {
         setMyEvents(await res.json());
+      } else {
+        setFetchError(true);
       }
     } catch (e) {
       console.error(e);
+      setFetchError(true);
     } finally {
       setLoadingEvents(false);
     }
   };
 
-  useEffect(() => {
-    if (activeTab === 'events' && isOrganizer) {
-      fetchEvents();
+  const fetchStaff = async () => {
+    setLoadingStaff(true);
+    try {
+      const res = await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/events/organizer/staff`);
+      if (res.ok) setMyStaff(await res.json());
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingStaff(false);
     }
-  }, [activeTab, isOrganizer]);
+  };
+
+  useEffect(() => {
+    if (isOrganizer) {
+      fetchEvents();
+      fetchStaff();
+    }
+  }, [isOrganizer]);
 
   useEffect(() => {
     if (searchTerm.length >= 3) {
       const delayFn = setTimeout(() => {
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/auth/users/search?q=${searchTerm}`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        })
+        apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/auth/users/search?q=${searchTerm}`)
           .then(res => res.ok ? res.json() : [])
           .then(data => setSearchResults(data))
           .catch(() => {});
@@ -153,26 +188,35 @@ function OrganizerDashboardContent() {
       try {
         const payload = {
           email: user.email,
-          role: inviteRole,
+          role: inviteRole === 'RPP' ? 'PROMOTER' : inviteRole,
           commissionType: inviteRole === 'RPP' ? inviteCommType : undefined,
           commissionValue: inviteRole === 'RPP' ? Number(inviteCommValue) : undefined,
         };
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/events/${inviteEventId}/staff`, {
+        const res = await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/events/${inviteEventId}/staff`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('token')}`
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify(payload)
         });
-        if (res.ok) successCount++;
+        
+        if (res.ok) {
+          successCount++;
+        } else {
+          const errData = await res.json();
+          toast.error(errData.message || `No se pudo invitar a ${user.name}`);
+        }
       } catch (e) {
         console.error(e);
+        toast.error(`Error de red al invitar a ${user.name}`);
       }
     }
     
     setSendingInvites(false);
-    if (successCount > 0) toast.success(`Se enviaron ${successCount} invitaciones correctamente`);
+    if (successCount > 0) {
+      toast.success(`Se enviaron ${successCount} invitaciones correctamente`);
+      fetchStaff(); // Refetch staff list so the newly added staff appears
+    }
     setShowInviteModal(false);
     setSelectedUsers([]);
     setInviteRole('SCANNER');
@@ -180,31 +224,44 @@ function OrganizerDashboardContent() {
     setSearchTerm('');
   };
 
-  const handleSaveToken = async () => {
-    if (!mpToken) return;
-    setLoading(true);
-    setTimeout(() => {
-      toast.success('Cuenta vinculada con éxito!');
-      setHasLinkedMp(true);
-      setShowMpModal(false);
-      setLoading(false);
-    }, 1000);
+  const handleConnectMp = () => {
+    const userStr = localStorage.getItem('user');
+    const parsedUser = userStr ? JSON.parse(userStr) : null;
+    if (!parsedUser) return;
+    
+    const clientId = process.env.NEXT_PUBLIC_MP_CLIENT_ID;
+    const redirectUri = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/payments/oauth/callback`;
+    const authUrl = `https://auth.mercadopago.com/authorization?client_id=${clientId}&response_type=code&platform_id=mp&redirect_uri=${redirectUri}&state=${parsedUser.id}`;
+    
+    window.location.href = authUrl;
+  };
+
+  const handleCreateEventClick = () => {
+    if (!hasLinkedMp) {
+      toast.error('Debes vincular tu cuenta de Mercado Pago primero para poder cobrar las entradas.');
+      setShowMpModal(true);
+      return;
+    }
+    router.push('/panel/eventos/nuevo');
   };
 
   // Chart Logic
   const chartData = useMemo(() => {
+    const data = (stats as any).chartData || [];
     const today = new Date();
     const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
     if (timeFilter === 'Esta semana') {
       return Array.from({ length: 7 }, (_, i) => {
         const d = new Date();
         d.setDate(today.getDate() - (6 - i));
+        const dateStr = d.toISOString().split('T')[0];
         const days = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
-        const val = 20 + ((i * 17) % 80);
+        const dayData = data.find((x: any) => x.date === dateStr);
         return { 
           label: days[d.getDay()], 
           subLabel: String(d.getDate()), 
-          val, 
+          val: dayData ? dayData.revenue : 0, 
           future: false 
         };
       });
@@ -214,33 +271,36 @@ function OrganizerDashboardContent() {
       const monthStr = monthNames[today.getMonth()];
       return Array.from({ length: daysInMonth }, (_, i) => {
         const isFuture = (i + 1) > currentDay;
-        const val = isFuture ? 0 : 20 + ((i * 17) % 80);
-        return { label: String(i + 1), subLabel: monthStr, val, future: isFuture };
+        const d = new Date(today.getFullYear(), today.getMonth(), i + 1);
+        const dateStr = d.toISOString().split('T')[0];
+        const dayData = data.find((x: any) => x.date === dateStr);
+        return { label: String(i + 1), subLabel: monthStr, val: dayData && !isFuture ? dayData.revenue : 0, future: isFuture };
       });
     } else if (timeFilter === 'Últimos 30 días') {
       return Array.from({ length: 30 }, (_, i) => {
         const d = new Date();
         d.setDate(today.getDate() - (29 - i));
-        const val = 20 + ((i * 23) % 80);
-        return { label: String(d.getDate()), subLabel: monthNames[d.getMonth()], val, future: false };
+        const dateStr = d.toISOString().split('T')[0];
+        const dayData = data.find((x: any) => x.date === dateStr);
+        return { label: String(d.getDate()), subLabel: monthNames[d.getMonth()], val: dayData ? dayData.revenue : 0, future: false };
       });
     }
     return [];
-  }, [timeFilter]);
+  }, [timeFilter, stats]);
 
   const maxVal = Math.max(...chartData.map(d => d.val), 100);
 
   if (!isOrganizer) return null;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 pt-8 pb-28 md:pb-8">
+    <div className="max-w-7xl mx-auto px-4 pt-8 pb-24 md:pb-8">
       {/* Header & Title */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
           <h1 className="font-outfit text-4xl font-bold text-white mb-2">Panel Organizador</h1>
           <p className="text-neutral-400">Gestiona tus eventos, lotes de entradas y comisiones a RPPs.</p>
         </div>
-        <button onClick={() => router.push('/panel/eventos/nuevo')} className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-full font-medium transition-all flex items-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95">
+        <button onClick={handleCreateEventClick} className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-full font-medium transition-all flex items-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95">
           <Plus className="w-5 h-5" /> Crear Evento
         </button>
       </div>
@@ -323,11 +383,24 @@ function OrganizerDashboardContent() {
               </div>
               
               {/* Dynamic Bar Chart */}
-              <div className="h-64 flex items-end justify-between gap-0.5 sm:gap-2 relative z-10">
+              <div className="h-64 relative flex items-end justify-between gap-0.5 sm:gap-2 z-10 pt-8">
+                {/* Y-Axis Grid Lines */}
+                <div className="absolute inset-0 flex flex-col justify-between pb-0 pointer-events-none z-0">
+                  {[1, 0.75, 0.5, 0.25, 0].map((tick, i) => (
+                    <div key={i} className="flex items-center w-full relative">
+                      <span className="absolute -left-2 -translate-x-full text-[10px] text-neutral-500 font-medium">
+                        {Math.round(maxVal * tick)}
+                      </span>
+                      <div className="w-full h-[1px] bg-white/[0.03]"></div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Bars */}
                 {chartData.map((d, i) => (
-                  <div key={i} className={`w-full bg-white/5 rounded-t-lg group relative flex items-end transition-all ${!d.future && 'hover:bg-white/10 cursor-crosshair'}`}>
+                  <div key={i} className={`w-full h-full bg-white/5 rounded-t-lg group relative flex items-end transition-all z-10 ${!d.future && 'hover:bg-white/10 cursor-crosshair'}`}>
                     <motion.div 
-                      initial={{ height: 0 }} animate={{ height: `${(d.val / maxVal) * 100}%` }} transition={{ duration: 1, delay: i * 0.02, ease: "easeOut" }}
+                      initial={{ height: "0%" }} animate={{ height: `${(d.val / maxVal) * 100}%` }} transition={{ duration: 1, delay: i * 0.02, ease: "easeOut" }}
                       className={`w-full ${d.future ? 'bg-transparent' : 'bg-gradient-to-t from-indigo-600 to-purple-400 opacity-80 group-hover:opacity-100'} rounded-t-lg transition-opacity relative`}
                     >
                       {!d.future && (
@@ -408,38 +481,56 @@ function OrganizerDashboardContent() {
               </button>
             </div>
 
-            {/* Table */}
-            <div className="w-full overflow-x-auto">
-              <table className="w-full text-left text-sm text-neutral-300">
-                <thead className="bg-white/5 text-neutral-400 uppercase text-xs">
-                  <tr>
-                    <th className="px-6 py-4 rounded-tl-xl font-medium">Nombre / Email</th>
-                    <th className="px-6 py-4 font-medium">Rol</th>
-                    <th className="px-6 py-4 font-medium">Evento</th>
-                    <th className="px-6 py-4 font-medium">Comisión</th>
-                    <th className="px-6 py-4 font-medium">Deuda Pendiente</th>
-                    <th className="px-6 py-4 rounded-tr-xl font-medium">Estado</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  <tr className="hover:bg-white/[0.02] transition-colors">
-                    <td className="px-6 py-4 font-medium text-white">Pedro Alvarez<br/><span className="text-xs text-neutral-500 font-normal">pedro@mail.com</span></td>
-                    <td className="px-6 py-4"><span className="bg-indigo-500/20 text-indigo-300 px-2.5 py-1 rounded-md text-xs font-semibold">RPP</span></td>
-                    <td className="px-6 py-4">Fiesta Bresh</td>
-                    <td className="px-6 py-4">15%</td>
-                    <td className="px-6 py-4 font-bold text-red-400">$45,000</td>
-                    <td className="px-6 py-4"><span className="bg-emerald-500/10 text-emerald-400 px-2.5 py-1 rounded-full text-xs font-medium border border-emerald-500/20">Activo</span></td>
-                  </tr>
-                  <tr className="hover:bg-white/[0.02] transition-colors">
-                    <td className="px-6 py-4 font-medium text-white">Lucia Gomez<br/><span className="text-xs text-neutral-500 font-normal">lucia@mail.com</span></td>
-                    <td className="px-6 py-4"><span className="bg-purple-500/20 text-purple-300 px-2.5 py-1 rounded-md text-xs font-semibold">SCANNER</span></td>
-                    <td className="px-6 py-4">Sunset Party</td>
-                    <td className="px-6 py-4 text-neutral-500">-</td>
-                    <td className="px-6 py-4 text-neutral-500">-</td>
-                    <td className="px-6 py-4"><span className="bg-amber-500/10 text-amber-400 px-2.5 py-1 rounded-full text-xs font-medium border border-amber-500/20">Pendiente Inv.</span></td>
-                  </tr>
-                </tbody>
-              </table>
+            {/* Staff List */}
+            <div className="w-full">
+              {loadingStaff ? (
+                <div className="text-center py-12 text-neutral-500">Cargando staff...</div>
+              ) : myStaff.length === 0 ? (
+                <div className="text-center py-12 bg-white/[0.02] rounded-2xl border border-white/5 border-dashed">
+                  <Users className="w-12 h-12 text-neutral-600 mx-auto mb-4" />
+                  <h3 className="text-lg font-bold text-neutral-400 mb-2">No tienes staff asignado</h3>
+                  <p className="text-sm text-neutral-500">Haz click en "Enviar Invitación" para agregar Scanners o Promotores a tus eventos.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {myStaff.map((staff: any) => (
+                    <div key={staff.id} className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:border-white/20 transition-colors">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-sm text-white">
+                            {staff.user.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-white text-sm truncate max-w-[120px]">{staff.user.name}</h4>
+                            <p className="text-xs text-neutral-400 truncate max-w-[120px]">{staff.user.email}</p>
+                          </div>
+                        </div>
+                        <span className="px-2 py-1 rounded-md text-[10px] font-bold tracking-wider bg-emerald-500/20 text-emerald-300">
+                          ACTIVO
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-neutral-500">Rol</span>
+                          <span className="font-semibold text-indigo-300">{staff.role}</span>
+                        </div>
+                        <div className="flex justify-between text-sm items-center gap-2">
+                          <span className="text-neutral-500">Evento</span>
+                          <span className="text-white truncate">{staff.event.title}</span>
+                        </div>
+                        {staff.role === 'PROMOTER' && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-neutral-500">Comisión</span>
+                            <span className="text-emerald-400 font-medium">
+                              {staff.commissionType === 'PERCENTAGE' ? `${staff.commissionValue}%` : `$${staff.commissionValue}`}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </motion.div>
@@ -448,7 +539,7 @@ function OrganizerDashboardContent() {
       {/* Mercado Pago Modal */}
       <AnimatePresence>
         {showMpModal && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
               className="bg-neutral-900 border border-white/10 p-8 rounded-3xl w-full max-w-md relative shadow-2xl"
@@ -463,24 +554,60 @@ function OrganizerDashboardContent() {
 
               <h2 className="text-2xl font-bold mb-2">Vincular Mercado Pago</h2>
               <p className="text-sm text-neutral-400 mb-6 leading-relaxed">
-                Pega aquí tu <strong>Access Token (Producción)</strong> de Mercado Pago Developers. El dinero de las entradas irá directamente a tu cuenta.
+                Al conectar tu cuenta de Mercado Pago autorizarás a WePass a procesar las ventas en tu nombre. El dinero del valor de tus entradas irá <strong>directamente a tu cuenta</strong> sin descuentos. El cargo por servicio de la plataforma se le cobra como un extra directamente al comprador final.
               </p>
               
-              <input 
-                type="text" 
-                value={mpToken}
-                onChange={(e) => setMpToken(e.target.value)}
-                placeholder="APP_USR-..." 
-                className="w-full bg-black/50 border border-white/10 rounded-2xl px-5 py-4 text-white mb-6 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all font-mono text-sm"
-              />
-              
               <button 
-                onClick={handleSaveToken} 
-                disabled={loading || !mpToken}
-                className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:hover:bg-indigo-600 text-white py-4 rounded-2xl font-semibold transition-all active:scale-95"
+                onClick={handleConnectMp}
+                className="w-full bg-[#009EE3] hover:bg-[#0089C7] text-white py-4 rounded-full font-bold transition-all shadow-lg shadow-[#009EE3]/20 flex items-center justify-center gap-2 mb-6"
               >
-                {loading ? 'Verificando y Guardando...' : 'Guardar Token Seguro'}
+                Conectar con Mercado Pago (Producción)
               </button>
+
+              {/* DEVELOPMENT MODE: Manual Token Input */}
+              <div className="border border-white/10 rounded-2xl p-4 bg-black/20">
+                <h3 className="text-xs font-bold text-neutral-300 mb-2">Solo para Desarrollo (Test)</h3>
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    placeholder="APP_USR-..." 
+                    id="devTokenInput"
+                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500"
+                  />
+                  <button 
+                    onClick={async () => {
+                      const token = (document.getElementById('devTokenInput') as HTMLInputElement).value;
+                      if (!token.trim()) return;
+                      try {
+                        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/payments/oauth/manual`, {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                          },
+                          body: JSON.stringify({ token: token.trim() })
+                        });
+                        if (response.ok) {
+                          const userStr = localStorage.getItem('user');
+                          if (userStr) {
+                            const userObj = JSON.parse(userStr);
+                            userObj.hasLinkedMp = true;
+                            localStorage.setItem('user', JSON.stringify(userObj));
+                          }
+                          toast.success('Token vinculado');
+                          setTimeout(() => window.location.reload(), 1000);
+                        }
+                        else toast.error('Error al vincular token');
+                      } catch (e) {
+                        toast.error('Error de conexión');
+                      }
+                    }}
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl font-bold transition-colors text-xs"
+                  >
+                    Vincular
+                  </button>
+                </div>
+              </div>
             </motion.div>
           </div>
         )}
@@ -498,6 +625,17 @@ function OrganizerDashboardContent() {
 
           {loadingEvents ? (
             <div className="text-center text-neutral-400 py-10">Cargando eventos...</div>
+          ) : fetchError ? (
+            <div className="bg-red-500/10 border border-red-500/20 rounded-3xl p-12 text-center shadow-2xl">
+              <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <X className="w-8 h-8 text-red-400" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">Error al cargar eventos</h3>
+              <p className="text-neutral-400 mb-6">Hubo un problema de conexión. Por favor, intenta nuevamente.</p>
+              <button onClick={fetchEvents} className="bg-white/10 hover:bg-white/20 text-white px-6 py-2 rounded-xl transition-colors font-medium">
+                Reintentar
+              </button>
+            </div>
           ) : myEvents.length === 0 ? (
             <div className="bg-neutral-900 border border-white/5 rounded-3xl p-12 text-center shadow-2xl">
               <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">

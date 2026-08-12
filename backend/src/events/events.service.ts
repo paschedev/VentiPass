@@ -178,14 +178,38 @@ export class EventsService {
       where: { organizerId: userId },
       include: {
         ticketTypes: true,
-        organizer: true
+      }
+    });
+
+    const eventIds = events.map(e => e.id);
+
+    // Fetch PAID orders containing items from these events
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const paidOrders = await this.prisma.order.findMany({
+      where: {
+        status: 'PAID',
+        createdAt: { gte: thirtyDaysAgo },
+        orderItems: {
+          some: {
+            ticketType: {
+              eventId: { in: eventIds }
+            }
+          }
+        }
+      },
+      include: {
+        orderItems: {
+          include: { ticketType: true }
+        }
       }
     });
 
     let totalSold = 0;
     let totalRevenue = 0;
-    const recentSales = []; // We can fetch recent check-ins or sales if we want, but for now we'll just sum.
-
+    
+    // Calculate totals for ALL time based on ticketTypes.sold
     events.forEach(event => {
       event.ticketTypes.forEach(tt => {
         totalSold += tt.sold;
@@ -193,12 +217,63 @@ export class EventsService {
       });
     });
 
+    // Group revenue by day for the last 30 days (for the chart)
+    const chartMap = new Map<string, number>();
+    // Initialize last 30 days with 0
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      chartMap.set(dateStr, 0);
+    }
+
+    paidOrders.forEach(order => {
+      const dateStr = order.createdAt.toISOString().split('T')[0];
+      if (chartMap.has(dateStr)) {
+        let orderRevenue = 0;
+        order.orderItems.forEach(item => {
+          if (eventIds.includes(item.ticketType.eventId)) {
+            // Organizer revenue is based on the ticket face value, without WePass fee
+            orderRevenue += item.quantity * Number(item.unitPrice);
+          }
+        });
+        chartMap.set(dateStr, chartMap.get(dateStr)! + orderRevenue);
+      }
+    });
+
+    const chartData = Array.from(chartMap.entries()).map(([date, revenue]) => ({
+      date,
+      revenue
+    }));
+
     return {
       totalEvents: events.length,
       totalTicketsSold: totalSold,
       totalRevenue: totalRevenue,
-      activeEvents: events.filter(e => e.status === 'PUBLISHED').length
+      activeEvents: events.filter(e => e.status === 'PUBLISHED').length,
+      chartData // Returns last 30 days of real revenue
     };
+  }
+
+  async getOrganizerStaff(organizerId: string) {
+    return this.prisma.eventStaff.findMany({
+      where: {
+        event: {
+          organizerId
+        }
+      },
+      include: {
+        user: {
+          select: { name: true, email: true }
+        },
+        event: {
+          select: { title: true }
+        }
+      },
+      orderBy: {
+        event: { title: 'asc' }
+      }
+    });
   }
 
   async addStaff(eventId: string, organizerId: string, email: string, role: StaffRole, commissionType?: CommissionType, commissionValue?: number) {

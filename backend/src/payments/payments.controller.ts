@@ -30,9 +30,9 @@ export class PaymentsController {
     try {
       await this.paymentsService.exchangeOAuthCode(userId, code);
       // Redirect to frontend dashboard with success flag
-      return res.redirect(`${process.env.FRONTEND_URL}/organizar?mp_success=true`);
+      return res.redirect(`${process.env.FRONTEND_URL}/panel?mp_success=true`);
     } catch (error) {
-      return res.redirect(`${process.env.FRONTEND_URL}/organizar?mp_error=true`);
+      return res.redirect(`${process.env.FRONTEND_URL}/panel?mp_error=true`);
     }
   }
 

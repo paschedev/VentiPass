@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { Calendar, MapPin, Ticket, CreditCard, Users } from 'lucide-react';
+import { Calendar, MapPin, Ticket, CreditCard, Users, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import CustomSelect from '@/components/CustomSelect';
 
@@ -10,7 +10,7 @@ const getYouTubeEmbedUrl = (url: string) => {
   if (!url) return null;
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
   const match = url.match(regExp);
-  return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}?playsinline=1&rel=0` : null;
+  return (match && match[2].length === 11) ? `https://www.youtube-nocookie.com/embed/${match[2]}?playsinline=1&rel=0` : null;
 };
 
 function EventContent() {
@@ -120,7 +120,14 @@ function EventContent() {
   if (!event) return <div className="text-center py-20">Evento no encontrado</div>;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-12">
+    <div className="max-w-5xl mx-auto px-4 pt-6 pb-24 md:py-12">
+      <button 
+        onClick={() => router.push('/eventos')} 
+        className="mb-6 flex items-center gap-2 text-neutral-400 hover:text-white transition-colors w-fit group"
+      >
+        <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+        <span className="font-medium text-sm md:text-base">Volver</span>
+      </button>
       <div className="bg-black/40 border border-white/10 rounded-3xl overflow-hidden">
         <div className="h-64 md:h-96 bg-gradient-to-br from-indigo-900/60 to-purple-900/60 relative flex items-end p-8 md:p-12 overflow-hidden">
           {event.imageUrl && (
@@ -143,14 +150,14 @@ function EventContent() {
             </div>
             
             {event.youtubeLink && getYouTubeEmbedUrl(event.youtubeLink) && (
-              <div className="w-full aspect-video shadow-2xl shadow-indigo-500/10 relative z-20">
+              <div className="w-full aspect-video shadow-2xl shadow-indigo-500/10 relative z-30 rounded-2xl overflow-hidden bg-black border border-white/5 isolate">
                 <iframe
                   src={getYouTubeEmbedUrl(event.youtubeLink)!}
                   title="YouTube video player"
                   frameBorder="0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
-                  className="w-full h-full rounded-2xl border border-white/5"
+                  className="w-full h-full border-0 outline-none"
                 ></iframe>
               </div>
             )}

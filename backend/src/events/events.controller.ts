@@ -23,6 +23,13 @@ export class EventsController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ORGANIZER', 'ADMIN')
+  @Get('organizer/staff')
+  getOrganizerStaff(@Req() req: any) {
+    return this.eventsService.getOrganizerStaff(req.user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ORGANIZER', 'ADMIN')
   @Get('organizer/stats')
   getOrganizerStats(@Req() req: any) {
     return this.eventsService.getOrganizerStats(req.user.userId);

@@ -13,40 +13,7 @@ type Notification = {
   read: boolean;
 };
 
-const mockNotifications: Notification[] = [
-  {
-    id: '1',
-    type: 'REQUEST',
-    title: 'Solicitud de Staff',
-    message: 'El organizador "Bresh" te ha invitado a ser Promotor (15% comisión).',
-    time: 'Hace 5 min',
-    read: false,
-  },
-  {
-    id: '2',
-    type: 'INFO',
-    title: 'Lote activado',
-    message: 'Tu lote "Preventa 1" ha sido activado correctamente.',
-    time: 'Hace 2 horas',
-    read: false,
-  },
-  {
-    id: '3',
-    type: 'ALERT',
-    title: 'Nuevas ventas',
-    message: '¡Has vendido 5 entradas en los últimos 30 minutos!',
-    time: 'Hace 5 horas',
-    read: true,
-  },
-  {
-    id: '4',
-    type: 'REQUEST',
-    title: 'Solicitud de Staff',
-    message: 'El organizador "Sunset Party" te ha invitado a ser Scanner.',
-    time: 'Ayer',
-    read: false,
-  }
-];
+const mockNotifications: Notification[] = [];
 
 export default function NotificacionesPage() {
   const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
@@ -70,7 +37,7 @@ export default function NotificacionesPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto pb-24 md:pb-8">
+    <div className="max-w-3xl mx-auto px-4 pt-6 pb-24 md:pb-8">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
         <div>
           <h1 className="font-outfit text-4xl font-bold text-white mb-2 flex items-center gap-3">

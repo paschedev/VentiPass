@@ -105,6 +105,7 @@ export class OrdersService {
         const res = await this.paymentsService.createPreference(order.id, mpItems, serviceFee, organizer.mercadoPagoAccessToken || undefined);
         initPoint = res.initPoint || '';
       } catch (error) {
+        console.error('Error creating preference:', error);
         throw new BadRequestException('Fallo de conexión con Mercado Pago. Es posible que el token del organizador sea inválido o haya caducado.');
       }
 
