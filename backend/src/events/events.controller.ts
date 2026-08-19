@@ -40,6 +40,11 @@ export class EventsController {
     return this.eventsService.findOne(id);
   }
 
+  @Get(':id/promoters')
+  getPublicPromoters(@Param('id') id: string) {
+    return this.eventsService.getPublicPromoters(id);
+  }
+
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ORGANIZER', 'ADMIN')
   @Post()

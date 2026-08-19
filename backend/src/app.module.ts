@@ -10,6 +10,7 @@ import { TicketsModule } from './tickets/tickets.module';
 import { BullModule } from '@nestjs/bullmq';
 import { AuthModule } from './auth/auth.module';
 import { PresetsModule } from './presets/presets.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
@@ -34,6 +35,7 @@ import { APP_GUARD } from '@nestjs/core';
     TicketsModule, 
     AuthModule,
     PresetsModule,
+    NotificationsModule,
     ScheduleModule.forRoot()
   ],
   controllers: [AppController],

@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Calendar, MapPin, Info, Image as ImageIcon, Video, Edit, Save, UploadCloud } from 'lucide-react';
+import Link from 'next/link';
+import { Calendar, MapPin, Info, Image as ImageIcon, Video, Edit, Save, UploadCloud, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import TandasManager from '@/components/TandasManager';
+import { apiFetch } from '@/utils/api';
 
 export default function EditarEventoPage() {
   const router = useRouter();
@@ -15,13 +17,22 @@ export default function EditarEventoPage() {
   const [imageUrl, setImageUrl] = useState<string>('');
   const [eventData, setEventData] = useState<any>(null);
   const [batches, setBatches] = useState<any[]>([]);
+  const [startDate, setStartDate] = useState('');
+
+  const toLocalInputFormat = (isoString: string | null) => {
+    if (!isoString) return '';
+    const d = new Date(isoString);
+    const tzOffset = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
+  };
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/events/${id}`)
+    apiFetch(`/events/${id}`)
       .then(res => res.json())
       .then(data => {
         setEventData(data);
         if (data.imageUrl) setImageUrl(data.imageUrl);
+        if (data.startDate) setStartDate(toLocalInputFormat(data.startDate));
         if (data.ticketBatches) {
           const mappedBatches = data.ticketBatches.map((b: any) => ({
             ...b,
@@ -56,12 +67,8 @@ export default function EditarEventoPage() {
     };
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/events/${id}`, {
+      const response = await apiFetch(`/events/${id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
         body: JSON.stringify(data),
       });
 
@@ -114,7 +121,11 @@ export default function EditarEventoPage() {
   if (!eventData) return <div className="text-center py-20 text-red-400">Evento no encontrado.</div>;
 
   return (
-    <div className="max-w-3xl mx-auto px-4 md:px-0 pb-24">
+    <div className="max-w-3xl mx-auto px-4 md:px-0 pt-8 md:pt-12 pb-24">
+      <Link href="/panel?tab=events" className="inline-flex items-center gap-2 text-neutral-400 hover:text-white transition-colors mb-6 font-medium">
+        <ArrowLeft className="w-4 h-4" /> Volver a mis eventos
+      </Link>
+      
       <h1 className="font-outfit text-3xl font-bold mb-8 flex items-center gap-3">
         <Edit className="w-8 h-8 text-indigo-400" /> Editar Evento
       </h1>
@@ -171,11 +182,26 @@ export default function EditarEventoPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label className="block text-sm font-medium text-neutral-400 mb-1">Inicio</label>
-              <input name="startDate" defaultValue={new Date(eventData.startDate).toISOString().slice(0, 16)} required type="datetime-local" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors [color-scheme:dark]" />
+              <input 
+                name="startDate" 
+                required 
+                type="datetime-local" 
+                min={toLocalInputFormat(new Date().toISOString())}
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors [color-scheme:dark]" 
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-neutral-400 mb-1">Fin</label>
-              <input name="endDate" defaultValue={new Date(eventData.endDate).toISOString().slice(0, 16)} required type="datetime-local" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors [color-scheme:dark]" />
+              <input 
+                name="endDate" 
+                required 
+                type="datetime-local" 
+                min={startDate || toLocalInputFormat(new Date().toISOString())}
+                defaultValue={eventData.endDate ? toLocalInputFormat(eventData.endDate) : ''}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors [color-scheme:dark]" 
+              />
             </div>
           </div>
         </div>

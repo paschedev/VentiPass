@@ -1,28 +1,25 @@
 export async function apiFetch(url: string, options: RequestInit = {}) {
+  // Solo aplicar prefijo si la ruta empieza con '/' (relativa a nuestra API)
+  const isRelativeUrl = url.startsWith('/');
+  const finalUrl = isRelativeUrl 
+    ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${url}`
+    : url;
+
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   
-  const headers: Record<string, string> = {};
+  const headers = new Headers(options.headers || {});
   
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+  // Inyectar Token de autorización si existe
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
   }
-  
-  // Merge external headers
-  if (options.headers) {
-    if (options.headers instanceof Headers) {
-      options.headers.forEach((value, key) => {
-        headers[key] = value;
-      });
-    } else if (Array.isArray(options.headers)) {
-      options.headers.forEach(([key, value]) => {
-        headers[key] = value;
-      });
-    } else {
-      Object.assign(headers, options.headers);
-    }
+
+  // Manejar Content-Type automáticamente si hay body y no es FormData
+  if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
   }
-  
-  const response = await fetch(url, {
+
+  const response = await fetch(finalUrl, {
     ...options,
     headers,
   });
@@ -33,7 +30,6 @@ export async function apiFetch(url: string, options: RequestInit = {}) {
       localStorage.removeItem('user');
       window.location.href = '/login?expired=1';
     }
-    // We throw an error so the caller stops executing
     throw new Error('Unauthorized');
   }
 

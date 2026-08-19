@@ -42,4 +42,30 @@ export class MailService {
       this.logger.error('Failed to send tickets email', error);
     }
   }
+
+  async sendPasswordResetEmail(to: string, name: string, resetLink: string) {
+    if (!process.env.RESEND_API_KEY) {
+      if (process.env.NODE_ENV !== 'production') {
+        this.logger.log(`[DEV ONLY] Reset link generated for ${to}: ${resetLink}`);
+      }
+      return;
+    }
+
+    try {
+      const { data, error } = await this.resend.emails.send({
+        from: 'WePass <onboarding@resend.dev>', // Resend test domain
+        to: [to],
+        subject: 'Recuperación de contraseña - WePass',
+        html: `<p>Hola ${name},</p><p>Has solicitado restablecer tu contraseña.</p><p>Haz clic en el siguiente enlace para crear una nueva:</p><p><a href="${resetLink}">Restablecer mi contraseña</a></p><p>Este enlace expirará en 1 hora.</p>`
+      });
+
+      if (error) {
+        this.logger.error('Resend error', error);
+      } else {
+        this.logger.log(`Password reset email sent to ${to} with ID ${data?.id}`);
+      }
+    } catch (error) {
+      this.logger.error('Failed to send password reset email', error);
+    }
+  }
 }

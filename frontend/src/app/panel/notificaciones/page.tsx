@@ -1,39 +1,64 @@
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, Check, X, Trash2, CheckCircle2, UserPlus, Zap } from 'lucide-react';
+import { Bell, Check, X, Trash2, CheckCircle2, UserPlus, Zap, Lock, DollarSign, Gift } from 'lucide-react';
+import { apiFetch } from '@/utils/api';
+import toast from 'react-hot-toast';
 
 type Notification = {
   id: string;
-  type: 'REQUEST' | 'INFO' | 'ALERT';
+  type: string;
   title: string;
   message: string;
-  time: string;
-  read: boolean;
+  createdAt: string;
+  isRead: boolean;
+  metadata?: any;
 };
 
-const mockNotifications: Notification[] = [];
-
 export default function NotificacionesPage() {
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showOnlyRequests, setShowOnlyRequests] = useState(false);
 
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await apiFetch('/notifications');
+      if (res.ok) {
+        setNotifications(await res.json());
+      }
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
+  };
+
   const filteredNotifications = notifications.filter(n => 
-    showOnlyRequests ? n.type === 'REQUEST' : true
+    showOnlyRequests ? n.type === 'STAFF_INVITE' : true
   );
 
-  const markAsRead = (id: string) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  const markAsRead = async (id: string) => {
+    try {
+      const res = await apiFetch(`/notifications/${id}/read`, { method: 'PUT' });
+      if (res.ok) {
+        setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+      }
+    } catch (e) {
+      toast.error('Error al actualizar notificación');
+    }
   };
 
   const deleteNotification = (id: string) => {
+    // For now we just hide it locally, add DELETE endpoint later if needed
     setNotifications(prev => prev.filter(n => n.id !== id));
   };
 
-  const handleRequest = (id: string, action: 'accept' | 'reject') => {
-    // Aquí iría la llamada al backend
-    deleteNotification(id);
+  const handleRequest = async (id: string, action: 'accept' | 'reject') => {
+    toast.success(`Invitación ${action === 'accept' ? 'aceptada' : 'rechazada'}`);
+    await markAsRead(id);
+    // TODO: Aca iria el llamado a /events/:id/staff/accept para integrarlo en la logica
   };
 
   return (
@@ -83,29 +108,29 @@ export default function NotificacionesPage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
                 className={`p-5 rounded-2xl border transition-colors relative overflow-hidden group ${
-                  n.read ? 'bg-white/[0.02] border-white/5' : 'bg-black/40 border-white/10 shadow-lg'
+                  n.isRead ? 'bg-white/[0.02] border-white/5' : 'bg-black/40 border-white/10 shadow-lg'
                 }`}
               >
-                {!n.read && <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500" />}
+                {!n.isRead && <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500" />}
                 
                 <div className="flex flex-col sm:flex-row gap-4 justify-between sm:items-start">
                   <div className="flex gap-4">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                      n.type === 'REQUEST' ? 'bg-purple-500/20 text-purple-400' : 
-                      n.type === 'ALERT' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'
+                      n.type === 'STAFF_INVITE' ? 'bg-purple-500/20 text-purple-400' : 
+                      n.type === 'PROMOTER_SALE' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'
                     }`}>
-                      {n.type === 'REQUEST' ? <UserPlus className="w-5 h-5" /> : 
-                       n.type === 'ALERT' ? <Zap className="w-5 h-5" /> : <Bell className="w-5 h-5" />}
+                      {n.type === 'STAFF_INVITE' ? <Lock className="w-5 h-5" /> : 
+                       n.type === 'PROMOTER_SALE' ? <DollarSign className="w-5 h-5" /> : <Bell className="w-5 h-5" />}
                     </div>
                     <div>
-                      <h3 className={`font-semibold ${n.read ? 'text-neutral-300' : 'text-white'}`}>{n.title}</h3>
+                      <h3 className={`font-semibold ${n.isRead ? 'text-neutral-300' : 'text-white'}`}>{n.title}</h3>
                       <p className="text-sm text-neutral-400 mt-1">{n.message}</p>
-                      <span className="text-xs text-neutral-500 mt-3 block">{n.time}</span>
+                      <span className="text-xs text-neutral-500 mt-3 block">{new Date(n.createdAt).toLocaleString()}</span>
                     </div>
                   </div>
 
                   <div className="flex gap-2 sm:flex-col items-end sm:shrink-0 mt-4 sm:mt-0">
-                    {n.type === 'REQUEST' ? (
+                    {n.type === 'STAFF_INVITE' && n.metadata?.status === 'PENDING' ? (
                       <div className="flex gap-2 w-full sm:w-auto">
                         <button 
                           onClick={() => handleRequest(n.id, 'accept')}
@@ -122,7 +147,7 @@ export default function NotificacionesPage() {
                       </div>
                     ) : (
                       <div className="flex items-center gap-2">
-                        {!n.read && (
+                        {!n.isRead && (
                           <button 
                             onClick={() => markAsRead(n.id)}
                             title="Marcar como leída"

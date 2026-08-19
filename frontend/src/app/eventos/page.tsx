@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Calendar, MapPin, Search } from 'lucide-react';
+import { Search, Calendar, MapPin } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { apiFetch } from '@/utils/api';
 
 export default function EventosPage() {
   const [events, setEvents] = useState([]);
@@ -11,7 +12,7 @@ export default function EventosPage() {
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/events`)
+    apiFetch('/events')
       .then(res => res.json())
       .then(data => {
         setEvents(data);

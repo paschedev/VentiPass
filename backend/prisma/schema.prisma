@@ -22,6 +22,14 @@ enum EventStatus {
   CANCELLED
 }
 
+enum NotificationType {
+  SYSTEM
+  STAFF_INVITE
+  TICKET_PURCHASE
+  EVENT_UPDATE
+  PROMOTER_SALE
+}
+
 enum OrderStatus {
   PENDING
   PAID
@@ -96,6 +104,7 @@ model User {
   organizerProfile OrganizerProfile?
   eventStaff   EventStaff[]
   ticketPresets TicketPreset[] @relation("OrganizerPresets")
+  notifications Notification[]
 }
 
 model OrganizerProfile {
@@ -140,6 +149,7 @@ model Event {
   ticketTypes   TicketType[]
   discountCodes DiscountCode[]
   staff         EventStaff[]
+  notifications Notification[]
 }
 
 model TicketBatch {
@@ -288,3 +298,24 @@ model EventStaff {
   
   @@unique([eventId, userId])
 }
+
+
+model Notification {
+  id          String           @id @default(uuid())
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type        NotificationType
+  title       String
+  message     String
+  isRead      Boolean          @default(false)
+  
+  eventId     String?
+  event       Event?           @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  
+  actionUrl   String?
+  metadata    Json?
+
+  createdAt   DateTime         @default(now())
+}
+

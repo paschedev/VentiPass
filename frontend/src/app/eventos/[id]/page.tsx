@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Calendar, MapPin, Ticket, CreditCard, Users, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import CustomSelect from '@/components/CustomSelect';
+import { apiFetch } from '@/utils/api';
 
 const getYouTubeEmbedUrl = (url: string) => {
   if (!url) return null;
@@ -24,18 +25,16 @@ function EventContent() {
   const [buying, setBuying] = useState(false);
   const [selectedRpp, setSelectedRpp] = useState<string>(rppFromUrl || '');
   const [cart, setCart] = useState<Record<string, number>>({});
-
-  // Mock promoters para la UI de Phase 6
-  const promoters = [
-    { id: 'usr_1', name: 'Martina Rossi' },
-    { id: 'usr_2', name: 'Pedro Alvarez' }
-  ];
+  const [promoters, setPromoters] = useState<{id: string, name: string}[]>([]);
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/events/${id}`)
-      .then(res => res.json())
-      .then(data => {
-        setEvent(data);
+    Promise.all([
+      apiFetch(`/events/${id}`).then(res => res.json()),
+      apiFetch(`/events/${id}/promoters`).then(res => res.ok ? res.json() : [])
+    ])
+      .then(([eventData, promotersData]) => {
+        setEvent(eventData);
+        setPromoters(promotersData);
         setLoading(false);
       })
       .catch(err => {
@@ -59,6 +58,36 @@ function EventContent() {
 
   const getTotalItems = () => Object.values(cart).reduce((a, b) => a + b, 0);
 
+  const handleDevBypass = async () => {
+    setBuying(true);
+    const items = Object.entries(cart).map(([ticketTypeId, quantity]) => ({ ticketTypeId, quantity }));
+    const userStr = localStorage.getItem('user');
+    const user = userStr ? JSON.parse(userStr) : null;
+    
+    try {
+      const response = await apiFetch('/orders/dev-bypass', {
+        method: 'POST',
+        body: JSON.stringify({
+          userId: user?.id,
+          guestEmail: !user ? prompt('Email para la entrada (modo invitado):') : undefined,
+          promoterId: selectedRpp || undefined,
+          items
+        }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        toast.success('Bypass exitoso. Entradas generadas.');
+        router.push('/panel/tickets');
+      } else {
+        toast.error(data.message || 'Error en el bypass');
+        setBuying(false);
+      }
+    } catch (error) {
+      toast.error('Error de conexión');
+      setBuying(false);
+    }
+  };
+
   const initiateCheckout = async (email?: string) => {
     const items = Object.entries(cart).map(([ticketTypeId, quantity]) => ({ ticketTypeId, quantity }));
     if (items.length === 0) return toast.error('Selecciona al menos una entrada');
@@ -80,12 +109,8 @@ function EventContent() {
         payload.promoterId = selectedRpp;
       }
       
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/orders/checkout`, {
+      const response = await apiFetch('/orders/checkout', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(userStr && { 'Authorization': `Bearer ${localStorage.getItem('token')}` })
-        },
         body: JSON.stringify(payload),
       });
 
@@ -200,6 +225,7 @@ function EventContent() {
                   disabled={!!rppFromUrl}
                   placeholder="Seleccione un RPP..."
                   options={[
+                    { value: '', label: '(Ninguno)' },
                     ...(rppFromUrl && !promoters.find(p => p.id === rppFromUrl) ? [{ value: rppFromUrl, label: 'Promotor Referido (Bloqueado)' }] : []),
                     ...promoters.map(p => ({ value: p.id, label: p.name }))
                   ]}
@@ -268,13 +294,27 @@ function EventContent() {
                     ${(event.ticketBatches || []).flatMap((b: any) => b.ticketTypes || []).reduce((sum: number, t: any) => sum + (cart[t.id] || 0) * t.price, 0).toLocaleString('es-AR')}
                   </span>
                 </div>
-                <button 
-                  onClick={handleBuy}
-                  disabled={buying || getTotalItems() === 0}
-                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3.5 rounded-xl font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  {buying ? 'Procesando...' : <><CreditCard className="w-5 h-5"/> Comprar {getTotalItems() > 0 ? `(${getTotalItems()})` : ''}</>}
-                </button>
+                
+                <div className="flex flex-col items-end gap-3">
+                  <button 
+                    onClick={handleBuy}
+                    disabled={buying || getTotalItems() === 0}
+                    className="w-fit px-8 bg-indigo-600 hover:bg-indigo-500 text-white py-3.5 rounded-xl font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {buying ? 'Procesando...' : <><CreditCard className="w-5 h-5"/> Comprar {getTotalItems() > 0 ? `(${getTotalItems()})` : ''}</>}
+                  </button>
+
+                  {/* DEV BYPASS BUTTON (Development Only) */}
+                  {process.env.NODE_ENV === 'development' && (
+                    <button 
+                      onClick={handleDevBypass}
+                      disabled={buying || getTotalItems() === 0}
+                      className="w-fit px-6 bg-red-600/20 border border-red-500/50 hover:bg-red-600/40 text-red-400 py-2 rounded-xl font-bold transition-all text-xs flex items-center justify-center disabled:opacity-50"
+                    >
+                      🚀 Comprar (Dev Bypass Sin MP)
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>

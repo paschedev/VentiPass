@@ -20,7 +20,7 @@ export default function CheckoutPage() {
   useEffect(() => {
     const fetchEvent = async () => {
       try {
-        const res = await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/events/${id}`);
+        const res = await apiFetch(`/events/${id}`);
         if (res.ok) {
           const data = await res.json();
           setEvent(data);

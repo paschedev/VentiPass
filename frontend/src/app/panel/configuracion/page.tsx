@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Link2, Save, Key, Lock, Ticket } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { apiFetch } from '@/utils/api';
 
 export default function ConfiguracionPage() {
   const [mpToken, setMpToken] = useState('');
@@ -50,12 +51,8 @@ export default function ConfiguracionPage() {
     if (!manualToken.trim()) return;
     setIsSavingManual(true);
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/payments/oauth/manual`, {
+      const response = await apiFetch('/payments/oauth/manual', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
         body: JSON.stringify({ token: manualToken.trim() })
       });
       if (response.ok) {
@@ -89,13 +86,8 @@ export default function ConfiguracionPage() {
 
     setLoadingPwd(true);
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/auth/change-password`, {
+      const res = await apiFetch('/auth/change-password', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` 
-        },
         body: JSON.stringify({ oldPassword, newPassword })
       });
       const data = await res.json();
@@ -123,9 +115,8 @@ export default function ConfiguracionPage() {
     }
     const toastId = toast.loading('Solicitando reseteo...');
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/auth/forgot-password`, {
+      const res = await apiFetch('/auth/forgot-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: user.email })
       });
       if (res.ok) {
@@ -144,12 +135,12 @@ export default function ConfiguracionPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto px-4 md:px-0 pt-6 pb-24 md:py-12">
       <h1 className="font-outfit text-3xl font-bold text-white mb-8">Configuración</h1>
       
       {/* Contraseña Section */}
       <div className="bg-white/5 border border-white/10 rounded-3xl p-8 mb-8">
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-4">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center text-purple-400">
               <Key className="w-6 h-6" />
@@ -162,7 +153,7 @@ export default function ConfiguracionPage() {
           {!showPasswordForm && (
             <button 
               onClick={() => setShowPasswordForm(true)}
-              className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+              className="w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white px-4 py-3 sm:py-2 rounded-xl text-sm font-medium transition-colors"
             >
               Cambiar Contraseña
             </button>
@@ -271,7 +262,7 @@ export default function ConfiguracionPage() {
             </p>
             <button 
               onClick={handleConnectMp}
-              className="bg-white/5 hover:bg-white/10 text-white px-6 py-3 rounded-xl text-sm font-medium transition-colors flex items-center gap-2"
+              className="w-full sm:w-auto bg-white/5 hover:bg-white/10 text-white px-6 py-3 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2"
             >
               Cambiar Cuenta Vinculada
             </button>
@@ -292,7 +283,7 @@ export default function ConfiguracionPage() {
             <div className="border border-white/10 rounded-2xl p-6 bg-black/20">
               <h3 className="text-sm font-bold text-neutral-300 mb-2">Solo para Desarrollo (Test)</h3>
               <p className="text-xs text-neutral-500 mb-4">Ingresá tu "Access Token de Prueba" de Mercado Pago directamente para evitar la redirección OAuth mientras estamos en entorno local.</p>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input 
                   type="text" 
                   placeholder="APP_USR-..." 
@@ -303,7 +294,7 @@ export default function ConfiguracionPage() {
                 <button 
                   onClick={handleManualTokenSubmit}
                   disabled={!manualToken.trim() || isSavingManual}
-                  className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white px-6 py-3 rounded-xl font-bold transition-colors text-sm"
+                  className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white px-6 py-3 rounded-xl font-bold transition-colors text-sm"
                 >
                   {isSavingManual ? 'Vinculando...' : 'Vincular'}
                 </button>
@@ -316,7 +307,7 @@ export default function ConfiguracionPage() {
       {/* Ticket Presets Section */}
       {user?.role === 'ORGANIZER' && (
         <div className="bg-white/5 border border-white/10 rounded-3xl p-8 mb-8">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-pink-500/20 rounded-xl flex items-center justify-center text-pink-400">
                 <Ticket className="w-6 h-6" />
@@ -328,7 +319,7 @@ export default function ConfiguracionPage() {
             </div>
             <button 
               onClick={() => router.push('/panel/configuracion/presets')}
-              className="bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-xl text-sm font-medium transition-colors"
+              className="w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white px-6 py-3 sm:py-3 rounded-xl text-sm font-medium transition-colors"
             >
               Administrar Plantillas
             </button>
@@ -353,9 +344,8 @@ function ResetPasswordView({ token }: { token: string }) {
     }
     setLoading(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/auth/reset-password`, {
+      const res = await apiFetch('/auth/reset-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, newPassword })
       });
       const data = await res.json();
@@ -374,7 +364,7 @@ function ResetPasswordView({ token }: { token: string }) {
 
   if (success) {
     return (
-      <div className="max-w-md mx-auto mt-20 bg-white/5 border border-white/10 p-8 rounded-3xl text-center">
+      <div className="max-w-md mx-4 md:mx-auto mt-20 bg-white/5 border border-white/10 p-8 rounded-3xl text-center">
         <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4">
           <Key className="w-8 h-8" />
         </div>
@@ -388,7 +378,7 @@ function ResetPasswordView({ token }: { token: string }) {
   }
 
   return (
-    <div className="max-w-md mx-auto mt-20 bg-white/5 border border-white/10 p-8 rounded-3xl">
+    <div className="max-w-md mx-4 md:mx-auto mt-20 bg-white/5 border border-white/10 p-8 rounded-3xl">
       <h2 className="text-2xl font-bold text-white mb-2">Crear nueva contraseña</h2>
       <p className="text-neutral-400 mb-6 text-sm">Ingresa tu nueva contraseña para recuperar el acceso a tu cuenta.</p>
       

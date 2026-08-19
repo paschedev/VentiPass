@@ -58,7 +58,7 @@ function OrganizerDashboardContent() {
     
     const loadStats = async () => {
       try {
-        const data = await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/events/organizer/stats`).then(res => res.json());
+        const data = await apiFetch('/events/organizer/stats').then(res => res.json());
         setStats(data);
       } catch (err) {
         console.error('Error fetching stats:', err);
@@ -82,7 +82,7 @@ function OrganizerDashboardContent() {
     setLoadingEvents(true);
     setFetchError(false);
     try {
-      const res = await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/events/organizer/me`);
+      const res = await apiFetch('/events/organizer/me');
       if (res.ok) {
         setMyEvents(await res.json());
       } else {
@@ -99,7 +99,7 @@ function OrganizerDashboardContent() {
   const fetchStaff = async () => {
     setLoadingStaff(true);
     try {
-      const res = await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/events/organizer/staff`);
+      const res = await apiFetch('/events/organizer/staff');
       if (res.ok) setMyStaff(await res.json());
     } catch (e) {
       console.error(e);
@@ -118,7 +118,7 @@ function OrganizerDashboardContent() {
   useEffect(() => {
     if (searchTerm.length >= 3) {
       const delayFn = setTimeout(() => {
-        apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/auth/users/search?q=${searchTerm}`)
+        apiFetch(`/auth/users/search?q=${searchTerm}`)
           .then(res => res.ok ? res.json() : [])
           .then(data => setSearchResults(data))
           .catch(() => {});
@@ -192,7 +192,7 @@ function OrganizerDashboardContent() {
           commissionType: inviteRole === 'RPP' ? inviteCommType : undefined,
           commissionValue: inviteRole === 'RPP' ? Number(inviteCommValue) : undefined,
         };
-        const res = await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/events/${inviteEventId}/staff`, {
+        const res = await apiFetch(`/events/${inviteEventId}/staff`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -579,12 +579,8 @@ function OrganizerDashboardContent() {
                       const token = (document.getElementById('devTokenInput') as HTMLInputElement).value;
                       if (!token.trim()) return;
                       try {
-                        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/payments/oauth/manual`, {
+                        const response = await apiFetch('/payments/oauth/manual', {
                           method: 'POST',
-                          headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${localStorage.getItem('token')}`
-                          },
                           body: JSON.stringify({ token: token.trim() })
                         });
                         if (response.ok) {
@@ -848,9 +844,14 @@ function OrganizerDashboardContent() {
                               }}
                               className="w-full text-left px-4 py-3 hover:bg-white/5 flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed transition-colors border-b border-white/5 last:border-0"
                             >
-                              <div>
-                                <div className="text-white font-medium text-sm">{u.name}</div>
-                                <div className="text-neutral-400 text-xs">{u.email}</div>
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-sm shrink-0 uppercase">
+                                  {u.name.charAt(0)}
+                                </div>
+                                <div className="min-w-0 text-left">
+                                  <div className="text-white font-medium text-sm truncate">{u.name}</div>
+                                  <div className="text-neutral-400 text-xs truncate">{u.email}</div>
+                                </div>
                               </div>
                               {isSelected && <Check className="w-4 h-4 text-emerald-400" />}
                             </button>

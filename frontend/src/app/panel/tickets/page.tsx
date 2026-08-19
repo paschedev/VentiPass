@@ -4,11 +4,12 @@ import { useEffect, useState } from 'react';
 import { Ticket as TicketIcon, Calendar, MapPin, X, ArrowRightLeft, Eye, EyeOff } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import toast from 'react-hot-toast';
+import { apiFetch } from '@/utils/api';
 
 export default function MisEntradasPage() {
   const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Modal state
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
   const [qrRevealed, setQrRevealed] = useState(false);
@@ -25,27 +26,9 @@ export default function MisEntradasPage() {
       return;
     }
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/tickets/my-tickets`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await apiFetch('/tickets/my-tickets');
       if (res.ok) {
         const data = await res.json();
-        // TODO: REMOVE FAKE TICKETS BEFORE PROD
-        if (data.length === 0) {
-          data.push({
-            id: 'fake-tkt-1234-abcd',
-            qrCode: 'we-pass-valid-qr-123',
-            status: 'VALID',
-            ticketType: {
-              name: 'General VIP',
-              event: {
-                title: 'Fiesta Sunset Bresh',
-                startDate: new Date(Date.now() + 86400000).toISOString(), // Mañana
-                venueName: 'Complejo Art Media'
-              }
-            }
-          });
-        }
         setTickets(data);
       }
     } catch (e) {
@@ -74,10 +57,10 @@ export default function MisEntradasPage() {
   useEffect(() => {
     if (searchTerm.length >= 3) {
       const delayFn = setTimeout(() => {
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/auth/users/search?q=${searchTerm}`)
+        apiFetch(`/auth/users/search?q=${searchTerm}`)
           .then(res => res.ok ? res.json() : [])
           .then(data => setSearchResults(data))
-          .catch(() => {});
+          .catch(() => { });
       }, 300);
       return () => clearTimeout(delayFn);
     } else {
@@ -89,19 +72,15 @@ export default function MisEntradasPage() {
     if (!selectedUser) return;
     setTransferring(true);
     const token = localStorage.getItem('token');
-    
+
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/tickets/${selectedTicket.id}/transfer`, {
+      const res = await apiFetch(`/tickets/${selectedTicket.id}/transfer`, {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}` 
-        },
         body: JSON.stringify({ targetEmail: selectedUser.email })
       });
-      
+
       const data = await res.json();
-      
+
       if (res.ok) {
         toast.success('Entrada transferida con éxito');
         closeTicket();
@@ -122,7 +101,7 @@ export default function MisEntradasPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-12 pt-24">
-      <h1 className="font-outfit text-4xl font-bold text-white mb-2">Mis Entradas</h1>
+      <h1 className="font-outfit text-4xl font-bold text-white mb-2">Mis Tickets</h1>
       <p className="text-neutral-400 mb-10">Tus accesos a los mejores eventos.</p>
 
       {tickets.length === 0 ? (
@@ -136,13 +115,13 @@ export default function MisEntradasPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {tickets.map((ticket) => (
-            <div 
-              key={ticket.id} 
+            <div
+              key={ticket.id}
               onClick={() => openTicket(ticket)}
               className="group bg-neutral-900 border border-white/10 rounded-3xl overflow-hidden cursor-pointer hover:border-indigo-500/50 hover:shadow-[0_0_30px_rgba(99,102,241,0.15)] transition-all relative"
             >
               <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              
+
               <div className="p-6">
                 <div className="flex justify-between items-start mb-6">
                   <div className="bg-white/10 rounded-lg px-3 py-1.5 text-xs font-semibold text-white tracking-wide">
@@ -188,9 +167,9 @@ export default function MisEntradasPage() {
 
       {/* Modal del Ticket */}
       {selectedTicket && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className="bg-neutral-900 border border-white/10 rounded-[2rem] w-full max-w-md relative overflow-hidden flex flex-col max-h-[90vh]">
-            
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 overflow-hidden">
+          <div className="bg-neutral-900 border border-white/10 rounded-[2rem] w-full max-w-md relative flex flex-col max-h-[85vh] my-auto">
+
             {/* Header del Ticket Modal */}
             <div className="p-6 pb-0 flex justify-between items-start shrink-0">
               <div className="bg-indigo-500/20 text-indigo-300 px-4 py-1.5 rounded-full text-xs font-bold border border-indigo-500/30">
@@ -213,17 +192,17 @@ export default function MisEntradasPage() {
               {/* Zona del QR */}
               <div className="bg-white rounded-[2rem] p-6 mb-8 mx-auto w-64 relative group">
                 <div className={`transition-all duration-500 ${!qrRevealed ? 'blur-md brightness-50' : ''}`}>
-                  <QRCodeSVG 
-                    value={selectedTicket.qrCode} 
-                    size={208} 
+                  <QRCodeSVG
+                    value={selectedTicket.qrCode}
+                    size={208}
                     level="H"
                     includeMargin={false}
                     className="w-full h-auto"
                   />
                 </div>
-                
+
                 {!qrRevealed && (
-                  <div 
+                  <div
                     className="absolute inset-0 flex flex-col items-center justify-center cursor-pointer text-neutral-900 hover:scale-105 transition-transform"
                     onClick={() => setQrRevealed(true)}
                   >
@@ -231,9 +210,9 @@ export default function MisEntradasPage() {
                     <span className="font-bold text-sm drop-shadow-md bg-white/80 px-3 py-1 rounded-full">Toca para revelar</span>
                   </div>
                 )}
-                
+
                 {qrRevealed && (
-                  <button 
+                  <button
                     onClick={() => setQrRevealed(false)}
                     className="absolute -bottom-4 -right-4 bg-neutral-900 text-white p-3 rounded-full border border-white/10 shadow-xl hover:bg-neutral-800 transition-colors"
                   >
@@ -250,7 +229,7 @@ export default function MisEntradasPage() {
               {selectedTicket.status === 'VALID' && (
                 <div className="border-t border-white/10 pt-6">
                   {!showTransfer ? (
-                    <button 
+                    <button
                       onClick={() => setShowTransfer(true)}
                       className="w-full py-4 rounded-xl flex items-center justify-center gap-2 font-medium bg-white/5 hover:bg-white/10 text-white transition-colors"
                     >
@@ -260,11 +239,11 @@ export default function MisEntradasPage() {
                   ) : (
                     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
                       <p className="text-sm text-neutral-400">Ingresa el email o usuario al que deseas transferir esta entrada.</p>
-                      
+
                       {!selectedUser ? (
                         <div className="relative">
-                          <input 
-                            type="text" 
+                          <input
+                            type="text"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             placeholder="Buscar usuario o email..."
@@ -282,9 +261,14 @@ export default function MisEntradasPage() {
                                   }}
                                   className="w-full text-left px-4 py-3 hover:bg-white/5 flex items-center justify-between transition-colors border-b border-white/5 last:border-0"
                                 >
-                                  <div>
-                                    <div className="text-white font-medium text-sm">{u.name}</div>
-                                    <div className="text-neutral-400 text-xs">{u.email}</div>
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-sm shrink-0 uppercase">
+                                      {u.name.charAt(0)}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="text-white font-medium text-sm truncate">{u.name}</div>
+                                      <div className="text-neutral-400 text-xs truncate">{u.email}</div>
+                                    </div>
                                   </div>
                                 </button>
                               ))}
@@ -293,11 +277,16 @@ export default function MisEntradasPage() {
                         </div>
                       ) : (
                         <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl p-3 px-4">
-                          <div>
-                            <div className="text-white font-medium text-sm">{selectedUser.name}</div>
-                            <div className="text-neutral-400 text-xs">{selectedUser.email}</div>
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-sm shrink-0 uppercase">
+                              {selectedUser.name.charAt(0)}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-white font-medium text-sm truncate">{selectedUser.name}</div>
+                              <div className="text-neutral-400 text-xs truncate">{selectedUser.email}</div>
+                            </div>
                           </div>
-                          <button 
+                          <button
                             onClick={() => setSelectedUser(null)}
                             className="text-neutral-500 hover:text-red-400 p-2 transition-colors"
                           >
@@ -307,7 +296,7 @@ export default function MisEntradasPage() {
                       )}
 
                       <div className="flex gap-3">
-                        <button 
+                        <button
                           onClick={() => {
                             setShowTransfer(false);
                             setSelectedUser(null);
@@ -316,7 +305,7 @@ export default function MisEntradasPage() {
                         >
                           Cancelar
                         </button>
-                        <button 
+                        <button
                           onClick={handleTransfer}
                           disabled={!selectedUser || transferring}
                           className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition-all active:scale-95 disabled:opacity-50"

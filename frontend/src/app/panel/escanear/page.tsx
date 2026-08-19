@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import { CheckCircle2, XCircle, ScanLine } from 'lucide-react';
+import { apiFetch } from '@/utils/api';
 
 export default function EscanearPage() {
   const [scanResult, setScanResult] = useState<{ success: boolean; message: string; event?: string; type?: string } | null>(null);
@@ -14,13 +15,8 @@ export default function EscanearPage() {
     
     setLoading(true);
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/tickets/check-in`, {
+      const response = await apiFetch('/tickets/check-in', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // Replace with actual token logic
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
         body: JSON.stringify({ qrCode }),
       });
       

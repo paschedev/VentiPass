@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { UserPlus } from 'lucide-react';
 import CustomSelect from '@/components/CustomSelect';
+import { apiFetch } from '@/utils/api';
 
 export default function RegistroPage() {
   const router = useRouter();
@@ -60,9 +61,8 @@ export default function RegistroPage() {
     }
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/auth/register`, {
+      const response = await apiFetch('/auth/register', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
@@ -113,11 +113,11 @@ export default function RegistroPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-neutral-400 mb-1">Nombre</label>
-              <input name="firstName" type="text" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Juan" />
+              <input name="firstName" type="text" spellCheck="false" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Juan" />
             </div>
             <div>
               <label className="block text-sm font-medium text-neutral-400 mb-1">Apellido</label>
-              <input name="lastName" type="text" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Pérez" />
+              <input name="lastName" type="text" spellCheck="false" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Pérez" />
             </div>
           </div>
           <div>
@@ -149,7 +149,7 @@ export default function RegistroPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-neutral-400 mb-1">País</label>
                   <CustomSelect 
@@ -199,24 +199,26 @@ export default function RegistroPage() {
                     ]}
                   />
                 </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-neutral-400 mb-1">Localidad</label>
-                  <input name="city" type="text" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Ej: Rosario" />
+                  <input name="city" type="text" spellCheck="false" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Ej: Rosario" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-400 mb-1">Cód. Postal</label>
+                  <input name="zipCode" type="text" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Ej: 2000" />
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-neutral-400 mb-1">Calle</label>
-                  <input name="street" type="text" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Ej: San Martín" />
+                  <input name="street" type="text" spellCheck="false" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Ej: San Martín" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-neutral-400 mb-1">Altura</label>
                   <input name="number" type="text" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="1234" />
                 </div>
-              </div>
-              <div className="w-1/2 pr-2">
-                <label className="block text-sm font-medium text-neutral-400 mb-1">Cód. Postal</label>
-                <input name="zipCode" type="text" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Ej: 2000" />
               </div>
             </div>
           )}

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Ticket, Plus, Trash2, Edit2, Check, X, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
+import { apiFetch } from '@/utils/api';
 
 export default function PresetsPage() {
   const router = useRouter();
@@ -16,10 +17,7 @@ export default function PresetsPage() {
 
   const fetchPresets = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/presets`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await apiFetch('/presets');
       if (res.ok) {
         const data = await res.json();
         setPresets(data);
@@ -40,19 +38,14 @@ export default function PresetsPage() {
       toast.error('El nombre de la plantilla es requerido');
       return;
     }
-    const token = localStorage.getItem('token');
     const url = editingId 
-      ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/presets/${editingId}`
-      : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/presets`;
+      ? `/presets/${editingId}`
+      : `/presets`;
     const method = editingId ? 'PUT' : 'POST';
 
     try {
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
         body: JSON.stringify({ name: editForm.name, price: 0 })
       });
       if (res.ok) {
@@ -72,11 +65,9 @@ export default function PresetsPage() {
     if (!presetToDelete) return;
     const id = presetToDelete;
     
-    const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/presets/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+      const res = await apiFetch(`/presets/${id}`, {
+        method: 'DELETE'
       });
       if (res.ok) {
         toast.success('Plantilla eliminada');

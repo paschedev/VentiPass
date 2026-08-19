@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
-import { PrismaService } from '../prisma/prisma.service';
+import { PaymentsRepository } from './repositories/payments.repository';
 import { TicketsService } from '../tickets/tickets.service';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class PaymentsService {
@@ -9,7 +10,7 @@ export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
 
   constructor(
-    private prisma: PrismaService,
+    private readonly paymentsRepository: PaymentsRepository,
     private ticketsService: TicketsService,
   ) {
     this.client = new MercadoPagoConfig({
@@ -42,13 +43,10 @@ export class PaymentsService {
       if (!response.ok) throw new Error(data.message || 'Error en OAuth');
 
       // Update user with Mercado Pago credentials
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: {
-          mercadoPagoAccessToken: data.access_token,
-          mercadoPagoPublicKey: data.public_key,
-          mercadoPagoUserId: data.user_id.toString(),
-        },
+      await this.paymentsRepository.updateUserMercadoPagoCredentials(userId, {
+        accessToken: data.access_token,
+        publicKey: data.public_key,
+        userId: data.user_id.toString(),
       });
 
       return { success: true };
@@ -59,10 +57,7 @@ export class PaymentsService {
   }
 
   async saveManualToken(userId: string, token: string) {
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { mercadoPagoAccessToken: token },
-    });
+    await this.paymentsRepository.updateUserMercadoPagoCredentials(userId, { accessToken: token });
     return { success: true };
   }
 
@@ -125,64 +120,20 @@ export class PaymentsService {
           if (!orderId) return;
 
           // Check if payment already exists
-          const existingPayment = await this.prisma.payment.findFirst({
-            where: { providerPaymentId: paymentId.toString() },
-          });
+          const existingPayment = await this.paymentsRepository.findPaymentByProviderId(paymentId.toString());
 
           if (!existingPayment) {
-            // Update order and create payment
-            await this.prisma.$transaction(async (tx) => {
-              const order = await tx.order.update({
-                where: { id: orderId },
-                data: { status: 'PAID' },
-                include: { orderItems: true },
-              });
-
-              await tx.payment.create({
-                data: {
-                  orderId: order.id,
-                  provider: 'MERCADO_PAGO',
-                  providerPaymentId: paymentId.toString(),
-                  status: 'APPROVED',
-                  amount: paymentData.transaction_amount || 0,
-                },
-              });
-
-              // Trigger ticket generation
-              await this.ticketsService.generateTicketsForOrder(order.id, tx);
-
-              // Calculate promoter commission if a promoter is linked
-              if (order.promoterId) {
-                const promoter = await tx.eventStaff.findUnique({ where: { id: order.promoterId } });
-                if (promoter) {
-                  let commission = 0;
-                  if (promoter.commissionType === 'FIXED' && promoter.commissionValue) {
-                    const ticketCount = order.orderItems.reduce((acc, curr) => acc + curr.quantity, 0);
-                    commission = Number(promoter.commissionValue) * ticketCount;
-                  } else if (promoter.commissionType === 'PERCENTAGE' && promoter.commissionValue) {
-                    commission = Number(order.ticketAmount) * (Number(promoter.commissionValue) / 100);
-                  }
-                  
-                  if (commission > 0) {
-                    await tx.eventStaff.update({
-                      where: { id: promoter.id },
-                      data: { totalEarned: { increment: commission } }
-                    });
-                  }
-                }
+            // Update order, create payment and perform all logic via repository transaction
+            await this.paymentsRepository.processPaymentWebhookTransaction(
+              orderId,
+              paymentId.toString(),
+              paymentData.transaction_amount || 0,
+              async (tx: Prisma.TransactionClient) => {
+                // Trigger ticket generation
+                await this.ticketsService.generateTicketsForOrder(orderId, tx);
               }
+            );
 
-              // Decrement reserved and increment sold
-              for (const item of order.orderItems) {
-                await tx.ticketType.update({
-                  where: { id: item.ticketTypeId },
-                  data: {
-                    reserved: { decrement: item.quantity },
-                    sold: { increment: item.quantity }
-                  }
-                });
-              }
-            });
             this.logger.log(`Order ${orderId} marked as PAID and tickets generated.`);
           }
         }
@@ -190,5 +141,19 @@ export class PaymentsService {
         this.logger.error(`Error processing webhook for payment ${paymentId}`, error);
       }
     }
+  }
+
+  async processDevBypassPayment(orderId: string, amount: number) {
+    const paymentId = 'dev-bypass-' + Date.now();
+    await this.paymentsRepository.processPaymentWebhookTransaction(
+      orderId,
+      paymentId,
+      amount,
+      async (tx: Prisma.TransactionClient) => {
+        // Trigger ticket generation
+        await this.ticketsService.generateTicketsForOrder(orderId, tx);
+      }
+    );
+    this.logger.log(`Order ${orderId} marked as PAID and tickets generated via DEV BYPASS.`);
   }
 }

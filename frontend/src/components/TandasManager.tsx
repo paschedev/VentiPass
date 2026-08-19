@@ -4,6 +4,19 @@ import { useState, useEffect } from 'react';
 import { Plus, Trash2, Calendar, Edit2, Save, Ticket } from 'lucide-react';
 import toast from 'react-hot-toast';
 import CustomSelect from '@/components/CustomSelect';
+import { apiFetch } from '@/utils/api';
+
+const toLocalInputFormat = (isoString: string | null) => {
+  if (!isoString) return '';
+  const d = new Date(isoString);
+  const tzOffset = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
+};
+
+const fromLocalInputToUTC = (localString: string) => {
+  if (!localString) return null;
+  return new Date(localString).toISOString();
+};
 
 export default function TandasManager({ 
   batches, 
@@ -23,10 +36,7 @@ export default function TandasManager({
 
   const fetchPresets = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/presets`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await apiFetch('/presets');
       if (res.ok) {
         const data = await res.json();
         setPresets(data);
@@ -178,9 +188,9 @@ export default function TandasManager({
                     {batch.publishAt && (
                       <input 
                         type="datetime-local" 
-                        max={batch.closeAt ? new Date(new Date(batch.closeAt).getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16) : undefined}
-                        value={new Date(batch.publishAt).toISOString().slice(0, 16)}
-                        onChange={(e) => updateBatch(bIdx, 'publishAt', e.target.value)}
+                        max={batch.closeAt ? toLocalInputFormat(batch.closeAt) : undefined}
+                        value={toLocalInputFormat(batch.publishAt)}
+                        onChange={(e) => updateBatch(bIdx, 'publishAt', fromLocalInputToUTC(e.target.value))}
                         className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-indigo-500 [color-scheme:dark]"
                       />
                     )}
@@ -190,7 +200,7 @@ export default function TandasManager({
                   <div>
                     <label className="flex items-center gap-2 cursor-pointer mb-2">
                       <div className="relative">
-                        <input type="checkbox" className="sr-only" checked={!!batch.closeAt} onChange={(e) => updateBatch(bIdx, 'closeAt', e.target.checked ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() : null)} />
+                        <input type="checkbox" className="sr-only" checked={!!batch.closeAt} onChange={(e) => updateBatch(bIdx, 'closeAt', e.target.checked ? new Date(Date.now() + 60 * 60 * 1000).toISOString() : null)} />
                         <div className={`block w-10 h-6 rounded-full transition-colors ${batch.closeAt ? 'bg-pink-500' : 'bg-white/10'}`}></div>
                         <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${batch.closeAt ? 'transform translate-x-4' : ''}`}></div>
                       </div>
@@ -199,9 +209,9 @@ export default function TandasManager({
                     {batch.closeAt && (
                       <input 
                         type="datetime-local" 
-                        min={batch.publishAt ? new Date(new Date(batch.publishAt).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16) : undefined}
-                        value={new Date(batch.closeAt).toISOString().slice(0, 16)}
-                        onChange={(e) => updateBatch(bIdx, 'closeAt', e.target.value)}
+                        min={batch.publishAt ? toLocalInputFormat(batch.publishAt) : undefined}
+                        value={toLocalInputFormat(batch.closeAt)}
+                        onChange={(e) => updateBatch(bIdx, 'closeAt', fromLocalInputToUTC(e.target.value))}
                         className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-pink-500 [color-scheme:dark]"
                       />
                     )}

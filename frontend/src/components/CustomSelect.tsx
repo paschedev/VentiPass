@@ -36,7 +36,7 @@ export default function CustomSelect({ value, onChange, options, placeholder, cl
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
-        className={buttonClassName || `w-full h-full min-h-[42px] flex items-center justify-between px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer hover:bg-white/10`}
+        className={buttonClassName || `w-full h-full min-h-[48px] flex items-center justify-between px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer hover:bg-white/10`}
       >
         <span className={`truncate mr-2 ${!selectedOption && placeholder ? 'text-neutral-400' : 'text-white'}`}>
           {selectedOption ? selectedOption.label : (placeholder || 'Seleccionar...')}

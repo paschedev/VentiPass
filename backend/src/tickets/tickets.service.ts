@@ -1,6 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import * as qrcode from 'qrcode';
-import { PrismaService } from '../prisma/prisma.service';
+import { TicketsRepository } from './repositories/tickets.repository';
 import { Prisma } from '@prisma/client';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -11,24 +11,14 @@ export class TicketsService {
   private readonly logger = new Logger(TicketsService.name);
 
   constructor(
-    private prisma: PrismaService,
+    private readonly ticketsRepository: TicketsRepository,
     @InjectQueue('mail') private mailQueue: Queue,
   ) {}
 
   async generateTicketsForOrder(orderId: string, tx?: Prisma.TransactionClient) {
-    const prismaClient = tx || this.prisma;
+    const order = await this.ticketsRepository.findOrderWithItems(orderId, tx);
 
-    const order = await prismaClient.order.findUnique({
-      where: { id: orderId },
-      include: {
-        user: true,
-        orderItems: {
-          include: { ticketType: { include: { event: true } } },
-        },
-      },
-    });
-
-    if (!order) throw new Error('Order not found');
+    if (!order) throw new BadRequestException('Orden no encontrada');
 
     const ticketData: Prisma.TicketCreateManyInput[] = [];
     for (const item of order.orderItems) {
@@ -42,26 +32,7 @@ export class TicketsService {
       }
     }
 
-    // Si ya estamos dentro de una transacción (tx provisto), usamos ese cliente,
-    // si no, creamos una nueva transacción.
-    const createTicketsFn = async (client: any) => {
-      await client.ticket.createMany({
-        data: ticketData,
-      });
-      return client.ticket.findMany({
-        where: { orderId: order.id },
-        include: { ticketType: { include: { event: true } } },
-      });
-    };
-
-    let createdTickets;
-    if (tx) {
-      createdTickets = await createTicketsFn(tx);
-    } else {
-      createdTickets = await this.prisma.$transaction(async (t: any) => {
-        return createTicketsFn(t);
-      });
-    }
+    const createdTickets = await this.ticketsRepository.createTicketsTransaction(order.id, ticketData, tx);
 
     const generatedTickets = await Promise.all(
       createdTickets.map(async (ticket: any) => {
@@ -88,66 +59,57 @@ export class TicketsService {
   }
 
   async findMyTickets(userId: string) {
-    return this.prisma.ticket.findMany({
-      where: { userId },
-      include: {
-        ticketType: {
-          include: {
-            event: true
-          }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
+    return this.ticketsRepository.findMyTickets(userId);
   }
 
-  async transferTicket(ticketId: string, currentUserId: string, targetEmail: string) {
-    const ticket = await this.prisma.ticket.findUnique({ where: { id: ticketId } });
-    if (!ticket) throw new Error('Entrada no encontrada');
-    if (ticket.userId !== currentUserId) throw new Error('No eres el dueño de esta entrada');
-    if (ticket.status !== 'VALID') throw new Error('La entrada no es válida para transferencia');
+  async validateTicket(qrCode: string, scannerUserId: string) {
+    const ticket = await this.ticketsRepository.findTicketForValidation(qrCode);
 
-    const targetUser = await this.prisma.user.findUnique({ where: { email: targetEmail } });
-    if (!targetUser) throw new Error('El usuario destino no está registrado en WePass');
+    if (!ticket) {
+      return { success: false, message: 'Entrada inválida o no encontrada' };
+    }
 
-    return this.prisma.ticket.update({
-      where: { id: ticketId },
-      data: { userId: targetUser.id }
-    });
+    const isStaff = await this.ticketsRepository.findEventStaff(ticket.ticketType.eventId, scannerUserId);
+    if (!isStaff) {
+      throw new BadRequestException('No tienes permisos para validar entradas en este evento');
+    }
+
+    if (ticket.status !== 'VALID') {
+      return { success: false, message: 'La entrada ya fue utilizada o no es válida' };
+    }
+
+    await this.ticketsRepository.markTicketAsUsed(ticket.id);
+    return { success: true, message: 'Entrada validada correctamente' };
   }
 
   async emitGuestTicket(eventId: string, organizerId: string, email: string, ticketTypeId: string) {
-    const event = await this.prisma.event.findUnique({ where: { id: eventId } });
+    const event = await this.ticketsRepository.findEvent(eventId);
     if (!event || event.organizerId !== organizerId) {
-      throw new Error('No tienes permiso sobre este evento');
+      throw new BadRequestException('No tienes permiso sobre este evento');
     }
 
-    const ticketType = await this.prisma.ticketType.findUnique({ where: { id: ticketTypeId } });
+    const ticketType = await this.ticketsRepository.findTicketType(ticketTypeId);
     if (!ticketType || ticketType.eventId !== eventId) {
-      throw new Error('Tipo de ticket inválido');
+      throw new BadRequestException('Tipo de ticket inválido');
     }
 
     // Usamos o creamos el usuario fantasma
-    let targetUser = await this.prisma.user.findUnique({ where: { email } });
+    let targetUser = await this.ticketsRepository.findUserByEmail(email);
     if (!targetUser) {
       const salt = await bcrypt.genSalt();
       const hashedPassword = await bcrypt.hash(Math.random().toString(36).slice(-8), salt);
-      targetUser = await this.prisma.user.create({
-        data: {
-          email,
-          name: 'Invitado',
-          passwordHash: hashedPassword,
-          role: 'CUSTOMER'
-        }
+      targetUser = await this.ticketsRepository.createUser({
+        email,
+        name: 'Invitado',
+        passwordHash: hashedPassword,
+        role: 'CUSTOMER'
       });
     }
 
-    const ticket = await this.prisma.ticket.create({
-      data: {
-        ticketTypeId,
-        userId: targetUser.id,
-        isGuestList: true,
-      }
+    const ticket = await this.ticketsRepository.createTicket({
+      ticketTypeId,
+      userId: targetUser.id,
+      isGuestList: true,
     });
 
     const qrDataUrl = await qrcode.toDataURL(ticket.qrCode);
@@ -164,5 +126,28 @@ export class TicketsService {
     });
 
     return { success: true, ticketId: ticket.id };
+  }
+
+  async transferTicket(ticketId: string, currentUserId: string, targetEmail: string) {
+    const targetUser = await this.ticketsRepository.findUserByEmail(targetEmail);
+    if (!targetUser) {
+      throw new BadRequestException('El usuario destino no existe. Pídele que se registre primero.');
+    }
+
+    if (targetUser.id === currentUserId) {
+      throw new BadRequestException('No puedes transferirte la entrada a ti mismo.');
+    }
+
+    const ticket = await this.ticketsRepository.findTicketById(ticketId);
+    
+    if (!ticket || ticket.userId !== currentUserId) {
+      throw new BadRequestException('La entrada no te pertenece o no existe.');
+    }
+
+    if (ticket.status !== 'VALID') {
+      throw new BadRequestException('Solo se pueden transferir entradas válidas.');
+    }
+
+    return this.ticketsRepository.transferTicket(ticketId, targetUser.id);
   }
 }

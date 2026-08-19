@@ -3,6 +3,7 @@ import { TicketsService } from './tickets.service';
 import { TicketsController } from './tickets.controller';
 import { BullModule } from '@nestjs/bullmq';
 import { PrismaModule } from '../prisma/prisma.module';
+import { TicketsRepository } from './repositories/tickets.repository';
 
 @Module({
   imports: [
@@ -12,7 +13,7 @@ import { PrismaModule } from '../prisma/prisma.module';
     }),
   ],
   controllers: [TicketsController],
-  providers: [TicketsService],
+  providers: [TicketsService, TicketsRepository],
   exports: [TicketsService],
 })
 export class TicketsModule {}
