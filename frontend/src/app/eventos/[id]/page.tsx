@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Calendar, MapPin, Ticket, CreditCard, Users, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import CustomSelect from '@/components/CustomSelect';
+import { Turnstile } from '@marsidev/react-turnstile';
 import { apiFetch } from '@/utils/api';
 
 const getYouTubeEmbedUrl = (url: string) => {
@@ -26,6 +27,7 @@ function EventContent() {
   const [selectedRpp, setSelectedRpp] = useState<string>(rppFromUrl || '');
   const [cart, setCart] = useState<Record<string, number>>({});
   const [promoters, setPromoters] = useState<{id: string, name: string}[]>([]);
+  const [captchaToken, setCaptchaToken] = useState<string>('');
 
   useEffect(() => {
     Promise.all([
@@ -69,8 +71,8 @@ function EventContent() {
         method: 'POST',
         body: JSON.stringify({
           userId: user?.id,
-          guestEmail: !user ? prompt('Email para la entrada (modo invitado):') : undefined,
           promoterId: selectedRpp || undefined,
+          captchaToken,
           items
         }),
       });
@@ -95,14 +97,12 @@ function EventContent() {
     setBuying(true);
     try {
       const userStr = localStorage.getItem('user');
-      const payload: any = { items };
+      const payload: any = { items, captchaToken };
 
       if (userStr) {
         payload.userId = JSON.parse(userStr).id;
-      } else if (email) {
-        payload.guestEmail = email;
       } else {
-        throw new Error("No user or email provided");
+        throw new Error("No user provided");
       }
 
       if (selectedRpp) {
@@ -296,9 +296,18 @@ function EventContent() {
                 </div>
                 
                 <div className="flex flex-col items-end gap-3">
+                  <div className="mb-2">
+                    <Turnstile 
+                      siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!} 
+                      onSuccess={(token) => setCaptchaToken(token)}
+                      onError={() => setCaptchaToken('')}
+                      options={{ theme: 'dark' }}
+                    />
+                  </div>
+
                   <button 
                     onClick={handleBuy}
-                    disabled={buying || getTotalItems() === 0}
+                    disabled={buying || getTotalItems() === 0 || !captchaToken}
                     className="w-fit px-8 bg-indigo-600 hover:bg-indigo-500 text-white py-3.5 rounded-xl font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {buying ? 'Procesando...' : <><CreditCard className="w-5 h-5"/> Comprar {getTotalItems() > 0 ? `(${getTotalItems()})` : ''}</>}
@@ -308,7 +317,7 @@ function EventContent() {
                   {process.env.NODE_ENV === 'development' && (
                     <button 
                       onClick={handleDevBypass}
-                      disabled={buying || getTotalItems() === 0}
+                      disabled={buying || getTotalItems() === 0 || !captchaToken}
                       className="w-fit px-6 bg-red-600/20 border border-red-500/50 hover:bg-red-600/40 text-red-400 py-2 rounded-xl font-bold transition-all text-xs flex items-center justify-center disabled:opacity-50"
                     >
                       🚀 Comprar (Dev Bypass Sin MP)

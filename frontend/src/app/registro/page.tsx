@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { UserPlus } from 'lucide-react';
 import CustomSelect from '@/components/CustomSelect';
+import { Turnstile } from '@marsidev/react-turnstile';
 import { apiFetch } from '@/utils/api';
 
 export default function RegistroPage() {
@@ -12,6 +13,7 @@ export default function RegistroPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string>('');
   const [isOrganizer, setIsOrganizer] = useState(false);
   const [country, setCountry] = useState('');
   const [province, setProvince] = useState('');
@@ -46,6 +48,7 @@ export default function RegistroPage() {
       lastName,
       email,
       password,
+      captchaToken,
       role: isOrganizer ? 'ORGANIZER' : 'CUSTOMER'
     };
 
@@ -223,7 +226,16 @@ export default function RegistroPage() {
             </div>
           )}
 
-          <button type="submit" disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 mt-6 disabled:opacity-50">
+          <div className="flex justify-center mt-6">
+            <Turnstile 
+              siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!} 
+              onSuccess={(token) => setCaptchaToken(token)}
+              onError={() => setCaptchaToken('')}
+              options={{ theme: 'dark' }}
+            />
+          </div>
+
+          <button type="submit" disabled={loading || !captchaToken} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 mt-6 disabled:opacity-50">
             {loading ? 'Registrando...' : <><UserPlus className="w-5 h-5"/> Crear cuenta</>}
           </button>
         </form>

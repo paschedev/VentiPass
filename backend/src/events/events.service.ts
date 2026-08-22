@@ -107,7 +107,7 @@ export class EventsService {
         let orderRevenue = 0;
         order.orderItems.forEach(item => {
           if (eventIds.includes(item.ticketType.eventId)) {
-            // Organizer revenue is based on the ticket face value, without WePass fee
+            // Organizer revenue is based on the ticket face value, without EntryPass fee
             orderRevenue += item.quantity * Number(item.unitPrice);
           }
         });
@@ -141,7 +141,7 @@ export class EventsService {
 
     const user = await this.userRepository.findByEmail(email);
     if (!user) {
-      throw new BadRequestException('Usuario no registrado. Pídele que se registre en WePass primero.');
+      throw new BadRequestException('Usuario no registrado. Pídele que se registre en EntryPass primero.');
     }
 
     // Verificar si ya existe

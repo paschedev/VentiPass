@@ -4,12 +4,14 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { LogIn } from 'lucide-react';
+import { Turnstile } from '@marsidev/react-turnstile';
 import { apiFetch } from '@/utils/api';
 
 export default function LoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [captchaToken, setCaptchaToken] = useState<string>('');
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -23,7 +25,7 @@ export default function LoginPage() {
     try {
       const response = await apiFetch('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, captchaToken }),
       });
 
       const data = await response.json();
@@ -79,7 +81,16 @@ export default function LoginPage() {
             <input name="password" type="password" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="••••••••" />
           </div>
 
-          <button type="submit" disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 mt-4 disabled:opacity-50">
+          <div className="flex justify-center mt-6">
+            <Turnstile 
+              siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!} 
+              onSuccess={(token) => setCaptchaToken(token)}
+              onError={() => setCaptchaToken('')}
+              options={{ theme: 'dark' }}
+            />
+          </div>
+
+          <button type="submit" disabled={loading || !captchaToken} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 mt-4 disabled:opacity-50">
             {loading ? 'Ingresando...' : <><LogIn className="w-5 h-5"/> Entrar</>}
           </button>
         </form>

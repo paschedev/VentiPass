@@ -21,7 +21,7 @@ export default function RppDashboard() {
   }, []);
 
   const handleCopy = (eventId: string) => {
-    const link = `https://wepass.com.ar/e/${eventId}?rpp=mi_usuario_id`;
+    const link = `https://entrypass.com.ar/e/${eventId}?rpp=mi_usuario_id`;
     navigator.clipboard.writeText(link);
     setCopiedLink(eventId);
     toast.success('¡Enlace de referido copiado!');

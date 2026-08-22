@@ -6,7 +6,7 @@ import { ArrowLeft, Ticket, AlertCircle, Loader2 } from 'lucide-react';
 import { apiFetch } from '@/utils/api';
 import toast from 'react-hot-toast';
 
-const WEPASS_FEE_PERCENTAGE = 0.15; // 15% recargo
+const ENTRYPASS_FEE_PERCENTAGE = 0.15; // 15% recargo
 
 export default function CheckoutPage() {
   const { id } = useParams();
@@ -73,7 +73,7 @@ export default function CheckoutPage() {
       ticketsCount += count;
     });
     
-    const serviceFee = subtotal * WEPASS_FEE_PERCENTAGE;
+    const serviceFee = subtotal * ENTRYPASS_FEE_PERCENTAGE;
     return { 
       subtotal, 
       serviceFee, 

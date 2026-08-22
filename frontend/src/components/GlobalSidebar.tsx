@@ -76,7 +76,7 @@ export default function GlobalSidebar() {
       </button>
 
       <aside 
-        className={`border-r border-white/10 bg-black/50 backdrop-blur-xl transition-all duration-300 ease-in-out relative z-50 h-full hidden md:flex flex-col ${
+        className={`border-r border-white/10 bg-black/50 backdrop-blur-xl transition-all duration-300 ease-in-out relative z-50 h-[calc(100vh-4rem)] sticky top-16 hidden md:flex flex-col ${
           isSidebarOpen ? 'w-64' : 'w-20'
         }`}
       >

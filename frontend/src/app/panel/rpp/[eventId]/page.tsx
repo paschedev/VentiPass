@@ -38,7 +38,7 @@ export default function RppEventDetailsPage() {
   }, [eventId]);
 
   const handleCopy = () => {
-    const link = `https://wepass.com.ar/e/${eventId}?rpp=mi_usuario_id`;
+    const link = `https://entrypass.com.ar/e/${eventId}?rpp=mi_usuario_id`;
     navigator.clipboard.writeText(link);
     setCopiedLink(true);
     toast.success('¡Enlace copiado!');

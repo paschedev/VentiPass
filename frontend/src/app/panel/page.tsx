@@ -554,7 +554,7 @@ function OrganizerDashboardContent() {
 
               <h2 className="text-2xl font-bold mb-2">Vincular Mercado Pago</h2>
               <p className="text-sm text-neutral-400 mb-6 leading-relaxed">
-                Al conectar tu cuenta de Mercado Pago autorizarás a WePass a procesar las ventas en tu nombre. El dinero del valor de tus entradas irá <strong>directamente a tu cuenta</strong> sin descuentos. El cargo por servicio de la plataforma se le cobra como un extra directamente al comprador final.
+                Al conectar tu cuenta de Mercado Pago autorizarás a EntryPass a procesar las ventas en tu nombre. El dinero del valor de tus entradas irá <strong>directamente a tu cuenta</strong> sin descuentos. El cargo por servicio de la plataforma se le cobra como un extra directamente al comprador final.
               </p>
               
               <button 
@@ -830,7 +830,7 @@ function OrganizerDashboardContent() {
                     
                     {/* Resultados de búsqueda */}
                     {searchResults.length > 0 && (
-                      <div className="absolute top-full mt-2 left-0 right-0 bg-neutral-800 border border-white/10 rounded-xl shadow-2xl overflow-hidden z-10">
+                      <div className="absolute bottom-full mb-2 left-0 right-0 bg-neutral-800 border border-white/10 rounded-xl shadow-2xl overflow-hidden z-10 max-h-48 overflow-y-auto">
                         {searchResults.map(u => {
                           const isSelected = selectedUsers.some(su => su.id === u.id);
                           return (

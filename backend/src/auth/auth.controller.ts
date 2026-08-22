@@ -1,14 +1,22 @@
-import { Controller, Post, Body, UnauthorizedException, Get, UseGuards, Req, Query } from '@nestjs/common';
+import { Controller, Post, Body, UnauthorizedException, BadRequestException, Get, UseGuards, Req, Query } from '@nestjs/common';
 import { AuthService } from './auth.service';
+import { CaptchaService } from './captcha.service';
 import { RegisterUserDto } from './dto/register-user.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly captchaService: CaptchaService
+  ) {}
 
   @Post('login')
   async login(@Body() body: any) {
+    if (!body.captchaToken) throw new BadRequestException('Se requiere token de seguridad');
+    const isHuman = await this.captchaService.verifyToken(body.captchaToken);
+    if (!isHuman) throw new UnauthorizedException('Validación de seguridad fallida');
+
     const user = await this.authService.validateUser(body.email, body.password);
     if (!user) {
       throw new UnauthorizedException('Credenciales inválidas');
@@ -17,7 +25,11 @@ export class AuthController {
   }
 
   @Post('register')
-  register(@Body() body: RegisterUserDto) {
+  async register(@Body() body: RegisterUserDto & { captchaToken: string }) {
+    if (!body.captchaToken) throw new BadRequestException('Se requiere token de seguridad');
+    const isHuman = await this.captchaService.verifyToken(body.captchaToken);
+    if (!isHuman) throw new UnauthorizedException('Validación de seguridad fallida');
+
     return this.authService.register(body);
   }
 

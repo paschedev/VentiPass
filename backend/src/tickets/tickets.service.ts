@@ -93,17 +93,10 @@ export class TicketsService {
       throw new BadRequestException('Tipo de ticket inválido');
     }
 
-    // Usamos o creamos el usuario fantasma
+    // Exigimos que el usuario exista en el sistema, mitigando creación de usuarios falsos (reducción superficie de ataque)
     let targetUser = await this.ticketsRepository.findUserByEmail(email);
     if (!targetUser) {
-      const salt = await bcrypt.genSalt();
-      const hashedPassword = await bcrypt.hash(Math.random().toString(36).slice(-8), salt);
-      targetUser = await this.ticketsRepository.createUser({
-        email,
-        name: 'Invitado',
-        passwordHash: hashedPassword,
-        role: 'CUSTOMER'
-      });
+      throw new BadRequestException('El usuario destino no está registrado. Por favor, indícale que cree una cuenta en EntryPass primero.');
     }
 
     const ticket = await this.ticketsRepository.createTicket({

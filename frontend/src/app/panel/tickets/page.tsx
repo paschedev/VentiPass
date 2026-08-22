@@ -100,7 +100,7 @@ export default function MisEntradasPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-12 pt-24">
+    <div className="max-w-4xl mx-auto px-6 pb-24 pt-8 md:py-12 md:pt-24">
       <h1 className="font-outfit text-4xl font-bold text-white mb-2">Mis Tickets</h1>
       <p className="text-neutral-400 mb-10">Tus accesos a los mejores eventos.</p>
 
@@ -168,7 +168,7 @@ export default function MisEntradasPage() {
       {/* Modal del Ticket */}
       {selectedTicket && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 overflow-hidden">
-          <div className="bg-neutral-900 border border-white/10 rounded-[2rem] w-full max-w-md relative flex flex-col max-h-[85vh] my-auto">
+          <div className="bg-neutral-900 border border-white/10 rounded-[2rem] w-full max-w-md relative flex flex-col max-h-[75vh] md:max-h-[85vh] my-auto">
 
             {/* Header del Ticket Modal */}
             <div className="p-6 pb-0 flex justify-between items-start shrink-0">
@@ -250,7 +250,7 @@ export default function MisEntradasPage() {
                             className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-indigo-500 outline-none transition-colors"
                           />
                           {searchResults.length > 0 && (
-                            <div className="absolute top-full mt-2 left-0 right-0 bg-neutral-800 border border-white/10 rounded-xl shadow-2xl overflow-hidden z-10 max-h-48 overflow-y-auto">
+                            <div className="absolute bottom-full mb-2 left-0 right-0 bg-neutral-800 border border-white/10 rounded-xl shadow-2xl overflow-hidden z-10 max-h-48 overflow-y-auto">
                               {searchResults.map(u => (
                                 <button
                                   key={u.id}

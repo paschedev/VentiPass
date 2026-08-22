@@ -1,73 +1,50 @@
-import { Controller, Post, Body, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Body, BadRequestException, UseGuards } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CaptchaService } from '../auth/captcha.service';
 
 @Controller('orders')
 export class OrdersController {
   constructor(
     private readonly ordersService: OrdersService,
-    private readonly prisma: PrismaService
+    private readonly prisma: PrismaService,
+    private readonly captchaService: CaptchaService
   ) {}
 
+  @UseGuards(JwtAuthGuard)
   @Post('checkout')
   async createCheckout(
-    @Body() body: { userId?: string; guestEmail?: string; promoterId?: string; items: { ticketTypeId: string; quantity: number }[] }
+    @CurrentUser() user: any,
+    @Body() body: { captchaToken: string; promoterId?: string; items: { ticketTypeId: string; quantity: number }[] }
   ) {
-    let finalUserId = body.userId;
+    if (!body.captchaToken) throw new BadRequestException('Se requiere token de seguridad');
+    const isHuman = await this.captchaService.verifyToken(body.captchaToken);
+    if (!isHuman) throw new BadRequestException('Validación de seguridad fallida');
 
-    if (!finalUserId && body.guestEmail) {
-      // Intentar buscar el usuario por email
-      let user = await this.prisma.user.findUnique({ where: { email: body.guestEmail } });
-      
-      if (!user) {
-        // Crear usuario fantasma
-        const salt = await bcrypt.genSalt();
-        const hashedPassword = await bcrypt.hash(Math.random().toString(36).slice(-8), salt);
-        user = await this.prisma.user.create({
-          data: {
-            email: body.guestEmail,
-            name: 'Invitado',
-            passwordHash: hashedPassword,
-            role: 'CUSTOMER'
-          }
-        });
-      }
-      finalUserId = user.id;
-    }
-
+    const finalUserId = user?.id;
     if (!finalUserId) {
-      throw new BadRequestException('Se requiere el UserId o el GuestEmail');
+      throw new BadRequestException('Se requiere sesión activa para procesar la compra.');
     }
 
     return this.ordersService.createCheckoutSession(finalUserId, body.items, body.promoterId);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post('dev-bypass')
   async createDevBypassOrder(
-    @Body() body: { userId?: string; guestEmail?: string; promoterId?: string; items: { ticketTypeId: string; quantity: number }[] }
+    @CurrentUser() user: any,
+    @Body() body: { captchaToken: string; promoterId?: string; items: { ticketTypeId: string; quantity: number }[] }
   ) {
-    let finalUserId = body.userId;
+    if (!body.captchaToken) throw new BadRequestException('Se requiere token de seguridad');
+    const isHuman = await this.captchaService.verifyToken(body.captchaToken);
+    if (!isHuman) throw new BadRequestException('Validación de seguridad fallida');
 
-    if (!finalUserId && body.guestEmail) {
-      let user = await this.prisma.user.findUnique({ where: { email: body.guestEmail } });
-      if (!user) {
-        const salt = await bcrypt.genSalt();
-        const hashedPassword = await bcrypt.hash(Math.random().toString(36).slice(-8), salt);
-        user = await this.prisma.user.create({
-          data: {
-            email: body.guestEmail,
-            name: 'Invitado',
-            passwordHash: hashedPassword,
-            role: 'CUSTOMER'
-          }
-        });
-      }
-      finalUserId = user.id;
-    }
-
+    const finalUserId = user?.id;
     if (!finalUserId) {
-      throw new BadRequestException('Se requiere el UserId o el GuestEmail');
+      throw new BadRequestException('Se requiere sesión activa para procesar la compra.');
     }
 
     return this.ordersService.createDevBypassOrder(finalUserId, body.items, body.promoterId);

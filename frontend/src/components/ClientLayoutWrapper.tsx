@@ -22,10 +22,10 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   }
 
   return (
-    <div className="flex h-screen pt-16 bg-neutral-950 text-neutral-50 overflow-hidden relative">
+    <div className="flex min-h-[calc(100vh-4rem)] pt-16 bg-neutral-950 text-neutral-50 relative">
       <GlobalSidebar />
-      <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-        <main className="flex-1 overflow-y-auto relative">
+      <div className="flex-1 flex flex-col relative w-full">
+        <main className="flex-1 relative w-full">
            {children}
         </main>
       </div>

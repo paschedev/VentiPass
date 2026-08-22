@@ -10,8 +10,8 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit' });
 
 export const metadata: Metadata = {
-  title: 'WePass | Descubrí y comprá entradas para los mejores eventos',
-  description: 'WePass es la ticketera definitiva para organizar y asistir a eventos con total seguridad.',
+  title: 'EntryPass | Descubrí y comprá entradas para los mejores eventos',
+  description: 'EntryPass es la ticketera definitiva para organizar y asistir a eventos con total seguridad.',
 };
 
 export default function RootLayout({
@@ -22,7 +22,7 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning className={`${inter.variable} ${outfit.variable} dark`}>
       <body suppressHydrationWarning className="font-inter bg-neutral-950 text-neutral-50 antialiased selection:bg-indigo-500/30">
-        <main className="min-h-screen flex flex-col relative overflow-hidden">
+        <main className="min-h-screen flex flex-col relative overflow-x-hidden">
           {/* Subtle background glow */}
           <div className="absolute top-0 -left-10 w-96 h-96 bg-indigo-600/20 rounded-full blur-[128px] -z-10 pointer-events-none" />
           <div className="absolute top-1/2 right-0 w-96 h-96 bg-purple-600/10 rounded-full blur-[128px] -z-10 pointer-events-none" />

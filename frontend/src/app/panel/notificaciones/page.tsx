@@ -72,7 +72,7 @@ export default function NotificacionesPage() {
           <p className="text-neutral-400">Historial completo y solicitudes pendientes.</p>
         </div>
 
-        {/* Toggle Violáceo WePass */}
+        {/* Toggle Violáceo EntryPass */}
         <div className="flex items-center gap-3 bg-white/5 border border-white/10 p-2 rounded-2xl">
           <span className={`text-sm font-medium ${!showOnlyRequests ? 'text-white' : 'text-neutral-500'}`}>Todas</span>
           <button 
