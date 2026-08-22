@@ -66,10 +66,10 @@ export default function Navbar() {
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <div className="flex items-center">
           <Link href="/" className="hidden md:block font-outfit text-2xl font-black tracking-tighter text-white hover:opacity-80 transition-opacity">
-            We<span className="text-indigo-500">Pass</span>
+            Entry<span className="text-indigo-500">Pass</span>
           </Link>
           <div className="md:hidden font-outfit text-2xl font-black tracking-tighter text-white select-none">
-            We<span className="text-indigo-500">Pass</span>
+            Entry<span className="text-indigo-500">Pass</span>
           </div>
         </div>
         
