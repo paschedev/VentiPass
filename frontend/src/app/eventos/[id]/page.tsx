@@ -301,20 +301,20 @@ function EventContent() {
                   </span>
                 </div>
                 
-                <div className="flex flex-col items-end gap-3">
-                  <div className="mb-2">
+                <div className="flex flex-col items-center md:items-end gap-4 w-full">
+                  <div className="w-full flex justify-center md:justify-end relative z-50">
                     <Turnstile 
                       siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!} 
                       onSuccess={(token) => setCaptchaToken(token)}
                       onError={() => setCaptchaToken('')}
-                      options={{ theme: 'dark' }}
+                      options={{ theme: 'dark', size: 'normal' }}
                     />
                   </div>
 
                   <button 
                     onClick={handleBuy}
                     disabled={buying || getTotalItems() === 0 || !captchaToken}
-                    className="w-fit px-8 bg-indigo-600 hover:bg-indigo-500 text-white py-3.5 rounded-xl font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="w-full md:w-auto px-8 bg-indigo-600 hover:bg-indigo-500 text-white py-3.5 rounded-xl font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {buying ? 'Procesando...' : <><CreditCard className="w-5 h-5"/> Comprar {getTotalItems() > 0 ? `(${getTotalItems()})` : ''}</>}
                   </button>
@@ -324,7 +324,7 @@ function EventContent() {
                     <button 
                       onClick={handleDevBypass}
                       disabled={buying || getTotalItems() === 0 || !captchaToken}
-                      className="w-fit px-6 bg-red-600/20 border border-red-500/50 hover:bg-red-600/40 text-red-400 py-2 rounded-xl font-bold transition-all text-xs flex items-center justify-center disabled:opacity-50"
+                      className="w-full md:w-auto px-6 bg-red-600/20 border border-red-500/50 hover:bg-red-600/40 text-red-400 py-2 rounded-xl font-bold transition-all text-xs flex items-center justify-center disabled:opacity-50"
                     >
                       🚀 Comprar (Dev Bypass Sin MP)
                     </button>

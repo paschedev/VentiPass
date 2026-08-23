@@ -181,7 +181,7 @@ export default function MisEntradasPage() {
             </div>
 
             {/* Contenido scrolleable */}
-            <div className="p-8 overflow-y-auto">
+            <div className="p-8 overflow-y-auto overscroll-contain">
               <div className="text-center mb-8">
                 <h2 className="font-outfit text-2xl font-bold text-white mb-2">{selectedTicket.ticketType.event.title}</h2>
                 <p className="text-neutral-400 text-sm">
@@ -250,7 +250,7 @@ export default function MisEntradasPage() {
                             className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-indigo-500 outline-none transition-colors"
                           />
                           {searchResults.length > 0 && (
-                            <div className="absolute bottom-full mb-2 left-0 right-0 bg-neutral-800 border border-white/10 rounded-xl shadow-2xl overflow-hidden z-10 max-h-48 overflow-y-auto">
+                            <div className="absolute bottom-full mb-2 left-0 right-0 bg-neutral-800 border border-white/10 rounded-xl shadow-2xl overflow-hidden z-10 max-h-48 overflow-y-auto overscroll-contain">
                               {searchResults.map(u => (
                                 <button
                                   key={u.id}

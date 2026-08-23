@@ -14,13 +14,13 @@ export default function PerfilPage() {
   if (!user) return <div className="p-8 text-neutral-400">Cargando perfil...</div>;
 
   return (
-    <div className="max-w-4xl mx-auto pt-8 pb-24 md:py-8">
+    <div className="max-w-4xl mx-auto pt-8 pb-24 md:py-8 px-4 md:px-8">
       <div className="mb-8">
         <h1 className="font-outfit text-4xl font-bold text-white mb-2">Mi Perfil</h1>
         <p className="text-neutral-400">Gestiona tu información personal.</p>
       </div>
 
-      <div className="bg-neutral-900 border border-white/5 rounded-3xl p-8 flex flex-col md:flex-row items-center gap-8 shadow-2xl relative overflow-hidden">
+      <div className="bg-neutral-900 border border-white/5 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row items-center gap-8 shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
         
         <div className="w-32 h-32 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-bold text-5xl border-4 border-neutral-900 shadow-xl relative z-10 shrink-0">

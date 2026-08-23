@@ -189,7 +189,7 @@ export default function EditarEventoPage() {
                 min={toLocalInputFormat(new Date().toISOString())}
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors [color-scheme:dark]" 
+                className="w-full max-w-full bg-white/5 border border-white/10 rounded-xl px-2 md:px-4 py-3 text-sm md:text-base text-white focus:outline-none focus:border-indigo-500 transition-colors [color-scheme:dark] block" 
               />
             </div>
             <div>
@@ -200,7 +200,7 @@ export default function EditarEventoPage() {
                 type="datetime-local" 
                 min={startDate || toLocalInputFormat(new Date().toISOString())}
                 defaultValue={eventData.endDate ? toLocalInputFormat(eventData.endDate) : ''}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors [color-scheme:dark]" 
+                className="w-full max-w-full bg-white/5 border border-white/10 rounded-xl px-2 md:px-4 py-3 text-sm md:text-base text-white focus:outline-none focus:border-indigo-500 transition-colors [color-scheme:dark] block" 
               />
             </div>
           </div>
@@ -224,7 +224,7 @@ export default function EditarEventoPage() {
           <TandasManager batches={batches} setBatches={setBatches} />
         </div>
 
-        <div className="flex justify-end gap-4 mt-12">
+        <div className="flex justify-center md:justify-end gap-4 mt-12 w-full">
           <button type="button" onClick={() => router.back()} className="px-6 py-3 rounded-xl font-medium text-neutral-400 hover:bg-white/5 transition-colors">
             Cancelar
           </button>
