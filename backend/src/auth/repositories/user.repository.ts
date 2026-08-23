@@ -38,18 +38,24 @@ export class UserRepository {
     });
   }
 
-  async search(query: string) {
+  async search(query: string, excludeUserId?: string) {
     if (!query || query.length < 3) {
       return [];
     }
 
+    const whereClause: Prisma.UserWhereInput = {
+      OR: [
+        { name: { contains: query, mode: 'insensitive' } },
+        { email: { contains: query, mode: 'insensitive' } },
+      ]
+    };
+
+    if (excludeUserId) {
+      whereClause.id = { not: excludeUserId };
+    }
+
     const users = await this.prisma.user.findMany({
-      where: {
-        OR: [
-          { name: { contains: query, mode: 'insensitive' } },
-          { email: { contains: query, mode: 'insensitive' } },
-        ]
-      },
+      where: whereClause,
       select: { id: true, name: true, email: true, role: true },
       take: 10
     });
@@ -68,5 +74,30 @@ export class UserRepository {
         email: maskedEmail
       };
     });
+  }
+
+  async checkHasBeenRpp(userId: string): Promise<boolean> {
+    const count = await this.prisma.eventStaff.count({
+      where: {
+        userId,
+        role: 'PROMOTER',
+        status: 'ACCEPTED'
+      }
+    });
+    return count > 0;
+  }
+
+  async checkIsCurrentlyScanner(userId: string): Promise<boolean> {
+    const count = await this.prisma.eventStaff.count({
+      where: {
+        userId,
+        role: 'SCANNER',
+        status: 'ACCEPTED',
+        event: {
+          status: { notIn: ['FINISHED', 'CANCELLED'] }
+        }
+      }
+    });
+    return count > 0;
   }
 }

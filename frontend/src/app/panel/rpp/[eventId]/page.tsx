@@ -38,7 +38,8 @@ export default function RppEventDetailsPage() {
   }, [eventId]);
 
   const handleCopy = () => {
-    const link = `https://entrypass.com.ar/e/${eventId}?rpp=mi_usuario_id`;
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+    const link = `${baseUrl}/eventos/${eventId}?rpp=id_de_staff_rpp`;
     navigator.clipboard.writeText(link);
     setCopiedLink(true);
     toast.success('¡Enlace copiado!');

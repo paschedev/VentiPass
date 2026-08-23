@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { apiFetch } from '@/utils/api';
 
 export default function RppDashboard() {
   const router = useRouter();
@@ -12,16 +13,47 @@ export default function RppDashboard() {
   const [copiedLink, setCopiedLink] = useState('');
   const [navigatingId, setNavigatingId] = useState<string | null>(null);
   
-  // Mock Data
-  const events: any[] = [];
+  const [events, setEvents] = useState<any[]>([]);
 
   useEffect(() => {
-    // Simulamos carga de metricas
-    setStats({ totalEarned: 0, totalPaid: 0, totalTicketsSold: 0 });
-  }, []);
+    const userStr = localStorage.getItem('user');
+    if (!userStr) {
+      router.push('/login');
+      return;
+    }
+    const user = JSON.parse(userStr);
+    const isOrganizer = user.role === 'ORGANIZER' || user.role === 'ADMIN';
+    if (!isOrganizer && !user.hasBeenRpp) {
+      router.push('/panel');
+      return;
+    }
 
-  const handleCopy = (eventId: string) => {
-    const link = `https://entrypass.com.ar/e/${eventId}?rpp=mi_usuario_id`;
+    // Carga de metricas reales
+    apiFetch('/events/promoter/me')
+      .then(res => res.json())
+      .then(data => {
+        setStats({
+          totalEarned: data.totalEarned || 0,
+          totalPaid: data.totalPaid || 0,
+          totalTicketsSold: data.totalTicketsSold || 0
+        });
+        const mappedEvents = (data.events || []).map((es: any) => ({
+          id: es.eventId,
+          staffId: es.id,
+          name: es.event.title,
+          status: es.event.status === 'PUBLISHED' ? 'Activo' : 'Inactivo',
+          sold: es.totalTicketsSold || 0,
+          earned: Number(es.totalEarned || 0),
+          commission: es.commissionType === 'FIXED' ? `$${es.commissionValue}` : `${es.commissionValue}%`
+        }));
+        setEvents(mappedEvents);
+      })
+      .catch(console.error);
+  }, [router]);
+
+  const handleCopy = (eventId: string, staffId: string) => {
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+    const link = `${baseUrl}/eventos/${eventId}?rpp=${staffId}`;
     navigator.clipboard.writeText(link);
     setCopiedLink(eventId);
     toast.success('¡Enlace de referido copiado!');
@@ -29,7 +61,7 @@ export default function RppDashboard() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 pt-8 pb-24 md:py-8">
+    <div className="max-w-7xl mx-auto px-4 pt-8 pb-24 md:pb-12">
       {/* Header */}
       <div className="mb-8">
         <h1 className="font-outfit text-4xl font-bold text-white mb-2">Mi Panel de Promotor</h1>
@@ -79,7 +111,7 @@ export default function RppDashboard() {
                 </button>
                 <button 
                   disabled={ev.status !== 'Activo'}
-                  onClick={() => handleCopy(ev.id)} 
+                  onClick={() => handleCopy(ev.id, ev.staffId)} 
                   className="w-full md:w-44 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:hover:bg-indigo-600 text-white px-6 py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 active:scale-95 whitespace-nowrap"
                 >
                   {copiedLink === ev.id ? <Check className="w-5 h-5" /> : <Link2 className="w-5 h-5" />}

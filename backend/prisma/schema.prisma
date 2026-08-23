@@ -10,7 +10,6 @@ datasource db {
 enum UserRole {
   ADMIN
   ORGANIZER
-  SCANNER
   CUSTOMER
 }
 
@@ -59,6 +58,12 @@ enum StaffRole {
   SCANNER
   PROMOTER
   MANAGER
+}
+
+enum StaffStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
 }
 
 enum CommissionType {
@@ -285,6 +290,7 @@ model EventStaff {
   eventId         String
   userId          String
   role            StaffRole
+  status          StaffStatus     @default(PENDING)
   
   // Especifico para Promotores (RPP)
   commissionType  CommissionType?
@@ -296,7 +302,7 @@ model EventStaff {
   user            User            @relation(fields: [userId], references: [id])
   orders          Order[]         @relation("OrderPromoter")
   
-  @@unique([eventId, userId])
+  @@unique([eventId, userId, role])
 }
 
 

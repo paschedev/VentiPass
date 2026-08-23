@@ -17,9 +17,9 @@ export class TicketsController {
 
   @UseGuards(JwtAuthGuard)
   @Post(':id/transfer')
-  async transferTicket(@Param('id') id: string, @Body() body: { targetEmail: string }, @Req() req: any) {
+  async transferTicket(@Param('id') id: string, @Body() body: { targetUserId: string }, @Req() req: any) {
     try {
-      await this.ticketsService.transferTicket(id, req.user.userId, body.targetEmail);
+      await this.ticketsService.transferTicket(id, req.user.userId, body.targetUserId);
       return { success: true, message: 'Entrada transferida con éxito' };
     } catch (e: any) {
       throw new BadRequestException(e.message);
@@ -28,7 +28,7 @@ export class TicketsController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   // Permite a todos, porque la seguridad real se valida por EventStaff en la lógica
-  @Roles('SCANNER', 'ORGANIZER', 'ADMIN', 'CUSTOMER')
+  @Roles('ORGANIZER', 'ADMIN', 'CUSTOMER')
   @Post('check-in')
   async checkIn(@Body() body: { qrCode: string }, @Req() req: any) {
     const { qrCode } = body;
@@ -46,12 +46,17 @@ export class TicketsController {
     // Validar permisos del Scanner en EventStaff o si es el organizador global
     const event = ticket.ticketType.event;
     if (event.organizerId !== scannerId) {
-      const staffPermission = await this.prisma.eventStaff.findUnique({
-        where: { eventId_userId: { eventId: event.id, userId: scannerId } }
+      const staffPermission = await this.prisma.eventStaff.findFirst({
+        where: {
+          eventId: event.id,
+          userId: scannerId,
+          role: { in: ['SCANNER', 'MANAGER'] },
+          status: 'ACCEPTED'
+        }
       });
 
-      if (!staffPermission || (staffPermission.role !== 'SCANNER' && staffPermission.role !== 'MANAGER')) {
-        throw new UnauthorizedException('No tienes permisos de scanner para este evento');
+      if (!staffPermission) {
+        throw new UnauthorizedException('No tienes permisos de scanner para este evento o tu invitación no ha sido aceptada');
       }
     }
 

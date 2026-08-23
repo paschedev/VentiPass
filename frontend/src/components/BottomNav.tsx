@@ -25,8 +25,8 @@ export default function BottomNav() {
   
   if (user) {
     const isOrganizer = user.role === 'ORGANIZER' || user.role === 'ADMIN';
-    const isScanner = isOrganizer || user.role === 'SCANNER' || user.isScanner;
-    const isRpp = isOrganizer || user.role === 'RPP' || user.isRpp;
+    const isScanner = isOrganizer || user.isCurrentlyScanner;
+    const isRpp = isOrganizer || user.hasBeenRpp;
 
     let availableItems = [
       { id: 'eventos', href: '/eventos', icon: Globe, label: 'Eventos' }

@@ -188,9 +188,19 @@ export class EventsRepository {
     });
   }
 
-  async findEventStaff(eventId: string, userId: string) {
+  async findEventStaff(eventId: string, userId: string, role: StaffRole) {
     return this.prisma.eventStaff.findUnique({
-      where: { eventId_userId: { eventId, userId } }
+      where: { eventId_userId_role: { eventId, userId, role } }
+    });
+  }
+
+  async findEventStaffById(id: string) {
+    return this.prisma.eventStaff.findUnique({
+      where: { id },
+      include: {
+        event: true,
+        user: true,
+      }
     });
   }
 
@@ -213,12 +223,27 @@ export class EventsRepository {
   }
 
   async getPromoterStats(userId: string) {
-    return this.prisma.eventStaff.findMany({
+    const staffList = await this.prisma.eventStaff.findMany({
       where: { userId, role: 'PROMOTER' },
       include: {
-        event: { select: { title: true, status: true, startDate: true } }
+        event: { select: { title: true, status: true, startDate: true } },
+        orders: {
+          where: { status: 'PAID' },
+          include: { orderItems: true }
+        }
       },
       orderBy: { event: { startDate: 'desc' } }
+    });
+
+    return staffList.map(staff => {
+      const totalTicketsSold = staff.orders.reduce((acc, order) => {
+        return acc + order.orderItems.reduce((sum, item) => sum + item.quantity, 0);
+      }, 0);
+      const { orders, ...rest } = staff;
+      return {
+        ...rest,
+        totalTicketsSold
+      };
     });
   }
 }

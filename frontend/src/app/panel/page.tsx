@@ -187,7 +187,7 @@ function OrganizerDashboardContent() {
     for (const user of selectedUsers) {
       try {
         const payload = {
-          email: user.email,
+          userId: user.id,
           role: inviteRole === 'RPP' ? 'PROMOTER' : inviteRole,
           commissionType: inviteRole === 'RPP' ? inviteCommType : undefined,
           commissionValue: inviteRole === 'RPP' ? Number(inviteCommValue) : undefined,
@@ -495,18 +495,22 @@ function OrganizerDashboardContent() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {myStaff.map((staff: any) => (
                     <div key={staff.id} className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:border-white/20 transition-colors">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-sm text-white">
+                      <div className="flex justify-between items-start mb-4 gap-2">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className="w-10 h-10 rounded-full shrink-0 bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-sm text-white">
                             {staff.user.name.charAt(0).toUpperCase()}
                           </div>
-                          <div>
-                            <h4 className="font-bold text-white text-sm truncate max-w-[120px]">{staff.user.name}</h4>
-                            <p className="text-xs text-neutral-400 truncate max-w-[120px]">{staff.user.email}</p>
+                          <div className="min-w-0 flex-1">
+                            <h4 className="font-bold text-white text-sm truncate">{staff.user.name}</h4>
+                            <p className="text-xs text-neutral-400 truncate">{staff.user.email}</p>
                           </div>
                         </div>
-                        <span className="px-2 py-1 rounded-md text-[10px] font-bold tracking-wider bg-emerald-500/20 text-emerald-300">
-                          ACTIVO
+                        <span className={`shrink-0 px-2 py-1 rounded-md text-[10px] font-bold tracking-wider ${
+                          staff.status === 'ACCEPTED' ? 'bg-emerald-500/20 text-emerald-300' :
+                          staff.status === 'PENDING' ? 'bg-amber-500/20 text-amber-300' :
+                          'bg-red-500/20 text-red-300'
+                        }`}>
+                          {staff.status === 'ACCEPTED' ? 'ACTIVO' : staff.status === 'PENDING' ? 'PENDIENTE' : 'RECHAZADO'}
                         </span>
                       </div>
                       <div className="space-y-2">

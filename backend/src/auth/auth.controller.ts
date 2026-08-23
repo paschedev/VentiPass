@@ -57,7 +57,7 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get('users/search')
-  searchUsers(@Query('q') query: string) {
-    return this.authService.searchUsers(query);
+  searchUsers(@Query('q') query: string, @Req() req: any) {
+    return this.authService.searchUsers(query, req.user.userId);
   }
 }

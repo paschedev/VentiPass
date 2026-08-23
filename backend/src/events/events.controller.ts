@@ -83,10 +83,10 @@ export class EventsController {
   @Post(':id/staff')
   addStaff(
     @Param('id') eventId: string, 
-    @Body() body: { email: string, role: StaffRole, commissionType?: CommissionType, commissionValue?: number }, 
+    @Body() body: { userId: string, role: StaffRole, commissionType?: CommissionType, commissionValue?: number }, 
     @Req() req: any
   ) {
-    return this.eventsService.addStaff(eventId, req.user.userId, body.email, body.role, body.commissionType, body.commissionValue);
+    return this.eventsService.addStaff(eventId, req.user.userId, body.userId, body.role, body.commissionType, body.commissionValue);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -94,5 +94,17 @@ export class EventsController {
   @Get(':id/staff')
   getStaff(@Param('id') eventId: string, @Req() req: any) {
     return this.eventsService.getEventStaff(eventId, req.user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('staff/:eventStaffId/accept')
+  acceptInvitation(@Param('eventStaffId') eventStaffId: string, @Req() req: any) {
+    return this.eventsService.acceptInvitation(eventStaffId, req.user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('staff/:eventStaffId/reject')
+  rejectInvitation(@Param('eventStaffId') eventStaffId: string, @Req() req: any) {
+    return this.eventsService.rejectInvitation(eventStaffId, req.user.userId);
   }
 }

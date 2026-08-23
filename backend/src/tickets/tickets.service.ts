@@ -69,8 +69,8 @@ export class TicketsService {
       return { success: false, message: 'Entrada inválida o no encontrada' };
     }
 
-    const isStaff = await this.ticketsRepository.findEventStaff(ticket.ticketType.eventId, scannerUserId);
-    if (!isStaff) {
+    const isStaff = await this.ticketsRepository.findEventStaff(ticket.ticketType.eventId, scannerUserId, 'SCANNER');
+    if (!isStaff || isStaff.status !== 'ACCEPTED') {
       throw new BadRequestException('No tienes permisos para validar entradas en este evento');
     }
 
@@ -121,8 +121,8 @@ export class TicketsService {
     return { success: true, ticketId: ticket.id };
   }
 
-  async transferTicket(ticketId: string, currentUserId: string, targetEmail: string) {
-    const targetUser = await this.ticketsRepository.findUserByEmail(targetEmail);
+  async transferTicket(ticketId: string, currentUserId: string, targetUserId: string) {
+    const targetUser = await this.ticketsRepository.findUserById(targetUserId);
     if (!targetUser) {
       throw new BadRequestException('El usuario destino no existe. Pídele que se registre primero.');
     }

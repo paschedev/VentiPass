@@ -64,7 +64,12 @@ function EventContent() {
     setBuying(true);
     const items = Object.entries(cart).map(([ticketTypeId, quantity]) => ({ ticketTypeId, quantity }));
     const userStr = localStorage.getItem('user');
-    const user = userStr ? JSON.parse(userStr) : null;
+    if (!userStr) {
+      const currentUrl = encodeURIComponent(`${window.location.pathname}${window.location.search}`);
+      router.push(`/login?callbackUrl=${currentUrl}`);
+      return;
+    }
+    const user = JSON.parse(userStr);
     
     try {
       const response = await apiFetch('/orders/dev-bypass', {
@@ -135,7 +140,8 @@ function EventContent() {
 
     const userStr = localStorage.getItem('user');
     if (!userStr) {
-      router.push(`/login?callbackUrl=/eventos/${id}`);
+      const currentUrl = encodeURIComponent(`${window.location.pathname}${window.location.search}`);
+      router.push(`/login?callbackUrl=${currentUrl}`);
     } else {
       initiateCheckout();
     }

@@ -27,10 +27,15 @@ export default function GlobalSidebar() {
   }, [pathname]);
 
   useEffect(() => {
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      setUser(JSON.parse(userStr));
-    }
+    const loadUser = () => {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        setUser(JSON.parse(userStr));
+      }
+    };
+    loadUser();
+    window.addEventListener('userUpdated', loadUser);
+    return () => window.removeEventListener('userUpdated', loadUser);
   }, [pathname]);
 
   if (!mounted) return null;
@@ -101,9 +106,8 @@ export default function GlobalSidebar() {
           {isLoggedIn ? (
             <>
               <NavItem href="/panel" icon={CalendarRange} label="Organización" show={isOrganizer} />
-              <NavItem href="/panel/rpp" icon={Users} label="Panel RPP" show={true} />
+              <NavItem href="/panel/rpp" icon={Users} label="Panel RPP" show={!!user?.hasBeenRpp || isOrganizer} />
               <NavItem href="/panel/tickets" icon={Ticket} label="Tickets" show={true} />
-              <NavItem href="/panel/escanear" icon={ScanLine} label="Escanear Entradas" show={canScan} />
               <NavItem href="/panel/configuracion" icon={Settings} label="Configuración" show={true} />
             </>
           ) : (

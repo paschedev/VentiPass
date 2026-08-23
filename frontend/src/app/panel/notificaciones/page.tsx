@@ -19,6 +19,7 @@ type Notification = {
 export default function NotificacionesPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showOnlyRequests, setShowOnlyRequests] = useState(false);
+  const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchNotifications();
@@ -50,15 +51,48 @@ export default function NotificacionesPage() {
     }
   };
 
-  const deleteNotification = (id: string) => {
-    // For now we just hide it locally, add DELETE endpoint later if needed
+  const deleteNotification = async (id: string) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
+    try {
+      await apiFetch(`/notifications/${id}`, { method: 'DELETE' });
+    } catch (e) {
+      toast.error('Error al eliminar');
+      fetchNotifications(); // Rollback en caso de error
+    }
   };
 
-  const handleRequest = async (id: string, action: 'accept' | 'reject') => {
-    toast.success(`Invitación ${action === 'accept' ? 'aceptada' : 'rechazada'}`);
-    await markAsRead(id);
-    // TODO: Aca iria el llamado a /events/:id/staff/accept para integrarlo en la logica
+  const handleRequest = async (id: string, action: 'accept' | 'reject', eventStaffId: string) => {
+    setProcessingIds(prev => new Set(prev).add(id));
+    try {
+      const res = await apiFetch(`/events/staff/${eventStaffId}/${action}`, { method: 'PUT' });
+      if (res.ok) {
+        toast.success(`Invitación ${action === 'accept' ? 'aceptada' : 'rechazada'}`);
+        // Update local user if accepting a promoter invite to instantly show the RPP panel
+        if (action === 'accept' && notifications.find(n => n.id === id)?.metadata?.role === 'PROMOTER') {
+          const userStr = localStorage.getItem('user');
+          if (userStr) {
+            const user = JSON.parse(userStr);
+            user.hasBeenRpp = true;
+            localStorage.setItem('user', JSON.stringify(user));
+            window.dispatchEvent(new Event('userUpdated'));
+          }
+        }
+        // Mark as read in backend
+        await apiFetch(`/notifications/${id}/read`, { method: 'PUT' });
+        // Update local state to reflect new status and read state
+        setNotifications(prev => prev.map(n => 
+          n.id === id 
+            ? { ...n, isRead: true, metadata: { ...n.metadata, status: action === 'accept' ? 'ACCEPTED' : 'REJECTED' } } 
+            : n
+        ));
+      } else {
+        toast.error('Error al procesar la invitación');
+      }
+    } catch (e) {
+      toast.error('Error de conexión');
+    } finally {
+      setProcessingIds(prev => { const next = new Set(prev); next.delete(id); return next; });
+    }
   };
 
   return (
@@ -89,25 +123,16 @@ export default function NotificacionesPage() {
         </div>
       </div>
 
-      <div className="space-y-4">
-        <AnimatePresence>
-          {filteredNotifications.length === 0 ? (
-            <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-              className="text-center py-20 bg-white/[0.02] border border-white/5 rounded-3xl"
-            >
-              <Bell className="w-12 h-12 text-neutral-600 mx-auto mb-4" />
-              <p className="text-neutral-400">No hay notificaciones para mostrar.</p>
-            </motion.div>
-          ) : (
-            filteredNotifications.map((n) => (
+      <div className="space-y-4 relative">
+        <AnimatePresence mode="popLayout">
+          {filteredNotifications.map((n) => (
               <motion.div
                 key={n.id}
                 layout
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
-                className={`p-5 rounded-2xl border transition-colors relative overflow-hidden group ${
+                className={`w-full p-5 rounded-2xl border transition-colors relative overflow-hidden group ${
                   n.isRead ? 'bg-white/[0.02] border-white/5' : 'bg-black/40 border-white/10 shadow-lg'
                 }`}
               >
@@ -130,21 +155,29 @@ export default function NotificacionesPage() {
                   </div>
 
                   <div className="flex gap-2 sm:flex-col items-end sm:shrink-0 mt-4 sm:mt-0">
-                    {n.type === 'STAFF_INVITE' && n.metadata?.status === 'PENDING' ? (
-                      <div className="flex gap-2 w-full sm:w-auto">
-                        <button 
-                          onClick={() => handleRequest(n.id, 'accept')}
-                          className="flex-1 sm:flex-none flex items-center justify-center gap-1 bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
-                        >
-                          <Check className="w-4 h-4" /> Aceptar
-                        </button>
-                        <button 
-                          onClick={() => handleRequest(n.id, 'reject')}
-                          className="flex-1 sm:flex-none flex items-center justify-center gap-1 bg-white/5 hover:bg-white/10 text-neutral-300 px-4 py-2 rounded-xl text-sm font-medium transition-colors"
-                        >
-                          <X className="w-4 h-4" /> Rechazar
-                        </button>
-                      </div>
+                    {n.type === 'STAFF_INVITE' ? (
+                      n.metadata?.status === 'PENDING' ? (
+                        <div className="flex gap-2 w-full sm:w-auto">
+                          <button 
+                            disabled={processingIds.has(n.id)}
+                            onClick={() => handleRequest(n.id, 'accept', n.metadata.eventStaffId)}
+                            className="flex-1 sm:flex-none flex items-center justify-center gap-1 bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
+                          >
+                            <Check className="w-4 h-4" /> Aceptar
+                          </button>
+                          <button 
+                            disabled={processingIds.has(n.id)}
+                            onClick={() => handleRequest(n.id, 'reject', n.metadata.eventStaffId)}
+                            className="flex-1 sm:flex-none flex items-center justify-center gap-1 bg-white/5 hover:bg-white/10 text-neutral-300 px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
+                          >
+                            <X className="w-4 h-4" /> Rechazar
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="px-3 py-1 rounded-full text-xs font-medium bg-white/5 border border-white/10 text-neutral-400">
+                          {n.metadata?.status === 'ACCEPTED' ? '✓ Aceptada' : '× Rechazada'}
+                        </div>
+                      )
                     ) : (
                       <div className="flex items-center gap-2">
                         {!n.isRead && (
@@ -169,6 +202,21 @@ export default function NotificacionesPage() {
                 </div>
               </motion.div>
             ))
+          }
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {filteredNotifications.length === 0 && (
+            <motion.div 
+              key="empty-state"
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1, transition: { delay: 0.3, duration: 0.4 } }}
+              exit={{ opacity: 0, transition: { duration: 0.2 } }}
+              className="w-full text-center py-20 bg-white/[0.01] border border-white/5 rounded-3xl mt-4"
+            >
+              <Bell className="w-12 h-12 text-neutral-700 mx-auto mb-4" />
+              <p className="text-neutral-500 font-medium">No hay notificaciones para mostrar.</p>
+            </motion.div>
           )}
         </AnimatePresence>
       </div>

@@ -133,22 +133,45 @@ export class EventsService {
     return this.eventsRepository.getOrganizerStaff(organizerId);
   }
 
-  async addStaff(eventId: string, organizerId: string, email: string, role: StaffRole, commissionType?: CommissionType, commissionValue?: number) {
+  async addStaff(eventId: string, organizerId: string, inviteeId: string, role: StaffRole, commissionType?: CommissionType, commissionValue?: number) {
     const event = await this.eventsRepository.findOne(eventId);
     if (!event || event.organizerId !== organizerId) {
       throw new BadRequestException('No tienes permiso sobre este evento');
     }
 
-    const user = await this.userRepository.findByEmail(email);
+    const user = await this.userRepository.findById(inviteeId);
     if (!user) {
       throw new BadRequestException('Usuario no registrado. Pídele que se registre en EntryPass primero.');
     }
 
-    // Verificar si ya existe
-    const existing = await this.eventsRepository.findEventStaff(eventId, user.id);
+    // Verificar si ya existe para este rol específico
+    const existing = await this.eventsRepository.findEventStaff(eventId, user.id, role);
 
     if (existing) {
-      return this.eventsRepository.updateEventStaff(existing.id, { role, commissionType, commissionValue });
+      if (existing.status === 'PENDING') {
+        throw new BadRequestException(`El usuario ya tiene una invitación pendiente para el rol de ${role} en este evento.`);
+      }
+      if (existing.status === 'ACCEPTED') {
+        throw new BadRequestException(`El usuario ya es ${role} de este evento.`);
+      }
+      if (existing.status === 'REJECTED') {
+        // Re-invitar: pasar a PENDING y despachar notificación
+        const staff = await this.eventsRepository.updateEventStaff(existing.id, { status: 'PENDING', commissionType, commissionValue });
+        let commString = '';
+        if (role === 'PROMOTER' && commissionType && commissionValue) {
+          commString = commissionType === 'PERCENTAGE' ? ` (${commissionValue}% por ticket)` : ` ($${commissionValue} por ticket)`;
+        }
+        
+        await this.notificationsService.create({
+          userId: user.id,
+          type: 'STAFF_INVITE',
+          title: `Nueva invitación de Staff`,
+          message: `Has sido invitado nuevamente como ${role === 'PROMOTER' ? 'Relaciones Públicas' : 'Escáner'} para el evento "${event.title}".${commString}`,
+          eventId: event.id,
+          metadata: { eventStaffId: staff.id, role, commissionType, commissionValue, status: 'PENDING' }
+        });
+        return staff;
+      }
     }
 
     const staff = await this.eventsRepository.createEventStaff({
@@ -159,13 +182,18 @@ export class EventsService {
       commissionValue,
     });
 
+    let commString = '';
+    if (role === 'PROMOTER' && commissionType && commissionValue) {
+      commString = commissionType === 'PERCENTAGE' ? ` (${commissionValue}% por ticket)` : ` ($${commissionValue} por ticket)`;
+    }
+
     await this.notificationsService.create({
       userId: user.id,
       type: 'STAFF_INVITE',
       title: `Nueva invitación de Staff`,
-      message: `Has sido invitado como ${role === 'PROMOTER' ? 'Relaciones Públicas' : 'Escáner'} para el evento "${event.title}".`,
+      message: `Has sido invitado como ${role === 'PROMOTER' ? 'Relaciones Públicas' : 'Escáner'} para el evento "${event.title}".${commString}`,
       eventId: event.id,
-      metadata: { role, commissionType, commissionValue, status: 'PENDING' }
+      metadata: { eventStaffId: staff.id, role, commissionType, commissionValue, status: 'PENDING' }
     });
 
     return staff;
@@ -184,11 +212,13 @@ export class EventsService {
     
     const totalEarned = assignments.reduce((acc, curr) => acc + Number(curr.totalEarned), 0);
     const totalPaid = assignments.reduce((acc, curr) => acc + Number(curr.totalPaid), 0);
+    const totalTicketsSold = assignments.reduce((acc, curr) => acc + curr.totalTicketsSold, 0);
     
     return {
       isPromoter: assignments.length > 0,
       totalEarned,
       totalPaid,
+      totalTicketsSold,
       pendingBalance: totalEarned - totalPaid,
       events: assignments
     };
@@ -198,10 +228,54 @@ export class EventsService {
     const staff = await this.eventsRepository.getEventStaffByEvent(eventId);
     // Return only PROMOTERs with their ID and Name for public use
     return staff
-      .filter(s => s.role === 'PROMOTER')
+      .filter(s => s.role === 'PROMOTER' && s.status === 'ACCEPTED')
       .map(s => ({
-        id: s.userId,
+        id: s.id,
         name: s.user.name,
       }));
+  }
+
+  async acceptInvitation(eventStaffId: string, userId: string) {
+    const staff = await this.eventsRepository.findEventStaffById(eventStaffId);
+    if (!staff || staff.userId !== userId) {
+      throw new BadRequestException('Invitación no encontrada o no tienes permiso.');
+    }
+    if (staff.status !== 'PENDING') {
+      throw new BadRequestException('Esta invitación ya fue procesada.');
+    }
+
+    await this.eventsRepository.updateEventStaff(eventStaffId, { status: 'ACCEPTED' });
+
+    await this.notificationsService.create({
+      userId: staff.event.organizerId,
+      type: 'SYSTEM',
+      title: 'Invitación Aceptada',
+      message: `${staff.user.name} ha aceptado tu invitación para ser ${staff.role === 'PROMOTER' ? 'Relaciones Públicas' : 'Escáner'} en "${staff.event.title}".`,
+      eventId: staff.event.id
+    });
+
+    return { success: true, message: 'Invitación aceptada correctamente' };
+  }
+
+  async rejectInvitation(eventStaffId: string, userId: string) {
+    const staff = await this.eventsRepository.findEventStaffById(eventStaffId);
+    if (!staff || staff.userId !== userId) {
+      throw new BadRequestException('Invitación no encontrada o no tienes permiso.');
+    }
+    if (staff.status !== 'PENDING') {
+      throw new BadRequestException('Esta invitación ya fue procesada.');
+    }
+
+    await this.eventsRepository.updateEventStaff(eventStaffId, { status: 'REJECTED' });
+
+    await this.notificationsService.create({
+      userId: staff.event.organizerId,
+      type: 'SYSTEM',
+      title: 'Invitación Rechazada',
+      message: `${staff.user.name} ha rechazado tu invitación para ser ${staff.role === 'PROMOTER' ? 'Relaciones Públicas' : 'Escáner'} en "${staff.event.title}".`,
+      eventId: staff.event.id
+    });
+
+    return { success: true, message: 'Invitación rechazada correctamente' };
   }
 }

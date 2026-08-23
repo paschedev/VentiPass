@@ -78,10 +78,10 @@ export class TicketsRepository {
     });
   }
 
-  async findEventStaff(eventId: string, userId: string) {
+  async findEventStaff(eventId: string, userId: string, role: import('@prisma/client').StaffRole) {
     return this.prisma.eventStaff.findUnique({
       where: {
-        eventId_userId: { eventId, userId }
+        eventId_userId_role: { eventId, userId, role }
       }
     });
   }
@@ -103,6 +103,10 @@ export class TicketsRepository {
 
   async findUserByEmail(email: string) {
     return this.prisma.user.findUnique({ where: { email } });
+  }
+
+  async findUserById(id: string) {
+    return this.prisma.user.findUnique({ where: { id } });
   }
 
   async createUser(data: Prisma.UserCreateInput) {

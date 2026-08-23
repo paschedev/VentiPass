@@ -26,6 +26,8 @@ export class AuthService {
 
   async login(user: any) {
     const payload = { email: user.email, sub: user.id, role: user.role };
+    const hasBeenRpp = await this.userRepository.checkHasBeenRpp(user.id);
+    const isCurrentlyScanner = await this.userRepository.checkIsCurrentlyScanner(user.id);
     return {
       access_token: this.jwtService.sign(payload),
       user: {
@@ -33,7 +35,9 @@ export class AuthService {
         email: user.email,
         name: user.name,
         role: user.role,
-        hasLinkedMp: !!user.mercadoPagoAccessToken
+        hasLinkedMp: !!user.mercadoPagoAccessToken,
+        hasBeenRpp,
+        isCurrentlyScanner
       }
     };
   }
@@ -41,12 +45,18 @@ export class AuthService {
   async getProfile(userId: string) {
     const user = await this.userRepository.findById(userId);
     if (!user) throw new UnauthorizedException();
+    
+    const hasBeenRpp = await this.userRepository.checkHasBeenRpp(user.id);
+    const isCurrentlyScanner = await this.userRepository.checkIsCurrentlyScanner(user.id);
+
     return {
       id: user.id,
       email: user.email,
       name: user.name,
       role: user.role,
-      hasLinkedMp: !!user.mercadoPagoAccessToken
+      hasLinkedMp: !!user.mercadoPagoAccessToken,
+      hasBeenRpp,
+      isCurrentlyScanner
     };
   }
 
@@ -98,7 +108,12 @@ export class AuthService {
     const user = await this.userRepository.create(userCreateInput);
 
     const { passwordHash, ...result } = user;
-    return result;
+    return {
+      ...result,
+      hasBeenRpp: false,
+      isCurrentlyScanner: false,
+      hasLinkedMp: false
+    };
   }
 
   async changePassword(userId: string, oldPass: string, newPass: string) {
@@ -159,8 +174,8 @@ export class AuthService {
     return { message: 'Contraseña restablecida con éxito' };
   }
 
-  async searchUsers(query: string) {
+  async searchUsers(query: string, excludeUserId?: string) {
     if (!query || query.length < 3) return [];
-    return this.userRepository.search(query);
+    return this.userRepository.search(query, excludeUserId);
   }
 }

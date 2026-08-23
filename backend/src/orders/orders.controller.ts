@@ -1,4 +1,4 @@
-import { Controller, Post, Body, BadRequestException, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, BadRequestException, UseGuards, Req } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
@@ -17,14 +17,14 @@ export class OrdersController {
   @UseGuards(JwtAuthGuard)
   @Post('checkout')
   async createCheckout(
-    @CurrentUser() user: any,
+    @Req() req: any,
     @Body() body: { captchaToken: string; promoterId?: string; items: { ticketTypeId: string; quantity: number }[] }
   ) {
     if (!body.captchaToken) throw new BadRequestException('Se requiere token de seguridad');
     const isHuman = await this.captchaService.verifyToken(body.captchaToken);
     if (!isHuman) throw new BadRequestException('Validación de seguridad fallida');
 
-    const finalUserId = user?.id;
+    const finalUserId = req.user?.userId;
     if (!finalUserId) {
       throw new BadRequestException('Se requiere sesión activa para procesar la compra.');
     }
@@ -35,14 +35,14 @@ export class OrdersController {
   @UseGuards(JwtAuthGuard)
   @Post('dev-bypass')
   async createDevBypassOrder(
-    @CurrentUser() user: any,
+    @Req() req: any,
     @Body() body: { captchaToken: string; promoterId?: string; items: { ticketTypeId: string; quantity: number }[] }
   ) {
     if (!body.captchaToken) throw new BadRequestException('Se requiere token de seguridad');
     const isHuman = await this.captchaService.verifyToken(body.captchaToken);
     if (!isHuman) throw new BadRequestException('Validación de seguridad fallida');
 
-    const finalUserId = user?.id;
+    const finalUserId = req.user?.userId;
     if (!finalUserId) {
       throw new BadRequestException('Se requiere sesión activa para procesar la compra.');
     }

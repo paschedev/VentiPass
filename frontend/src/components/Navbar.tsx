@@ -18,6 +18,7 @@ export default function Navbar() {
   const pathname = usePathname();
 
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -51,6 +52,44 @@ export default function Navbar() {
       }
     } catch (e) {
       console.error('Failed to fetch notifications');
+    }
+  };
+
+  const handleStaffAction = async (eventStaffId: string, action: 'accept' | 'reject', notificationId: string) => {
+    if (processingIds.has(notificationId)) return;
+    setProcessingIds(prev => new Set(prev).add(notificationId));
+
+    try {
+      const { apiFetch } = await import('@/utils/api');
+      const res = await apiFetch(`/events/staff/${eventStaffId}/${action}`, {
+        method: 'PUT'
+      });
+      if (res.ok) {
+        // Optimistic UI updates
+        setNotifications(prev => prev.filter(n => n.id !== notificationId));
+
+        // Actualizar sesión para refrescar los flags hasBeenRpp y isCurrentlyScanner
+        const userRes = await apiFetch('/auth/me');
+        if (userRes.ok) {
+          const userData = await userRes.json();
+          localStorage.setItem('user', JSON.stringify(userData));
+          setUser(userData);
+        }
+        
+        // Marcar notificación original como leída (registro histórico)
+        await apiFetch(`/notifications/${notificationId}/read`, { method: 'PUT' });
+      } else {
+        const error = await res.json();
+        alert(error.message || 'Hubo un error procesando la invitación');
+      }
+    } catch (e) {
+      console.error('Error procesando invitación', e);
+    } finally {
+      setProcessingIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(notificationId);
+        return newSet;
+      });
     }
   };
 
@@ -88,9 +127,10 @@ export default function Navbar() {
               <div className="flex items-center gap-4 md:gap-6">
                 
                 {/* Notifications Bell */}
-                <div className="relative" ref={notifRef}>
-                  <button 
-                    onClick={() => setShowNotifications(!showNotifications)}
+                {!pathname.includes('/panel/notificaciones') && (
+                  <div className="relative" ref={notifRef}>
+                    <button 
+                      onClick={() => setShowNotifications(!showNotifications)}
                     className="relative p-2 text-neutral-400 hover:text-white transition-colors rounded-full hover:bg-white/5"
                   >
                     <Bell className="w-5 h-5" />
@@ -122,15 +162,38 @@ export default function Navbar() {
                               No hay notificaciones nuevas.
                             </div>
                           ) : (
-                            notifications.filter(n => !n.isRead).slice(0, 5).map(n => (
-                              <div key={n.id} className="p-4 border-b border-white/5 hover:bg-white/5 cursor-pointer transition-colors group">
-                                <h4 className="text-sm font-semibold text-white mb-1">{n.title}</h4>
-                                <p className="text-sm text-neutral-300 group-hover:text-white transition-colors">{n.message}</p>
-                                <div className="flex items-center justify-between mt-2">
-                                  <span className="text-xs text-neutral-500">{new Date(n.createdAt).toLocaleDateString()}</span>
+                            notifications.filter(n => !n.isRead).slice(0, 5).map(n => {
+                              const isInvite = n.type === 'STAFF_INVITE' && n.metadata?.eventStaffId;
+                              return (
+                                <div key={n.id} className="p-4 border-b border-white/5 hover:bg-white/5 transition-colors group">
+                                  <h4 className="text-sm font-semibold text-white mb-1">{n.title}</h4>
+                                  <p className="text-sm text-neutral-300 group-hover:text-white transition-colors">{n.message}</p>
+                                  
+                                  {isInvite && (
+                                    <div className="flex gap-2 mt-3">
+                                      <button 
+                                        onClick={() => handleStaffAction(n.metadata.eventStaffId, 'accept', n.id)}
+                                        disabled={processingIds.has(n.id)}
+                                        className="flex-1 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white text-xs font-semibold py-1.5 rounded-md transition-colors"
+                                      >
+                                        Aceptar
+                                      </button>
+                                      <button 
+                                        onClick={() => handleStaffAction(n.metadata.eventStaffId, 'reject', n.id)}
+                                        disabled={processingIds.has(n.id)}
+                                        className="flex-1 bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white text-xs font-semibold py-1.5 rounded-md transition-colors"
+                                      >
+                                        Rechazar
+                                      </button>
+                                    </div>
+                                  )}
+
+                                  <div className="flex items-center justify-between mt-2">
+                                    <span className="text-xs text-neutral-500">{new Date(n.createdAt).toLocaleDateString()}</span>
+                                  </div>
                                 </div>
-                              </div>
-                            ))
+                              );
+                            })
                           )}
                         </div>
                         <Link href="/panel/notificaciones" className="block w-full p-3 text-center text-xs text-neutral-400 hover:text-white hover:bg-white/5 transition-colors">
@@ -140,6 +203,7 @@ export default function Navbar() {
                     )}
                   </AnimatePresence>
                 </div>
+                )}
 
                 {/* Profile Dropdown */}
                 <div className="relative" ref={profileRef}>

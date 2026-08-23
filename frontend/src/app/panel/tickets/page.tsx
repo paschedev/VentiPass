@@ -76,7 +76,7 @@ export default function MisEntradasPage() {
     try {
       const res = await apiFetch(`/tickets/${selectedTicket.id}/transfer`, {
         method: 'POST',
-        body: JSON.stringify({ targetEmail: selectedUser.email })
+        body: JSON.stringify({ targetUserId: selectedUser.id })
       });
 
       const data = await res.json();

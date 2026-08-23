@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import { CheckCircle2, XCircle, ScanLine } from 'lucide-react';
 import { apiFetch } from '@/utils/api';
@@ -8,6 +9,20 @@ import { apiFetch } from '@/utils/api';
 export default function EscanearPage() {
   const [scanResult, setScanResult] = useState<{ success: boolean; message: string; event?: string; type?: string } | null>(null);
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (!userStr) {
+      router.push('/login');
+      return;
+    }
+    const user = JSON.parse(userStr);
+    const isOrganizer = user.role === 'ORGANIZER' || user.role === 'ADMIN';
+    if (!isOrganizer && !user.isCurrentlyScanner) {
+      router.push('/panel');
+    }
+  }, [router]);
 
   const handleScan = async (result: any) => {
     if (!result || !result[0] || loading) return;
