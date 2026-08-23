@@ -312,7 +312,7 @@ function OrganizerDashboardContent() {
             initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
             className="bg-gradient-to-r from-indigo-900/40 to-purple-900/40 border border-indigo-500/30 rounded-3xl p-6 mb-8 flex flex-col sm:flex-row items-center justify-between gap-6 backdrop-blur-sm relative overflow-hidden"
           >
-            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-[64px] pointer-events-none" />
+            <div className="hidden md:block absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-[64px] pointer-events-none" />
             <div className="relative z-10">
               <h2 className="text-xl font-bold mb-1 text-white flex items-center gap-2">
                 <Link2 className="w-5 h-5 text-indigo-400" /> Vincular Mercado Pago
@@ -367,7 +367,7 @@ function OrganizerDashboardContent() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Chart Area */}
             <div className="lg:col-span-2 bg-neutral-900 border border-white/5 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/5 rounded-full blur-[100px] pointer-events-none" />
+              <div className="hidden md:block absolute top-0 right-0 w-96 h-96 bg-indigo-500/5 rounded-full blur-[100px] pointer-events-none" />
               <div className="flex items-center justify-between mb-8 relative z-30">
                 <h2 className="font-outfit text-xl font-bold">Ventas</h2>
                 <CustomSelect 

@@ -76,7 +76,7 @@ export default function RppDashboard() {
 
       {/* RPP Events List */}
       <div className="bg-neutral-900 border border-white/5 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-purple-500/5 rounded-full blur-[100px] pointer-events-none" />
+        <div className="hidden md:block absolute top-0 right-0 w-96 h-96 bg-purple-500/5 rounded-full blur-[100px] pointer-events-none" />
         
         <h2 className="font-outfit text-2xl font-bold mb-6 relative z-10">Mis Eventos Asignados</h2>
         

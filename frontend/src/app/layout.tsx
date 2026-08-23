@@ -21,11 +21,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" suppressHydrationWarning className={`${inter.variable} ${outfit.variable} dark`}>
+
       <body suppressHydrationWarning className="font-inter bg-neutral-950 text-neutral-50 antialiased selection:bg-indigo-500/30">
         <main className="min-h-screen flex flex-col relative overflow-x-hidden">
           {/* Subtle background glow */}
-          <div className="absolute top-0 -left-10 w-96 h-96 bg-indigo-600/20 rounded-full blur-[128px] -z-10 pointer-events-none" />
-          <div className="absolute top-1/2 right-0 w-96 h-96 bg-purple-600/10 rounded-full blur-[128px] -z-10 pointer-events-none" />
+          <div className="hidden md:block absolute top-0 -left-10 w-96 h-96 bg-indigo-600/20 rounded-full blur-[128px] -z-10 pointer-events-none" />
+          <div className="hidden md:block absolute top-1/2 right-0 w-96 h-96 bg-purple-600/10 rounded-full blur-[128px] -z-10 pointer-events-none" />
           <Navbar />
           <ClientLayoutWrapper>
             {children}

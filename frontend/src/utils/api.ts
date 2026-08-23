@@ -1,9 +1,18 @@
 export async function apiFetch(url: string, options: RequestInit = {}) {
   // Solo aplicar prefijo si la ruta empieza con '/' (relativa a nuestra API)
   const isRelativeUrl = url.startsWith('/');
-  const finalUrl = isRelativeUrl 
-    ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${url}`
-    : url;
+  let baseUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (typeof window !== 'undefined') {
+    if (!baseUrl) {
+      baseUrl = `http://${window.location.hostname}:3001`;
+    } else if (baseUrl.includes('localhost')) {
+      baseUrl = baseUrl.replace('localhost', window.location.hostname);
+    }
+  } else if (!baseUrl) {
+    baseUrl = 'http://localhost:3001';
+  }
+  
+  const finalUrl = isRelativeUrl ? `${baseUrl}${url}` : url;
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   
@@ -24,7 +33,7 @@ export async function apiFetch(url: string, options: RequestInit = {}) {
     headers,
   });
 
-  if (response.status === 401) {
+  if (response.status === 401 && !url.includes('/auth/login') && !url.includes('/auth/register')) {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('token');
       localStorage.removeItem('user');

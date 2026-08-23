@@ -16,7 +16,7 @@ if (typeof window !== 'undefined') {
 export default function ClientLayoutWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const hiddenRoutes = ['/', '/login', '/registro'];
-  
+
   if (hiddenRoutes.includes(pathname)) {
     return <>{children}</>;
   }
@@ -26,7 +26,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       <GlobalSidebar />
       <div className="flex-1 flex flex-col relative w-full">
         <main className="flex-1 relative w-full">
-           {children}
+          {children}
         </main>
       </div>
     </div>

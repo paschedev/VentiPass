@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { UserPlus } from 'lucide-react';
@@ -18,6 +18,11 @@ export default function RegistroPage() {
   const [country, setCountry] = useState('');
   const [province, setProvince] = useState('');
   const [cuil, setCuil] = useState('');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleCuilChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.replace(/\D/g, '');
@@ -70,7 +75,7 @@ export default function RegistroPage() {
       });
 
       const data = await response.json();
-      
+
       if (response.ok) {
         setSuccess(true);
         setTimeout(() => {
@@ -99,10 +104,7 @@ export default function RegistroPage() {
 
   return (
     <div className="min-h-screen flex bg-neutral-950 p-4 py-12 relative overflow-x-hidden">
-      <div className="absolute top-0 left-0 w-96 h-96 bg-indigo-600/10 rounded-full blur-[128px] -z-10 pointer-events-none" />
-      <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-600/10 rounded-full blur-[128px] -z-10 pointer-events-none" />
-
-      <div className="w-full max-w-md bg-black/50 border border-white/10 p-8 rounded-3xl backdrop-blur-xl m-auto z-10">
+      <div className="w-full max-w-md bg-neutral-900 border border-white/5 p-8 rounded-3xl m-auto shadow-2xl z-10">
         <div className="text-center mb-8">
           <Link href="/" className="font-outfit text-3xl font-bold tracking-tighter inline-block mb-2">
             Entry<span className="text-indigo-500">Pass</span>
@@ -155,7 +157,7 @@ export default function RegistroPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-neutral-400 mb-1">País</label>
-                  <CustomSelect 
+                  <CustomSelect
                     name="country"
                     value={country}
                     onChange={setCountry}
@@ -169,7 +171,7 @@ export default function RegistroPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-neutral-400 mb-1">Provincia</label>
-                  <CustomSelect 
+                  <CustomSelect
                     name="province"
                     value={province}
                     onChange={setProvince}
@@ -226,17 +228,19 @@ export default function RegistroPage() {
             </div>
           )}
 
-          <div className="flex justify-center mt-6">
-            <Turnstile 
-              siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!} 
-              onSuccess={(token) => setCaptchaToken(token)}
-              onError={() => setCaptchaToken('')}
-              options={{ theme: 'dark' }}
-            />
-          </div>
+          {mounted && process.env.NODE_ENV === 'production' && (
+            <div className="flex justify-center mt-6">
+              <Turnstile 
+                siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!} 
+                onSuccess={(token) => setCaptchaToken(token)}
+                onError={() => setCaptchaToken('')}
+                options={{ theme: 'dark' }}
+              />
+            </div>
+          )}
 
-          <button type="submit" disabled={loading || !captchaToken} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 mt-6 disabled:opacity-50">
-            {loading ? 'Registrando...' : <><UserPlus className="w-5 h-5"/> Crear cuenta</>}
+          <button type="submit" disabled={!mounted || loading || (!captchaToken && process.env.NODE_ENV === 'production')} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 mt-6 disabled:opacity-50">
+            {!mounted ? 'Conectando...' : loading ? 'Registrando...' : <><UserPlus className="w-5 h-5" /> Crear cuenta</>}
           </button>
         </form>
 

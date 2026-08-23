@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { LogIn } from 'lucide-react';
@@ -12,6 +12,14 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [captchaToken, setCaptchaToken] = useState<string>('');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    if (window.location.search.includes('expired=1')) {
+      setError('Acceso denegado (401). Verifica redirecciones.');
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -19,8 +27,8 @@ export default function LoginPage() {
     setError('');
 
     const formData = new FormData(e.currentTarget);
-    const email = formData.get('email');
-    const password = formData.get('password');
+    const email = formData.get('email')?.toString() || '';
+    const password = formData.get('password')?.toString() || '';
 
     try {
       const response = await apiFetch('/auth/login', {
@@ -29,11 +37,11 @@ export default function LoginPage() {
       });
 
       const data = await response.json();
-      
+
       if (response.ok) {
         localStorage.setItem('token', data.access_token);
         localStorage.setItem('user', JSON.stringify(data.user));
-        
+
         const urlParams = new URLSearchParams(window.location.search);
         const callbackUrl = urlParams.get('callbackUrl');
 
@@ -58,10 +66,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-neutral-950 p-4 relative overflow-hidden">
-      <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-600/10 rounded-full blur-[128px] -z-10 pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-96 h-96 bg-purple-600/10 rounded-full blur-[128px] -z-10 pointer-events-none" />
-
-      <div className="w-full max-w-md bg-black/50 border border-white/10 p-8 rounded-3xl backdrop-blur-xl">
+      <div className="w-full max-w-md bg-neutral-900 border border-white/5 p-8 rounded-3xl shadow-2xl">
         <div className="text-center mb-8">
           <Link href="/" className="font-outfit text-3xl font-bold tracking-tighter inline-block mb-2">
             Entry<span className="text-indigo-500">Pass</span>
@@ -81,17 +86,19 @@ export default function LoginPage() {
             <input name="password" type="password" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="••••••••" />
           </div>
 
-          <div className="flex justify-center mt-6">
-            <Turnstile 
-              siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!} 
-              onSuccess={(token) => setCaptchaToken(token)}
-              onError={() => setCaptchaToken('')}
-              options={{ theme: 'dark' }}
-            />
-          </div>
+          {mounted && process.env.NODE_ENV === 'production' && (
+            <div className="flex justify-center mt-6">
+              <Turnstile 
+                siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!} 
+                onSuccess={(token) => setCaptchaToken(token)}
+                onError={() => setCaptchaToken('')}
+                options={{ theme: 'dark' }}
+              />
+            </div>
+          )}
 
-          <button type="submit" disabled={loading || !captchaToken} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 mt-4 disabled:opacity-50">
-            {loading ? 'Ingresando...' : <><LogIn className="w-5 h-5"/> Entrar</>}
+          <button type="submit" disabled={!mounted || loading} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 mt-4 disabled:opacity-50">
+            {!mounted ? 'Conectando...' : loading ? 'Ingresando...' : <><LogIn className="w-5 h-5" /> Entrar</>}
           </button>
         </form>
 

@@ -8,7 +8,7 @@ async function bootstrap() {
   app.use(helmet());
   app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
   app.enableCors({
-    origin: process.env.FRONTEND_URL ? [process.env.FRONTEND_URL, 'http://localhost:3000'] : 'http://localhost:3000',
+    origin: true, // Permitir cualquier origen para desarrollo local e IPs dinámicas
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });

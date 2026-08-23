@@ -1,4 +1,5 @@
 import { Controller, Post, Body, UnauthorizedException, BadRequestException, Get, UseGuards, Req, Query } from '@nestjs/common';
+import type { Request } from 'express';
 import { AuthService } from './auth.service';
 import { CaptchaService } from './captcha.service';
 import { RegisterUserDto } from './dto/register-user.dto';
@@ -12,10 +13,19 @@ export class AuthController {
   ) {}
 
   @Post('login')
-  async login(@Body() body: any) {
-    if (!body.captchaToken) throw new BadRequestException('Se requiere token de seguridad');
-    const isHuman = await this.captchaService.verifyToken(body.captchaToken);
-    if (!isHuman) throw new UnauthorizedException('Validación de seguridad fallida');
+  async login(@Body() body: any, @Req() req: Request) {
+    const host = req.headers.host || '';
+    const isLocal = host.includes('localhost') || host.includes('192.168') || host.includes('127.0.0.1');
+    const requireCaptcha = process.env.NODE_ENV === 'production' && !isLocal;
+
+    if (requireCaptcha && !body.captchaToken) {
+      throw new BadRequestException('Se requiere token de seguridad');
+    }
+    
+    if (requireCaptcha && body.captchaToken) {
+      const isHuman = await this.captchaService.verifyToken(body.captchaToken);
+      if (!isHuman) throw new UnauthorizedException('Validación de seguridad fallida');
+    }
 
     const user = await this.authService.validateUser(body.email, body.password);
     if (!user) {
@@ -26,9 +36,13 @@ export class AuthController {
 
   @Post('register')
   async register(@Body() body: RegisterUserDto & { captchaToken: string }) {
-    if (!body.captchaToken) throw new BadRequestException('Se requiere token de seguridad');
-    const isHuman = await this.captchaService.verifyToken(body.captchaToken);
-    if (!isHuman) throw new UnauthorizedException('Validación de seguridad fallida');
+    const isDev = process.env.NODE_ENV !== 'production';
+    if (!isDev && !body.captchaToken) throw new BadRequestException('Se requiere token de seguridad');
+    
+    if (!isDev || body.captchaToken) {
+      const isHuman = await this.captchaService.verifyToken(body.captchaToken);
+      if (!isHuman) throw new UnauthorizedException('Validación de seguridad fallida');
+    }
 
     return this.authService.register(body);
   }
