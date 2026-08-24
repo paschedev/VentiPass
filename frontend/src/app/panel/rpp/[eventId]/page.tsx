@@ -131,26 +131,32 @@ export default function RppEventDetailsPage() {
 
       {/* Metrics Grid */}
       <div className="shrink-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-6 relative overflow-hidden">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-emerald-400 text-sm font-medium">Dinero Generado</h3>
-            <DollarSign className="w-5 h-5 text-emerald-400/50" />
+        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-5 relative overflow-hidden flex items-center justify-between">
+          <div className="flex flex-col">
+            <h3 className="text-emerald-400/80 text-sm font-medium mb-1">Dinero Generado</h3>
+            <div className="text-3xl lg:text-4xl font-outfit font-bold tracking-tight text-emerald-400">${stats.totalEarned.toLocaleString('es-AR')}</div>
           </div>
-          <div className="text-3xl font-outfit font-bold text-emerald-400">${stats.totalEarned.toLocaleString('es-AR')}</div>
+          <div className="p-3 bg-emerald-500/20 rounded-2xl shrink-0">
+            <DollarSign className="w-6 h-6 text-emerald-400" />
+          </div>
         </div>
-        <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-6 relative overflow-hidden">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-indigo-400 text-sm font-medium">Tickets Vendidos</h3>
-            <Ticket className="w-5 h-5 text-indigo-400/50" />
+        <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-5 relative overflow-hidden flex items-center justify-between">
+          <div className="flex flex-col">
+            <h3 className="text-indigo-400/80 text-sm font-medium mb-1">Tickets Vendidos</h3>
+            <div className="text-3xl lg:text-4xl font-outfit font-bold tracking-tight text-indigo-400">{stats.totalTicketsSold}</div>
           </div>
-          <div className="text-3xl font-outfit font-bold text-indigo-400">{stats.totalTicketsSold}</div>
+          <div className="p-3 bg-indigo-500/20 rounded-2xl shrink-0">
+            <Ticket className="w-6 h-6 text-indigo-400" />
+          </div>
         </div>
-        <div className="bg-purple-500/10 border border-purple-500/20 rounded-2xl p-6 relative overflow-hidden">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-purple-400 text-sm font-medium">Visitas a tu link</h3>
-            <Users className="w-5 h-5 text-purple-400/50" />
+        <div className="bg-purple-500/10 border border-purple-500/20 rounded-2xl p-5 relative overflow-hidden flex items-center justify-between">
+          <div className="flex flex-col">
+            <h3 className="text-purple-400/80 text-sm font-medium mb-1">Visitas a tu link</h3>
+            <div className="text-3xl lg:text-4xl font-outfit font-bold tracking-tight text-purple-400">{stats.clicks.toLocaleString('es-AR')}</div>
           </div>
-          <div className="text-3xl font-outfit font-bold text-purple-400">{stats.clicks.toLocaleString('es-AR')}</div>
+          <div className="p-3 bg-purple-500/20 rounded-2xl shrink-0">
+            <Users className="w-6 h-6 text-purple-400" />
+          </div>
         </div>
       </div>
 
