@@ -16,7 +16,11 @@ export class EventsService {
     return this.eventsRepository.findAll();
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, rppId?: string) {
+    if (rppId) {
+      // Fire and forget (no esperamos para no bloquear la respuesta)
+      this.eventsRepository.incrementPromoterClicks(rppId).catch(err => console.error("Error tracking click", err));
+    }
     return this.eventsRepository.findOne(id);
   }
 
@@ -120,12 +124,23 @@ export class EventsService {
       revenue
     }));
 
+    // Las últimas 50 ventas para el widget de "Últimas Ventas" y el Historial
+    const recentTransactions = paidOrders.slice(0, 50).map(order => ({
+      id: order.id,
+      name: order.user?.name || 'Usuario',
+      event: order.orderItems[0]?.ticketType?.event?.title || 'Evento',
+      amount: Number(order.ticketAmount),
+      time: order.createdAt,
+      status: order.status
+    }));
+
     return {
       totalEvents: events.length,
       totalTicketsSold: totalSold,
       totalRevenue: totalRevenue,
       activeEvents: events.filter(e => e.status === 'PUBLISHED').length,
-      chartData // Returns last 30 days of real revenue
+      chartData, // Returns last 30 days of real revenue
+      recentTransactions
     };
   }
 
@@ -221,6 +236,45 @@ export class EventsService {
       totalTicketsSold,
       pendingBalance: totalEarned - totalPaid,
       events: assignments
+    };
+  }
+
+  async getPromoterEventStats(userId: string, eventId: string) {
+    const staff = await this.eventsRepository.getPromoterStatsForEvent(userId, eventId);
+    if (!staff) {
+      throw new BadRequestException('No eres promotor de este evento');
+    }
+
+    const recentSales = staff.orders.map(order => {
+      const ticketsCount = order.orderItems.reduce((acc, item) => acc + item.quantity, 0);
+      
+      // Calculate order commission based on staff commission settings
+      let orderCommission = 0;
+      if (staff.commissionType === 'PERCENTAGE' && staff.commissionValue) {
+        orderCommission = (Number(order.ticketAmount) * Number(staff.commissionValue)) / 100;
+      } else if (staff.commissionType === 'FIXED' && staff.commissionValue) {
+        orderCommission = ticketsCount * Number(staff.commissionValue);
+      }
+
+      return {
+        id: order.id,
+        buyer: order.user.name,
+        tickets: ticketsCount,
+        price: Number(order.ticketAmount),
+        commission: orderCommission,
+        date: order.createdAt
+      };
+    });
+
+    const totalTicketsSold = recentSales.reduce((acc, sale) => acc + sale.tickets, 0);
+
+    return {
+      staffId: staff.id,
+      eventName: staff.event.title,
+      totalEarned: Number(staff.totalEarned),
+      totalTicketsSold,
+      clicks: staff.clicks,
+      recentSales
     };
   }
 

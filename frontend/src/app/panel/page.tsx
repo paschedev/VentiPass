@@ -1,6 +1,6 @@
 "use client";
 
-import { DollarSign, Ticket, Activity, TrendingUp, Calendar as CalendarIcon, Link2, X, Users, Settings, Plus, UserPlus, Search, Check, MapPin, ExternalLink } from 'lucide-react';
+import { DollarSign, Ticket, Activity, TrendingUp, Calendar as CalendarIcon, Link2, X, Users, Settings, Plus, UserPlus, Search, Check, MapPin, ExternalLink, Library } from 'lucide-react';
 import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -8,6 +8,57 @@ import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import CustomSelect from '@/components/CustomSelect';
 import { apiFetch } from '@/utils/api';
+
+function formatRelativeDate(dateString: string) {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffTime = Math.abs(now.getTime() - date.getTime());
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+  const diffMinutes = Math.floor(diffTime / (1000 * 60));
+
+  if (diffDays === 0) {
+    if (diffHours === 0) {
+      if (diffMinutes === 0) return 'Justo ahora';
+      return `${diffMinutes} min`;
+    }
+    return `${diffHours} hr${diffHours > 1 ? 's' : ''}`;
+  } else if (diffDays === 1) {
+    return 'Ayer';
+  } else if (diffDays <= 7) {
+    return `Hace ${diffDays} días`;
+  } else {
+    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    return `${date.getDate()} ${months[date.getMonth()]}`;
+  }
+}
+
+function formatCompactNumber(num: number) {
+  if (num >= 1000000) {
+    return (num / 1000000).toFixed(1).replace(/\.0$/, '').replace('.', ',') + 'M';
+  }
+  if (num >= 1000) {
+    return (num / 1000).toFixed(1).replace(/\.0$/, '').replace('.', ',') + 'k';
+  }
+  return Math.round(num).toString();
+}
+
+function getSmartMax(max: number) {
+  if (max === 0) return 100;
+  const magnitude = Math.pow(10, Math.floor(Math.log10(max)));
+  const fraction = max / magnitude;
+  
+  let niceFraction;
+  if (fraction <= 1) niceFraction = 1;
+  else if (fraction <= 2) niceFraction = 2;
+  else if (fraction <= 4) niceFraction = 4;
+  else if (fraction <= 5) niceFraction = 5;
+  else if (fraction <= 8) niceFraction = 8;
+  else niceFraction = 10;
+  
+  return niceFraction * magnitude;
+}
 
 function OrganizerDashboardContent() {
   const router = useRouter();
@@ -19,7 +70,7 @@ function OrganizerDashboardContent() {
   const [timeFilter, setTimeFilter] = useState('Esta semana');
   
   const [hasLinkedMp, setHasLinkedMp] = useState(true);
-  const [stats, setStats] = useState({ totalEvents: 0, totalTicketsSold: 0, totalRevenue: 0, activeEvents: 0 });
+  const [stats, setStats] = useState({ totalEvents: 0, totalTicketsSold: 0, totalRevenue: 0, activeEvents: 0, chartData: [], recentTransactions: [] as any[] });
   const [isOrganizer, setIsOrganizer] = useState<boolean | null>(null);
 
   // --- Invite Staff States ---
@@ -288,7 +339,8 @@ function OrganizerDashboardContent() {
     return [];
   }, [timeFilter, stats]);
 
-  const maxVal = Math.max(...chartData.map(d => d.val), 100);
+  const rawMax = Math.max(...chartData.map(d => d.val), 100);
+  const maxVal = getSmartMax(rawMax);
 
   if (!isOrganizer) return null;
 
@@ -358,10 +410,10 @@ function OrganizerDashboardContent() {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
           {/* Metrics */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-            <MetricCard title="Ingresos Totales" value={`$${stats.totalRevenue.toLocaleString('es-AR')}`} trend="+12%" icon={<DollarSign className="text-emerald-400 w-6 h-6" />} color="emerald" />
-            <MetricCard title="Entradas Vendidas" value={stats.totalTicketsSold.toString()} trend="+5%" icon={<Ticket className="text-indigo-400 w-6 h-6" />} color="indigo" />
-            <MetricCard title="Eventos Activos" value={stats.activeEvents.toString()} trend="0%" icon={<Activity className="text-purple-400 w-6 h-6" />} color="purple" />
-            <MetricCard title="Total Eventos" value={stats.totalEvents.toString()} trend="Real" icon={<CalendarIcon className="text-blue-400 w-6 h-6" />} color="blue" />
+            <MetricCard title="Ingresos Totales" value={`$${stats.totalRevenue.toLocaleString('es-AR')}`} icon={<DollarSign className="text-emerald-400 w-6 h-6" />} color="emerald" />
+            <MetricCard title="Entradas Vendidas" value={stats.totalTicketsSold.toString()} icon={<Ticket className="text-indigo-400 w-6 h-6" />} color="indigo" />
+            <MetricCard title="Eventos Activos" value={stats.activeEvents.toString()} icon={<CalendarIcon className="text-purple-400 w-6 h-6" />} color="purple" />
+            <MetricCard title="Eventos Totales" value={stats.totalEvents.toString()} icon={<Library className="text-blue-400 w-6 h-6" />} color="blue" />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -383,13 +435,13 @@ function OrganizerDashboardContent() {
               </div>
               
               {/* Dynamic Bar Chart */}
-              <div className="h-64 relative flex items-end justify-between gap-0.5 sm:gap-2 z-10 pt-8">
+              <div className="h-96 relative flex items-end justify-between gap-0.5 sm:gap-2 z-10 pt-8 ml-4 sm:ml-6">
                 {/* Y-Axis Grid Lines */}
-                <div className="absolute inset-0 flex flex-col justify-between pb-0 pointer-events-none z-0">
-                  {[1, 0.75, 0.5, 0.25, 0].map((tick, i) => (
+                <div className="absolute inset-0 flex flex-col justify-between pt-8 pb-0 pointer-events-none z-0">
+                  {[1, 0.8, 0.6, 0.4, 0.2, 0].map((tick, i) => (
                     <div key={i} className="flex items-center w-full relative">
                       <span className="absolute -left-2 -translate-x-full text-[10px] text-neutral-500 font-medium">
-                        {Math.round(maxVal * tick)}
+                        {formatCompactNumber(maxVal * tick)}
                       </span>
                       <div className="w-full h-[1px] bg-white/[0.03]"></div>
                     </div>
@@ -405,14 +457,14 @@ function OrganizerDashboardContent() {
                     >
                       {!d.future && (
                         <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-white text-black text-[10px] sm:text-xs font-bold px-1 sm:px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
-                          {d.val}
+                          ${d.val.toLocaleString('es-AR')}
                         </div>
                       )}
                     </motion.div>
                   </div>
                 ))}
               </div>
-              <div className="flex justify-between mt-4 text-[10px] sm:text-xs font-medium text-neutral-500 relative z-10 overflow-visible">
+              <div className="flex justify-between mt-4 text-[10px] sm:text-xs font-medium text-neutral-500 relative z-10 overflow-visible ml-4 sm:ml-6">
                 {chartData.map((d, i) => {
                   const showLabel = timeFilter === 'Esta semana' ? true : (i % Math.ceil(chartData.length / 7) === 0);
                   return (
@@ -433,16 +485,11 @@ function OrganizerDashboardContent() {
             <div className="bg-neutral-900 border border-white/5 rounded-3xl p-8 shadow-2xl">
               <h2 className="font-outfit text-xl font-bold mb-6">Últimas Ventas</h2>
               <div className="space-y-2">
-                {[
-                  { name: 'Martina Rossi', event: 'Fiesta Bresh', amount: '$15,000', time: '5 min' },
-                  { name: 'Lucas Silva', event: 'Sunset Party', amount: '$5,000', time: '12 min' },
-                  { name: 'Sofía Gomez', event: 'Fiesta Bresh', amount: '$30,000', time: '1 hr' },
-                  { name: 'Juan Perez', event: 'Teatro Central', amount: '$8,500', time: '2 hrs' },
-                ].map((sale, i) => (
+                {stats.recentTransactions && stats.recentTransactions.slice(0, 5).map((sale: any, i: number) => (
                   <div key={i} className="flex items-center justify-between p-3 rounded-2xl hover:bg-white/5 transition-colors cursor-default border border-transparent hover:border-white/5">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-neutral-800 to-neutral-700 border border-white/10 flex items-center justify-center font-bold text-sm text-neutral-300">
-                        {sale.name.charAt(0)}
+                        {sale.name.charAt(0).toUpperCase()}
                       </div>
                       <div>
                         <div className="font-medium text-sm text-white">{sale.name}</div>
@@ -450,11 +497,14 @@ function OrganizerDashboardContent() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="font-bold text-sm text-emerald-400">{sale.amount}</div>
-                      <div className="text-xs text-neutral-500">{sale.time}</div>
+                      <div className="font-bold text-sm text-emerald-400">${sale.amount.toLocaleString('es-AR')}</div>
+                      <div className="text-xs text-neutral-500">{formatRelativeDate(sale.time)}</div>
                     </div>
                   </div>
                 ))}
+                {(!stats.recentTransactions || stats.recentTransactions.length === 0) && (
+                  <div className="text-center py-6 text-sm text-neutral-500">Aún no hay ventas recientes.</div>
+                )}
               </div>
               <button onClick={() => setShowTransactionsModal(true)} className="w-full mt-6 py-3 text-sm font-medium text-neutral-400 hover:text-white bg-white/[0.02] hover:bg-white/5 rounded-xl transition-colors">
                 Ver todas las transacciones
@@ -944,34 +994,29 @@ function OrganizerDashboardContent() {
               </div>
               
               <div className="space-y-3 flex-1 overflow-y-auto pr-2">
-                {[
-                  { name: 'Martina Rossi', event: 'Fiesta Bresh', amount: '$15,000', time: '5 min', status: 'Aprobada' },
-                  { name: 'Lucas Silva', event: 'Sunset Party', amount: '$5,000', time: '12 min', status: 'Aprobada' },
-                  { name: 'Sofía Gomez', event: 'Fiesta Bresh', amount: '$30,000', time: '1 hr', status: 'Aprobada' },
-                  { name: 'Juan Perez', event: 'Teatro Central', amount: '$8,500', time: '2 hrs', status: 'Aprobada' },
-                  { name: 'Carlos Díaz', event: 'Fiesta Bresh', amount: '$15,000', time: '3 hrs', status: 'Rechazada' },
-                  { name: 'Ana Lopez', event: 'Sunset Party', amount: '$10,000', time: '5 hrs', status: 'Aprobada' },
-                  { name: 'Miguel Torres', event: 'Teatro Central', amount: '$17,000', time: '1 día', status: 'Aprobada' },
-                ].filter(sale => sale.name.toLowerCase().includes(searchTxTerm.toLowerCase()) || sale.event.toLowerCase().includes(searchTxTerm.toLowerCase())).map((sale, i) => (
+                {stats.recentTransactions && stats.recentTransactions.filter((sale: any) => sale.name.toLowerCase().includes(searchTxTerm.toLowerCase()) || sale.event.toLowerCase().includes(searchTxTerm.toLowerCase())).map((sale: any, i: number) => (
                   <div key={i} className="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/5">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-neutral-800 to-neutral-700 border border-white/10 flex items-center justify-center font-bold text-sm text-neutral-300">
-                        {sale.name.charAt(0)}
+                        {sale.name.charAt(0).toUpperCase()}
                       </div>
                       <div>
                         <div className="font-medium text-sm text-white">{sale.name}</div>
                         <div className="text-xs text-neutral-500">{sale.event}</div>
                       </div>
                     </div>
-                    <div className="text-right flex flex-col items-end">
-                      <div className="font-bold text-sm text-white">{sale.amount}</div>
-                      <div className={`text-[10px] font-medium px-2 py-0.5 rounded-full mt-1 ${sale.status === 'Aprobada' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
-                        {sale.status}
+                    <div className="text-right">
+                      <div className="font-bold text-sm text-white">${sale.amount.toLocaleString('es-AR')}</div>
+                      <div className={`text-xs ${sale.status === 'PAID' ? 'text-emerald-400' : 'text-red-400'} bg-black/40 px-2 py-0.5 rounded-full inline-block mt-1`}>
+                        {sale.status === 'PAID' ? 'Aprobada' : 'Rechazada'}
                       </div>
-                      <div className="text-[10px] text-neutral-500 mt-0.5">{sale.time}</div>
+                      <div className="text-[10px] text-neutral-500 mt-1">{formatRelativeDate(sale.time)}</div>
                     </div>
                   </div>
                 ))}
+                {(!stats.recentTransactions || stats.recentTransactions.length === 0) && (
+                  <div className="text-center py-6 text-sm text-neutral-500">Aún no hay transacciones.</div>
+                )}
               </div>
             </motion.div>
           </div>
@@ -982,23 +1027,16 @@ function OrganizerDashboardContent() {
   );
 }
 
-function MetricCard({ title, value, trend, icon, color }: { title: string, value: string, trend: string, icon: React.ReactNode, color: string }) {
-  const isPositive = trend.startsWith('+');
+function MetricCard({ title, value, trend, icon, color }: { title: string, value: string, trend?: string, icon: React.ReactNode, color: string }) {
   return (
-    <div className="bg-neutral-900 border border-white/5 rounded-3xl p-6 relative overflow-hidden group hover:border-white/10 transition-all hover:-translate-y-1 shadow-xl">
+    <div className="bg-neutral-900 border border-white/5 rounded-3xl p-5 relative overflow-hidden group hover:border-white/10 transition-all hover:-translate-y-1 shadow-xl flex items-center justify-between">
       <div className={`absolute top-0 right-0 w-32 h-32 bg-${color}-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none group-hover:bg-${color}-500/20 transition-colors`} />
-      <div className="flex justify-between items-start mb-6 relative z-10">
-        <div className="p-3 bg-white/5 rounded-2xl border border-white/5 shadow-inner">
-          {icon}
-        </div>
-        <div className={`text-xs font-bold px-2.5 py-1.5 rounded-lg flex items-center gap-1 shadow-sm ${isPositive ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-white/5 text-neutral-400 border border-white/10'}`}>
-          {isPositive && <TrendingUp className="w-3 h-3" />}
-          {trend}
-        </div>
-      </div>
-      <div className="relative z-10">
+      <div className="relative z-10 flex flex-col">
         <div className="text-sm font-medium text-neutral-400 mb-1">{title}</div>
-        <div className="font-outfit text-4xl font-bold tracking-tight text-white">{value}</div>
+        <div className="font-outfit text-3xl lg:text-4xl font-bold tracking-tight text-white">{value}</div>
+      </div>
+      <div className="relative z-10 p-3 bg-white/5 rounded-2xl border border-white/5 shadow-inner shrink-0">
+        {icon}
       </div>
     </div>
   );

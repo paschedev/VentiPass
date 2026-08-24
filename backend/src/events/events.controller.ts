@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Body, Param, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, UseGuards, Req, Query } from '@nestjs/common';
 import { EventsService } from './events.service';
 import { Prisma, StaffRole, CommissionType } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -36,8 +36,8 @@ export class EventsController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.eventsService.findOne(id);
+  findOne(@Param('id') id: string, @Query('rpp') rppId?: string) {
+    return this.eventsService.findOne(id, rppId);
   }
 
   @Get(':id/promoters')
@@ -76,6 +76,12 @@ export class EventsController {
   @Get('promoter/me')
   getMyPromoterStats(@Req() req: any) {
     return this.eventsService.getMyPromoterStats(req.user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('promoter/me/:eventId/stats')
+  getPromoterEventStats(@Param('eventId') eventId: string, @Req() req: any) {
+    return this.eventsService.getPromoterEventStats(req.user.userId, eventId);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

@@ -296,6 +296,7 @@ model EventStaff {
   commissionType  CommissionType?
   commissionValue Decimal?        @db.Decimal(10, 2)
   totalEarned     Decimal         @default(0) @db.Decimal(10, 2)
+  clicks          Int             @default(0)
   totalPaid       Decimal         @default(0) @db.Decimal(10, 2)
   
   event           Event           @relation(fields: [eventId], references: [id])

@@ -161,9 +161,17 @@ export class EventsRepository {
       },
       include: {
         orderItems: {
-          include: { ticketType: true }
-        }
-      }
+          include: { 
+            ticketType: {
+              include: {
+                event: { select: { title: true } }
+              }
+            } 
+          }
+        },
+        user: { select: { name: true } }
+      },
+      orderBy: { createdAt: 'desc' }
     });
   }
 
@@ -246,4 +254,31 @@ export class EventsRepository {
       };
     });
   }
+
+  async incrementPromoterClicks(staffId: string) {
+    return this.prisma.eventStaff.update({
+      where: { id: staffId },
+      data: { clicks: { increment: 1 } }
+    });
+  }
+
+  async getPromoterStatsForEvent(userId: string, eventId: string) {
+    const staff = await this.prisma.eventStaff.findFirst({
+      where: { userId, eventId, role: 'PROMOTER' },
+      include: {
+        event: { select: { title: true } },
+        orders: {
+          where: { status: 'PAID' },
+          include: { 
+            orderItems: { include: { ticketType: true } },
+            user: { select: { name: true } }
+          },
+          orderBy: { createdAt: 'desc' }
+        }
+      }
+    });
+
+    return staff;
+  }
 }
+

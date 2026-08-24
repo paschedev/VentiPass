@@ -31,7 +31,7 @@ function EventContent() {
 
   useEffect(() => {
     Promise.all([
-      apiFetch(`/events/${id}`).then(res => res.json()),
+      apiFetch(rppFromUrl ? `/events/${id}?rpp=${rppFromUrl}` : `/events/${id}`).then(res => res.json()),
       apiFetch(`/events/${id}/promoters`).then(res => res.ok ? res.json() : [])
     ])
       .then(([eventData, promotersData]) => {
