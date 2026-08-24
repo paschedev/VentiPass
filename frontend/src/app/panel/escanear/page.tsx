@@ -105,9 +105,9 @@ export default function EscanearPage() {
           )}
 
           {/* Flash Feedback Overlay */}
-          {scanResult && (
-            <div className={`absolute inset-0 flex flex-col items-center justify-center animate-in fade-in zoom-in duration-300 text-white ${styles!.bgSolid}`}>
-              {styles!.Icon && <styles!.Icon className="w-32 h-32 mb-4" />}
+          {scanResult && styles && (
+            <div className={`absolute inset-0 flex flex-col items-center justify-center animate-in fade-in zoom-in duration-300 text-white ${styles.bgSolid}`}>
+              {styles.Icon && <styles.Icon className="w-32 h-32 mb-4" />}
               <h2 className="text-4xl font-black text-center px-4 tracking-tight leading-tight">{scanResult.message}</h2>
               {scanResult.event && <p className="text-xl opacity-90 mt-4 text-center px-4 font-medium bg-black/20 py-2 rounded-full">{scanResult.event} - {scanResult.type}</p>}
             </div>
