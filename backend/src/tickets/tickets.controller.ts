@@ -40,7 +40,7 @@ export class TicketsController {
     });
 
     if (!ticket) {
-      throw new BadRequestException('Entrada no encontrada');
+      return { success: false, status: 'INVALID', message: 'INVÁLIDO' };
     }
 
     // Validar permisos del Scanner en EventStaff o si es el organizador global
@@ -56,16 +56,16 @@ export class TicketsController {
       });
 
       if (!staffPermission) {
-        throw new UnauthorizedException('No tienes permisos de scanner para este evento o tu invitación no ha sido aceptada');
+        return { success: false, status: 'WRONG_EVENT', message: 'OTRO EVENTO' };
       }
     }
 
     if (ticket.status === 'USED') {
-      throw new BadRequestException('Esta entrada ya fue utilizada');
+      return { success: false, status: 'USED', message: 'USADO' };
     }
 
     if (ticket.status !== 'VALID') {
-      throw new BadRequestException('Esta entrada no es válida');
+      return { success: false, status: 'INVALID', message: 'INVÁLIDO' };
     }
 
     // Mark as used
@@ -85,7 +85,8 @@ export class TicketsController {
 
     return {
       success: true,
-      message: 'Acceso permitido',
+      status: 'VALID',
+      message: 'VÁLIDO',
       event: ticket.ticketType.event.title,
       type: ticket.ticketType.name,
       isGuestList: ticket.isGuestList,

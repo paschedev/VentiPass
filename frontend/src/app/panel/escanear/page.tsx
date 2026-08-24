@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Scanner } from '@yudiel/react-qr-scanner';
-import { CheckCircle2, XCircle, ScanLine } from 'lucide-react';
+import { CheckCircle2, XCircle, ScanLine, AlertTriangle } from 'lucide-react';
 import { apiFetch } from '@/utils/api';
 
 export default function EscanearPage() {
-  const [scanResult, setScanResult] = useState<{ success: boolean; message: string; event?: string; type?: string } | null>(null);
+  const [scanResult, setScanResult] = useState<{ success: boolean; status?: string; message: string; event?: string; type?: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -37,12 +37,12 @@ export default function EscanearPage() {
       
       const data = await response.json();
       if (response.ok) {
-        setScanResult({ success: true, message: data.message, event: data.event, type: data.type });
+        setScanResult({ success: data.success, status: data.status, message: data.message, event: data.event, type: data.type });
       } else {
-        setScanResult({ success: false, message: data.message });
+        setScanResult({ success: false, status: 'INVALID', message: data.message || 'Error del servidor' });
       }
     } catch (error) {
-      setScanResult({ success: false, message: 'Error de conexión' });
+      setScanResult({ success: false, status: 'INVALID', message: 'Error de conexión' });
     } finally {
       setLoading(false);
       // Auto dismiss after 3 seconds
@@ -50,20 +50,37 @@ export default function EscanearPage() {
     }
   };
 
+  const getStyles = (status?: string) => {
+    switch (status) {
+      case 'VALID': return { bgDark: 'bg-emerald-950', border: 'border-emerald-500', shadow: 'shadow-emerald-500/50', bgSolid: 'bg-emerald-500/95', Icon: CheckCircle2 };
+      case 'USED': return { bgDark: 'bg-amber-950', border: 'border-amber-500', shadow: 'shadow-amber-500/50', bgSolid: 'bg-amber-500/95', Icon: AlertTriangle };
+      case 'INVALID':
+      case 'WRONG_EVENT':
+      default: return { bgDark: 'bg-red-950', border: 'border-red-500', shadow: 'shadow-red-500/50', bgSolid: 'bg-red-500/95', Icon: XCircle };
+    }
+  };
+
+  const styles = scanResult ? getStyles(scanResult.status) : null;
+
   // Funciones de prueba para simular el escáner sin depender del flujo de la cámara o backend
   const simulateSuccess = () => {
-    setScanResult({ success: true, message: 'ACCESO CONCEDIDO', event: 'Fiesta de Primavera', type: 'General' });
+    setScanResult({ success: true, status: 'VALID', message: 'VÁLIDO', event: 'Fiesta de Primavera', type: 'General' });
     setTimeout(() => setScanResult(null), 3000);
   };
 
   const simulateError = () => {
-    setScanResult({ success: false, message: 'TICKET INVÁLIDO O YA USADO' });
+    setScanResult({ success: false, status: 'INVALID', message: 'INVÁLIDO' });
+    setTimeout(() => setScanResult(null), 3000);
+  };
+  
+  const simulateUsed = () => {
+    setScanResult({ success: false, status: 'USED', message: 'USADO' });
     setTimeout(() => setScanResult(null), 3000);
   };
 
   return (
     <div className={`min-h-[80vh] flex flex-col items-center justify-center transition-colors duration-500 ${
-      scanResult ? (scanResult.success ? 'bg-emerald-950' : 'bg-red-950') : 'bg-transparent'
+      scanResult ? styles!.bgDark : 'bg-transparent'
     }`}>
       <div className="max-w-md mx-auto w-full px-4 flex flex-col items-center relative z-10">
         <h1 className="font-outfit text-3xl font-bold mb-2 text-center text-white">Escáner de Accesos</h1>
@@ -71,7 +88,7 @@ export default function EscanearPage() {
 
         <div className={`relative w-full aspect-square rounded-3xl overflow-hidden border-4 shadow-2xl transition-all duration-300 ${
           scanResult 
-            ? (scanResult.success ? 'border-emerald-500 shadow-emerald-500/50 scale-105' : 'border-red-500 shadow-red-500/50 scale-105') 
+            ? `${styles!.border} ${styles!.shadow} scale-105` 
             : 'border-white/10 bg-black'
         }`}>
           <Scanner
@@ -89,10 +106,8 @@ export default function EscanearPage() {
 
           {/* Flash Feedback Overlay */}
           {scanResult && (
-            <div className={`absolute inset-0 flex flex-col items-center justify-center animate-in fade-in zoom-in duration-300 ${
-              scanResult.success ? 'bg-emerald-500/95 text-white' : 'bg-red-500/95 text-white'
-            }`}>
-              {scanResult.success ? <CheckCircle2 className="w-32 h-32 mb-4" /> : <XCircle className="w-32 h-32 mb-4" />}
+            <div className={`absolute inset-0 flex flex-col items-center justify-center animate-in fade-in zoom-in duration-300 text-white ${styles!.bgSolid}`}>
+              {styles!.Icon && <styles!.Icon className="w-32 h-32 mb-4" />}
               <h2 className="text-4xl font-black text-center px-4 tracking-tight leading-tight">{scanResult.message}</h2>
               {scanResult.event && <p className="text-xl opacity-90 mt-4 text-center px-4 font-medium bg-black/20 py-2 rounded-full">{scanResult.event} - {scanResult.type}</p>}
             </div>
@@ -102,12 +117,15 @@ export default function EscanearPage() {
         {/* Testing Mode Buttons (Only visible in Development/Testing) */}
         <div className="mt-8 flex flex-col items-center w-full">
           <p className="text-xs text-neutral-500 uppercase tracking-widest font-bold mb-3">Modo Prueba (Simulación)</p>
-          <div className="flex gap-3 w-full">
-            <button onClick={simulateSuccess} className="flex-1 bg-emerald-900/30 hover:bg-emerald-800/50 text-emerald-400 border border-emerald-500/30 py-3 rounded-xl font-medium transition-all text-sm">
-              Simular Válido
+          <div className="flex gap-2 w-full">
+            <button onClick={simulateSuccess} className="flex-1 bg-emerald-900/30 hover:bg-emerald-800/50 text-emerald-400 border border-emerald-500/30 py-2 rounded-xl font-medium transition-all text-xs">
+              Válido
             </button>
-            <button onClick={simulateError} className="flex-1 bg-red-900/30 hover:bg-red-800/50 text-red-400 border border-red-500/30 py-3 rounded-xl font-medium transition-all text-sm">
-              Simular Inválido
+            <button onClick={simulateUsed} className="flex-1 bg-amber-900/30 hover:bg-amber-800/50 text-amber-400 border border-amber-500/30 py-2 rounded-xl font-medium transition-all text-xs">
+              Usado
+            </button>
+            <button onClick={simulateError} className="flex-1 bg-red-900/30 hover:bg-red-800/50 text-red-400 border border-red-500/30 py-2 rounded-xl font-medium transition-all text-xs">
+              Inválido
             </button>
           </div>
         </div>
