@@ -43,9 +43,31 @@ export class NotificationsService {
     });
   }
 
+  async markAllAsRead(userId: string) {
+    return this.prisma.notification.updateMany({
+      where: { userId, isRead: false },
+      data: { isRead: true },
+    });
+  }
+
   async delete(id: string, userId: string) {
     return this.prisma.notification.deleteMany({
       where: { id, userId },
     });
+  }
+
+  async updateStaffInviteStatus(userId: string, eventStaffId: string, status: 'ACCEPTED' | 'REJECTED') {
+    const notifications = await this.prisma.notification.findMany({
+      where: { userId, type: 'STAFF_INVITE' }
+    });
+    for (const n of notifications) {
+      if (n.metadata && (n.metadata as any).eventStaffId === eventStaffId) {
+        const updatedMetadata = { ...(n.metadata as any), status };
+        await this.prisma.notification.update({
+          where: { id: n.id },
+          data: { metadata: updatedMetadata, isRead: true }
+        });
+      }
+    }
   }
 }

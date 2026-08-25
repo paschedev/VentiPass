@@ -3,8 +3,9 @@
 import Link from 'next/link';
 import { useEffect, useState, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-import { Bell, LogOut, LayoutDashboard, User as UserIcon, HelpCircle } from 'lucide-react';
+import { Bell, LogOut, LayoutDashboard, User as UserIcon, HelpCircle, CheckCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 
 export default function Navbar() {
   const [user, setUser] = useState<any>(null);
@@ -80,7 +81,10 @@ export default function Navbar() {
         await apiFetch(`/notifications/${notificationId}/read`, { method: 'PUT' });
       } else {
         const error = await res.json();
-        alert(error.message || 'Hubo un error procesando la invitación');
+        toast.error(error.message || 'Hubo un error procesando la invitación');
+        if (res.status === 400 && error.message?.includes('procesada')) {
+          setNotifications(prev => prev.filter(n => n.id !== notificationId));
+        }
       }
     } catch (e) {
       console.error('Error procesando invitación', e);
@@ -99,6 +103,23 @@ export default function Navbar() {
     setUser(null);
     window.location.replace('/');
   };
+  const handleMarkAllAsRead = async () => {
+    try {
+      const { apiFetch } = await import('@/utils/api');
+      await apiFetch('/notifications/read-all', { method: 'PUT' });
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const unreadNotifs = notifications.filter(n => !n.isRead);
+  const readNotifs = notifications.filter(n => n.isRead);
+  const displayNotifs = [...unreadNotifs];
+  if (displayNotifs.length < 3) {
+    displayNotifs.push(...readNotifs.slice(0, 3 - displayNotifs.length));
+  }
+  const finalDisplayNotifs = displayNotifs.slice(0, 3);
 
   return (
     <header className="fixed top-0 z-[100] w-full border-b border-white/5 bg-black/40 backdrop-blur-xl">
@@ -148,48 +169,66 @@ export default function Navbar() {
                         transition={{ duration: 0.15 }}
                         className="absolute -right-12 sm:right-0 mt-2 w-[calc(100vw-2rem)] sm:w-80 bg-neutral-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden origin-top-right z-50"
                       >
-                        <div className="p-4 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
-                          <h3 className="font-semibold text-sm">Notificaciones</h3>
-                          {notifications.filter(n => !n.isRead).length > 0 && (
-                            <span className="text-xs text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full">
-                              {notifications.filter(n => !n.isRead).length} nuevas
-                            </span>
-                          )}
+                        <div className="p-4 border-b border-white/5 flex flex-col gap-3 bg-white/[0.02]">
+                          <div className="flex justify-between items-center w-full">
+                            <h3 className="font-semibold text-sm">Notificaciones</h3>
+                            <div className="flex items-center gap-2">
+                              {unreadNotifs.length > 0 && (
+                                <span className="text-xs text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full">
+                                  {unreadNotifs.length} nuevas
+                                </span>
+                              )}
+                              {notifications.length > 0 && unreadNotifs.length > 0 && (
+                                <button 
+                                  onClick={handleMarkAllAsRead} 
+                                  className="text-neutral-400 hover:text-white transition-colors"
+                                  title="Marcar todas como leídas"
+                                >
+                                  <CheckCheck className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
                         </div>
                         <div className="max-h-[300px] overflow-y-auto">
-                          {notifications.filter(n => !n.isRead).length === 0 ? (
+                          {finalDisplayNotifs.length === 0 ? (
                             <div className="p-6 text-center text-sm text-neutral-500">
-                              No hay notificaciones nuevas.
+                              No tienes notificaciones.
                             </div>
                           ) : (
-                            notifications.filter(n => !n.isRead).slice(0, 5).map(n => {
-                              const isInvite = n.type === 'STAFF_INVITE' && n.metadata?.eventStaffId;
+                            finalDisplayNotifs.map(n => {
+                              const isInvite = n.type === 'STAFF_INVITE' && n.metadata?.eventStaffId && n.metadata?.status === 'PENDING';
                               return (
-                                <div key={n.id} className="p-4 border-b border-white/5 hover:bg-white/5 transition-colors group">
-                                  <h4 className="text-sm font-semibold text-white mb-1">{n.title}</h4>
-                                  <p className="text-sm text-neutral-300 group-hover:text-white transition-colors">{n.message}</p>
-                                  
-                                  {isInvite && (
-                                    <div className="flex gap-2 mt-3">
-                                      <button 
-                                        onClick={() => handleStaffAction(n.metadata.eventStaffId, 'accept', n.id)}
-                                        disabled={processingIds.has(n.id)}
-                                        className="flex-1 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white text-xs font-semibold py-1.5 rounded-md transition-colors"
-                                      >
-                                        Aceptar
-                                      </button>
-                                      <button 
-                                        onClick={() => handleStaffAction(n.metadata.eventStaffId, 'reject', n.id)}
-                                        disabled={processingIds.has(n.id)}
-                                        className="flex-1 bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white text-xs font-semibold py-1.5 rounded-md transition-colors"
-                                      >
-                                        Rechazar
-                                      </button>
-                                    </div>
+                                <div key={n.id} className={`p-4 border-b border-white/5 hover:bg-white/5 transition-colors group relative ${!n.isRead ? 'bg-indigo-500/[0.03]' : ''}`}>
+                                  {!n.isRead && (
+                                    <div className="absolute left-2 top-5 w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]"></div>
                                   )}
+                                  <div className={`${!n.isRead ? 'pl-3' : 'pl-0'}`}>
+                                    <h4 className={`text-sm text-white mb-1 ${!n.isRead ? 'font-bold' : 'font-normal'}`}>{n.title}</h4>
+                                    <p className={`text-sm group-hover:text-white transition-colors ${!n.isRead ? 'text-neutral-200' : 'text-neutral-400'}`}>{n.message}</p>
+                                    
+                                    {isInvite && (
+                                      <div className="flex gap-2 mt-3">
+                                        <button 
+                                          onClick={() => handleStaffAction(n.metadata.eventStaffId, 'accept', n.id)}
+                                          disabled={processingIds.has(n.id)}
+                                          className="flex-1 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white text-xs font-semibold py-1.5 rounded-md transition-colors"
+                                        >
+                                          Aceptar
+                                        </button>
+                                        <button 
+                                          onClick={() => handleStaffAction(n.metadata.eventStaffId, 'reject', n.id)}
+                                          disabled={processingIds.has(n.id)}
+                                          className="flex-1 bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white text-xs font-semibold py-1.5 rounded-md transition-colors"
+                                        >
+                                          Rechazar
+                                        </button>
+                                      </div>
+                                    )}
 
-                                  <div className="flex items-center justify-between mt-2">
-                                    <span className="text-xs text-neutral-500">{new Date(n.createdAt).toLocaleDateString()}</span>
+                                    <div className="flex items-center justify-between mt-2">
+                                      <span className="text-xs text-neutral-500">{new Date(n.createdAt).toLocaleDateString()}</span>
+                                    </div>
                                   </div>
                                 </div>
                               );

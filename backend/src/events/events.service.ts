@@ -299,6 +299,7 @@ export class EventsService {
     }
 
     await this.eventsRepository.updateEventStaff(eventStaffId, { status: 'ACCEPTED' });
+    await this.notificationsService.updateStaffInviteStatus(userId, eventStaffId, 'ACCEPTED');
 
     await this.notificationsService.create({
       userId: staff.event.organizerId,
@@ -321,6 +322,7 @@ export class EventsService {
     }
 
     await this.eventsRepository.updateEventStaff(eventStaffId, { status: 'REJECTED' });
+    await this.notificationsService.updateStaffInviteStatus(userId, eventStaffId, 'REJECTED');
 
     await this.notificationsService.create({
       userId: staff.event.organizerId,
