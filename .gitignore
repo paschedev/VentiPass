@@ -33,3 +33,9 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Agent Configs
+.agents/
+claude.md
+AGENTS.md
+GEMINI.md
