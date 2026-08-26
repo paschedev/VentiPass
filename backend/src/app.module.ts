@@ -15,6 +15,21 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
 
+let redisConfig: any = {
+  host: process.env.REDIS_HOST || 'localhost',
+  port: parseInt(process.env.REDIS_PORT || '6379', 10),
+};
+
+if (process.env.REDIS_URL) {
+  const url = new URL(process.env.REDIS_URL);
+  redisConfig = {
+    host: url.hostname,
+    port: parseInt(url.port, 10),
+    username: url.username || undefined,
+    password: url.password || undefined,
+  };
+}
+
 @Module({
   imports: [
     ThrottlerModule.forRoot([{
@@ -22,10 +37,7 @@ import { APP_GUARD } from '@nestjs/core';
       limit: 100,
     }]),
     BullModule.forRoot({
-      connection: {
-        host: process.env.REDIS_HOST || 'localhost',
-        port: parseInt(process.env.REDIS_PORT || '6379', 10),
-      },
+      connection: redisConfig,
     }),
     PrismaModule, 
     EventsModule, 
