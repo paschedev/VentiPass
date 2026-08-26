@@ -608,7 +608,7 @@ function OrganizerDashboardContent() {
 
               <h2 className="text-2xl font-bold mb-2">Vincular Mercado Pago</h2>
               <p className="text-sm text-neutral-400 mb-6 leading-relaxed">
-                Al conectar tu cuenta de Mercado Pago autorizarás a EntryPass a procesar las ventas en tu nombre. El dinero del valor de tus entradas irá <strong>directamente a tu cuenta</strong> sin descuentos. El cargo por servicio de la plataforma se le cobra como un extra directamente al comprador final.
+                Al conectar tu cuenta de Mercado Pago autorizarás a VentiPass a procesar las ventas en tu nombre. El dinero del valor de tus entradas irá <strong>directamente a tu cuenta</strong> sin descuentos. El cargo por servicio de la plataforma se le cobra como un extra directamente al comprador final.
               </p>
               
               <button 

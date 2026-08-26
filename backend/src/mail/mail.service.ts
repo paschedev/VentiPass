@@ -21,7 +21,7 @@ export class MailService {
       `).join('');
 
       const { data, error } = await this.resend.emails.send({
-        from: 'EntryPass <entradas@entrypass.dev>',
+        from: 'VentiPass <entradas@ventipass.dev>',
         to: [to],
         subject: '¡Tus entradas para el evento están listas!',
         html: `
@@ -29,7 +29,7 @@ export class MailService {
           <p>¡Gracias por tu compra! Aquí tienes tus entradas:</p>
           ${ticketsHtml}
           <p>Disfruta del evento,</p>
-          <p>El equipo de EntryPass</p>
+          <p>El equipo de VentiPass</p>
         `,
       });
 
@@ -53,9 +53,9 @@ export class MailService {
 
     try {
       const { data, error } = await this.resend.emails.send({
-        from: 'EntryPass <onboarding@resend.dev>', // Resend test domain
+        from: 'VentiPass <onboarding@resend.dev>', // Resend test domain
         to: [to],
-        subject: 'Recuperación de contraseña - EntryPass',
+        subject: 'Recuperación de contraseña - VentiPass',
         html: `<p>Hola ${name},</p><p>Has solicitado restablecer tu contraseña.</p><p>Haz clic en el siguiente enlace para crear una nueva:</p><p><a href="${resetLink}">Restablecer mi contraseña</a></p><p>Este enlace expirará en 1 hora.</p>`
       });
 

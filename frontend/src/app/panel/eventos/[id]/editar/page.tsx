@@ -96,7 +96,7 @@ export default function EditarEventoPage() {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'entrypass_flyers');
+      formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'ventipass_flyers');
       
       const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'calji3rf';
       const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {

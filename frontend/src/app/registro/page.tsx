@@ -107,7 +107,7 @@ export default function RegistroPage() {
       <div className="w-full max-w-md bg-neutral-900 border border-white/5 p-8 rounded-3xl m-auto shadow-2xl z-10">
         <div className="text-center mb-8">
           <Link href="/" className="font-outfit text-3xl font-bold tracking-tighter inline-block mb-2">
-            Entry<span className="text-indigo-500">Pass</span>
+            Venti<span className="text-indigo-500">Pass</span>
           </Link>
           <p className="text-neutral-400">Creá tu cuenta gratis</p>
         </div>

@@ -10,8 +10,8 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit' });
 
 export const metadata: Metadata = {
-  title: 'EntryPass | Descubrí y comprá entradas para los mejores eventos',
-  description: 'EntryPass es la ticketera definitiva para organizar y asistir a eventos con total seguridad.',
+  title: 'VentiPass | Descubrí y comprá entradas para los mejores eventos',
+  description: 'VentiPass es la ticketera definitiva para organizar y asistir a eventos con total seguridad.',
 };
 
 export default function RootLayout({

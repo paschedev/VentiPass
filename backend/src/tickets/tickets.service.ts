@@ -96,7 +96,7 @@ export class TicketsService {
     // Exigimos que el usuario exista en el sistema, mitigando creación de usuarios falsos (reducción superficie de ataque)
     let targetUser = await this.ticketsRepository.findUserByEmail(email);
     if (!targetUser) {
-      throw new BadRequestException('El usuario destino no está registrado. Por favor, indícale que cree una cuenta en EntryPass primero.');
+      throw new BadRequestException('El usuario destino no está registrado. Por favor, indícale que cree una cuenta en VentiPass primero.');
     }
 
     const ticket = await this.ticketsRepository.createTicket({

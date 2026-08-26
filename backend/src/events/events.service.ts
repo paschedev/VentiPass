@@ -111,7 +111,7 @@ export class EventsService {
         let orderRevenue = 0;
         order.orderItems.forEach(item => {
           if (eventIds.includes(item.ticketType.eventId)) {
-            // Organizer revenue is based on the ticket face value, without EntryPass fee
+            // Organizer revenue is based on the ticket face value, without VentiPass fee
             orderRevenue += item.quantity * Number(item.unitPrice);
           }
         });
@@ -156,7 +156,7 @@ export class EventsService {
 
     const user = await this.userRepository.findById(inviteeId);
     if (!user) {
-      throw new BadRequestException('Usuario no registrado. Pídele que se registre en EntryPass primero.');
+      throw new BadRequestException('Usuario no registrado. Pídele que se registre en VentiPass primero.');
     }
 
     // Verificar si ya existe para este rol específico

@@ -1,9 +1,9 @@
-# EntryPass
+# VentiPass
 
 > Solución Full-Stack para gestión de eventos, venta de entradas y validación de accesos mediante QR.
 
 ## 🚀 Arquitectura
-EntryPass es un monorepo que contiene tanto el backend (API REST) como el frontend (Cliente Web). 
+VentiPass es un monorepo que contiene tanto el backend (API REST) como el frontend (Cliente Web). 
 
 ### Stack Tecnológico
 - **Frontend**: Next.js 16, React 19, TailwindCSS v4, Framer Motion.
@@ -27,8 +27,8 @@ EntryPass es un monorepo que contiene tanto el backend (API REST) como el fronte
 
 1. **Clonar el repositorio**
    ```bash
-   git clone https://github.com/paschedev/EntryPass.git
-   cd EntryPass
+   git clone https://github.com/paschedev/VentiPass.git
+   cd VentiPass
    ```
 
 2. **Levantar servicios de infraestructura**
