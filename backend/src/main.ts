@@ -9,7 +9,14 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   app.enableCors({
-    origin: [frontendUrl, 'http://localhost:3000', 'http://127.0.0.1:3000'],
+    origin: [
+      frontendUrl, 
+      'https://ventipass.com', 
+      'https://www.ventipass.com',
+      'https://venti-pass.vercel.app',
+      'http://localhost:3000', 
+      'http://127.0.0.1:3000'
+    ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
