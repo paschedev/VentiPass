@@ -14,6 +14,7 @@ export default function RegistroPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string>('');
+  const [captchaError, setCaptchaError] = useState(false);
   const [isOrganizer, setIsOrganizer] = useState(false);
   const [country, setCountry] = useState('');
   const [province, setProvince] = useState('');
@@ -229,17 +230,22 @@ export default function RegistroPage() {
           )}
 
           {mounted && process.env.NODE_ENV === 'production' && (
-            <div className="flex justify-center mt-6">
-              <Turnstile 
-                siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!} 
-                onSuccess={(token) => setCaptchaToken(token)}
-                onError={() => setCaptchaToken('')}
-                options={{ theme: 'dark' }}
-              />
+            <div className="flex flex-col items-center justify-center mt-6">
+              {!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ? (
+                <div className="text-red-400 text-sm p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-center w-full">Falta configurar la clave de seguridad (Turnstile).</div>
+              ) : (
+                <Turnstile 
+                  siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY} 
+                  onSuccess={(token) => { setCaptchaToken(token); setCaptchaError(false); }}
+                  onError={() => setCaptchaError(true)}
+                  options={{ theme: 'dark' }}
+                />
+              )}
+              {captchaError && <div className="text-red-400 text-sm p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-center w-full mt-2">Error de seguridad. Desactivá el AdBlocker o recargá la página.</div>}
             </div>
           )}
 
-          <button type="submit" disabled={!mounted || loading || (!captchaToken && process.env.NODE_ENV === 'production')} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 mt-6 disabled:opacity-50">
+          <button type="submit" disabled={!mounted || loading || captchaError || (!captchaToken && process.env.NODE_ENV === 'production')} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 mt-6 disabled:opacity-50">
             {!mounted ? 'Conectando...' : loading ? 'Registrando...' : <><UserPlus className="w-5 h-5" /> Crear cuenta</>}
           </button>
         </form>

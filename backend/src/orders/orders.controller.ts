@@ -20,7 +20,7 @@ export class OrdersController {
     @Req() req: any,
     @Body() body: { captchaToken: string; promoterId?: string; items: { ticketTypeId: string; quantity: number }[] }
   ) {
-    if (!body.captchaToken) throw new BadRequestException('Se requiere token de seguridad');
+    if (!body.captchaToken) throw new BadRequestException('Validación de seguridad fallida. Recargá la página.');
     const isHuman = await this.captchaService.verifyToken(body.captchaToken);
     if (!isHuman) throw new BadRequestException('Validación de seguridad fallida');
 
@@ -38,7 +38,7 @@ export class OrdersController {
     @Req() req: any,
     @Body() body: { captchaToken: string; promoterId?: string; items: { ticketTypeId: string; quantity: number }[] }
   ) {
-    if (!body.captchaToken) throw new BadRequestException('Se requiere token de seguridad');
+    if (!body.captchaToken) throw new BadRequestException('Validación de seguridad fallida. Recargá la página.');
     const isHuman = await this.captchaService.verifyToken(body.captchaToken);
     if (!isHuman) throw new BadRequestException('Validación de seguridad fallida');
 

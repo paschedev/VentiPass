@@ -19,7 +19,7 @@ export class AuthController {
     const requireCaptcha = process.env.NODE_ENV === 'production' && !isLocal;
 
     if (requireCaptcha && !body.captchaToken) {
-      throw new BadRequestException('Se requiere token de seguridad');
+      throw new BadRequestException('Validación de seguridad fallida. Recargá la página.');
     }
     
     if (requireCaptcha && body.captchaToken) {
@@ -37,7 +37,7 @@ export class AuthController {
   @Post('register')
   async register(@Body() body: RegisterUserDto & { captchaToken: string }) {
     const isDev = process.env.NODE_ENV !== 'production';
-    if (!isDev && !body.captchaToken) throw new BadRequestException('Se requiere token de seguridad');
+    if (!isDev && !body.captchaToken) throw new BadRequestException('Validación de seguridad fallida. Recargá la página.');
     
     if (!isDev || body.captchaToken) {
       const isHuman = await this.captchaService.verifyToken(body.captchaToken);
