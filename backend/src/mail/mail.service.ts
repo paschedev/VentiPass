@@ -21,7 +21,7 @@ export class MailService {
       `).join('');
 
       const { data, error } = await this.resend.emails.send({
-        from: 'VentiPass <entradas@ventipass.dev>',
+        from: 'VentiPass <entradas@ventipass.com>',
         to: [to],
         subject: '¡Tus entradas para el evento están listas!',
         html: `
@@ -53,7 +53,7 @@ export class MailService {
 
     try {
       const { data, error } = await this.resend.emails.send({
-        from: 'VentiPass <onboarding@resend.dev>', // Resend test domain
+        from: 'VentiPass <soporte@ventipass.com>',
         to: [to],
         subject: 'Recuperación de contraseña - VentiPass',
         html: `<p>Hola ${name},</p><p>Has solicitado restablecer tu contraseña.</p><p>Haz clic en el siguiente enlace para crear una nueva:</p><p><a href="${resetLink}">Restablecer mi contraseña</a></p><p>Este enlace expirará en 1 hora.</p>`
