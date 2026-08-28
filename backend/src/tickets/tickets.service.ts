@@ -82,6 +82,47 @@ export class TicketsService {
     return { success: true, message: 'Entrada validada correctamente' };
   }
 
+  async processCheckIn(qrCode: string, scannerId: string, userAgent: string) {
+    const ticket = await this.ticketsRepository.findTicketForValidation(qrCode);
+
+    if (!ticket) {
+      return { success: false, status: 'INVALID', message: 'INVÁLIDO' };
+    }
+
+    // Validar permisos del Scanner en EventStaff o si es el organizador global
+    const event = ticket.ticketType.event;
+    if (event.organizerId !== scannerId) {
+      const staffPermission = await this.ticketsRepository.findEventStaff(event.id, scannerId, 'SCANNER');
+      
+      // Intentamos validar también MANAGER por si el frontend no distingue bien
+      const managerPermission = await this.ticketsRepository.findEventStaff(event.id, scannerId, 'MANAGER');
+
+      if ((!staffPermission || staffPermission.status !== 'ACCEPTED') && 
+          (!managerPermission || managerPermission.status !== 'ACCEPTED')) {
+        return { success: false, status: 'WRONG_EVENT', message: 'OTRO EVENTO' };
+      }
+    }
+
+    if (ticket.status === 'USED') {
+      return { success: false, status: 'USED', message: 'USADO' };
+    }
+
+    if (ticket.status !== 'VALID') {
+      return { success: false, status: 'INVALID', message: 'INVÁLIDO' };
+    }
+
+    await this.ticketsRepository.processCheckInTransaction(ticket.id, scannerId, userAgent);
+
+    return {
+      success: true,
+      status: 'VALID',
+      message: 'VÁLIDO',
+      event: ticket.ticketType.event.title,
+      type: ticket.ticketType.name,
+      isGuestList: ticket.isGuestList,
+    };
+  }
+
   async emitGuestTicket(eventId: string, organizerId: string, email: string, ticketTypeId: string) {
     const event = await this.ticketsRepository.findEvent(eventId);
     if (!event || event.organizerId !== organizerId) {

@@ -1,16 +1,13 @@
 import { Controller, Post, Body, BadRequestException, UseGuards, Req } from '@nestjs/common';
 import { OrdersService } from './orders.service';
-import { PrismaService } from '../prisma/prisma.service';
-import * as bcrypt from 'bcrypt';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CaptchaService } from '../auth/captcha.service';
+import { CreateOrderDto } from './dto/create-order.dto';
 
 @Controller('orders')
 export class OrdersController {
   constructor(
     private readonly ordersService: OrdersService,
-    private readonly prisma: PrismaService,
     private readonly captchaService: CaptchaService
   ) {}
 
@@ -18,7 +15,7 @@ export class OrdersController {
   @Post('checkout')
   async createCheckout(
     @Req() req: any,
-    @Body() body: { captchaToken: string; promoterId?: string; items: { ticketTypeId: string; quantity: number }[] }
+    @Body() body: CreateOrderDto
   ) {
     if (!body.captchaToken) throw new BadRequestException('Validación de seguridad fallida. Recargá la página.');
     const isHuman = await this.captchaService.verifyToken(body.captchaToken);
@@ -36,7 +33,7 @@ export class OrdersController {
   @Post('dev-bypass')
   async createDevBypassOrder(
     @Req() req: any,
-    @Body() body: { captchaToken: string; promoterId?: string; items: { ticketTypeId: string; quantity: number }[] }
+    @Body() body: CreateOrderDto
   ) {
     if (!body.captchaToken) throw new BadRequestException('Validación de seguridad fallida. Recargá la página.');
     const isHuman = await this.captchaService.verifyToken(body.captchaToken);

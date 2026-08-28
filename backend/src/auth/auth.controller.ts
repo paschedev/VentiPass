@@ -3,6 +3,10 @@ import type { Request } from 'express';
 import { AuthService } from './auth.service';
 import { CaptchaService } from './captcha.service';
 import { RegisterUserDto } from './dto/register-user.dto';
+import { LoginDto } from './dto/login.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
 @Controller('auth')
@@ -13,7 +17,7 @@ export class AuthController {
   ) {}
 
   @Post('login')
-  async login(@Body() body: any, @Req() req: Request) {
+  async login(@Body() body: LoginDto, @Req() req: Request) {
     const host = req.headers.host || '';
     const isLocal = host.includes('localhost') || host.includes('192.168') || host.includes('127.0.0.1');
     const requireCaptcha = process.env.NODE_ENV === 'production' && !isLocal;
@@ -55,17 +59,17 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Post('change-password')
-  changePassword(@Req() req: any, @Body() body: any) {
+  changePassword(@Req() req: any, @Body() body: ChangePasswordDto) {
     return this.authService.changePassword(req.user.userId, body.oldPassword, body.newPassword);
   }
 
   @Post('forgot-password')
-  forgotPassword(@Body() body: any) {
+  forgotPassword(@Body() body: ForgotPasswordDto) {
     return this.authService.forgotPassword(body.email);
   }
 
   @Post('reset-password')
-  resetPassword(@Body() body: any) {
+  resetPassword(@Body() body: ResetPasswordDto) {
     return this.authService.resetPassword(body.token, body.newPassword);
   }
 

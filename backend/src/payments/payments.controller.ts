@@ -2,6 +2,7 @@ import { Controller, Post, Body, Req, Headers, Get, Query, Res, UseGuards } from
 import type { Response } from 'express';
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { SaveManualTokenDto } from './dto/save-manual-token.dto';
 
 @Controller('payments')
 export class PaymentsController {
@@ -38,9 +39,8 @@ export class PaymentsController {
 
   @UseGuards(JwtAuthGuard)
   @Post('oauth/manual')
-  async manualToken(@Req() req: any, @Body('token') token: string) {
-    if (!token) return { success: false, message: 'Token is required' };
-    await this.paymentsService.saveManualToken(req.user.userId, token);
+  async manualToken(@Req() req: any, @Body() body: SaveManualTokenDto) {
+    await this.paymentsService.saveManualToken(req.user.userId, body.token);
     return { success: true };
   }
 }

@@ -4,6 +4,10 @@ import { Prisma, StaffRole, CommissionType } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { CreateEventDto } from './dto/create-event.dto';
+import { UpdateEventDto } from './dto/update-event.dto';
+import { UpdateBatchesDto } from './dto/update-batches.dto';
+import { AddStaffDto } from './dto/add-staff.dto';
 
 @Controller('events')
 export class EventsController {
@@ -48,14 +52,14 @@ export class EventsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ORGANIZER', 'ADMIN')
   @Post()
-  create(@Body() body: any, @Req() req: any) {
+  create(@Body() body: CreateEventDto, @Req() req: any) {
     return this.eventsService.create(req.user.userId, body);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ORGANIZER', 'ADMIN')
   @Put(':id')
-  update(@Param('id') id: string, @Body() body: any, @Req() req: any) {
+  update(@Param('id') id: string, @Body() body: UpdateEventDto, @Req() req: any) {
     return this.eventsService.update(id, req.user.userId, body);
   }
 
@@ -64,7 +68,7 @@ export class EventsController {
   @Put(':id/batches')
   updateBatches(
     @Param('id') eventId: string, 
-    @Body() body: { batches: any[] }, 
+    @Body() body: UpdateBatchesDto, 
     @Req() req: any
   ) {
     return this.eventsService.updateBatches(eventId, req.user.userId, body.batches);
@@ -89,7 +93,7 @@ export class EventsController {
   @Post(':id/staff')
   addStaff(
     @Param('id') eventId: string, 
-    @Body() body: { userId: string, role: StaffRole, commissionType?: CommissionType, commissionValue?: number }, 
+    @Body() body: AddStaffDto, 
     @Req() req: any
   ) {
     return this.eventsService.addStaff(eventId, req.user.userId, body.userId, body.role, body.commissionType, body.commissionValue);

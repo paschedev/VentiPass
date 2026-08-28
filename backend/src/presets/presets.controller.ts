@@ -3,6 +3,7 @@ import { PresetsService } from './presets.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { PresetDto } from './dto/preset.dto';
 
 @Controller('presets')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -16,7 +17,7 @@ export class PresetsController {
   }
 
   @Post()
-  create(@Req() req: any, @Body() body: { name: string; price: number }) {
+  create(@Req() req: any, @Body() body: PresetDto) {
     return this.presetsService.create(req.user.userId, body.name, body.price);
   }
 
@@ -24,7 +25,7 @@ export class PresetsController {
   update(
     @Param('id') id: string,
     @Req() req: any,
-    @Body() body: { name: string; price: number },
+    @Body() body: PresetDto,
   ) {
     return this.presetsService.update(id, req.user.userId, body.name, body.price);
   }
