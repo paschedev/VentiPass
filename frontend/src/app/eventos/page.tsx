@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Search, Calendar, MapPin } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { apiFetch } from '@/utils/api';
+import { optimizeCloudinaryUrl } from '@/utils/cloudinary';
 
 export default function EventosPage() {
   const [events, setEvents] = useState([]);
@@ -78,7 +79,7 @@ export default function EventosPage() {
               <Link href={`/eventos/${event.id}`} className="group block bg-black/40 border border-white/10 rounded-3xl overflow-hidden hover:border-indigo-500/50 transition-all hover:-translate-y-1 hover:shadow-2xl hover:shadow-indigo-500/10 h-full flex flex-col">
                 <div className="h-56 bg-gradient-to-br from-indigo-900/40 to-purple-900/40 relative overflow-hidden">
                   {event.imageUrl && (
-                    <img src={event.imageUrl} alt={event.title} className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity duration-500" />
+                    <img src={optimizeCloudinaryUrl(event.imageUrl, true)} alt={event.title} className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity duration-500" />
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent group-hover:from-black/60 transition-colors duration-500" />
                   <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-4 py-2 rounded-full text-xs font-bold text-white border border-white/10 flex items-center gap-2 shadow-lg">
