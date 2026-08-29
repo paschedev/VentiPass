@@ -66,12 +66,7 @@ export class AuthService {
       throw new ConflictException('El correo electrónico ya existe');
     }
 
-    if (data.role === 'ORGANIZER') {
-      const existingCuil = await this.userRepository.findOrganizerByCuil(data.cuil);
-      if (existingCuil) {
-        throw new ConflictException('El CUIL ingresado ya se encuentra registrado');
-      }
-    }
+
 
     const salt = await bcrypt.genSalt();
     const hashedPassword = await bcrypt.hash(data.password, salt);
@@ -86,14 +81,8 @@ export class AuthService {
     if (data.role === 'ORGANIZER') {
       userCreateInput.organizerProfile = {
         create: {
-          cuil: data.cuil,
-          country: data.country,
-          province: data.province,
-          city: data.city,
-          street: data.street,
-          number: data.number,
-          zipCode: data.zipCode,
           phone: data.phone,
+          companyName: data.companyName,
         }
       };
       

@@ -10,9 +10,6 @@ export class UserRepository {
     return this.prisma.user.findUnique({ where: { email } });
   }
 
-  async findOrganizerByCuil(cuil: string) {
-    return this.prisma.organizerProfile.findUnique({ where: { cuil } });
-  }
 
   async findById(id: string): Promise<User | null> {
     return this.prisma.user.findUnique({ where: { id } });
