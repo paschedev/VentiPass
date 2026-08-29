@@ -137,8 +137,9 @@ export default function RegistroPage() {
   }
 
   return (
-    <div className="min-h-screen flex bg-neutral-950 p-4 py-12 relative overflow-x-hidden">
-      <div className="w-full max-w-md bg-neutral-900 border border-white/5 p-8 rounded-3xl m-auto shadow-2xl z-10">
+    <div className="min-h-screen bg-neutral-950 relative overflow-x-hidden flex flex-col px-4">
+      <div className="flex-1 min-h-[6rem] md:min-h-[8rem]" />
+      <div className="w-full max-w-md bg-neutral-900 border border-white/5 p-8 rounded-3xl shadow-2xl z-10 mx-auto shrink-0">
         <div className="text-center mb-8">
           <Link href="/" className="font-outfit text-3xl font-bold tracking-tighter inline-block mb-2">
             Venti<span className="text-indigo-500">Pass</span>
@@ -270,6 +271,7 @@ export default function RegistroPage() {
           ¿Ya tenés cuenta? <Link href="/login" className="text-indigo-400 hover:text-indigo-300">Ingresá acá</Link>
         </div>
       </div>
+      <div className="flex-1 min-h-[4rem]" />
     </div>
   );
 }
