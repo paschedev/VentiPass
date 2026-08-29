@@ -18,7 +18,7 @@ export default function BottomNav() {
     }
   }, [pathname]); // refresh on navigation
 
-  const hiddenRoutes = ['/', '/login', '/registro'];
+  const hiddenRoutes = ['/', '/login', '/registro', '/password-recovery', '/reset-password'];
   if (hiddenRoutes.includes(pathname)) return null;
 
   let navItems: any[] = [];

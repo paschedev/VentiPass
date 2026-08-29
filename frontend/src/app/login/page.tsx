@@ -85,6 +85,9 @@ export default function LoginPage() {
           <div>
             <label className="block text-sm font-medium text-neutral-400 mb-1">Contraseña</label>
             <input name="password" type="password" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="••••••••" />
+            <div className="flex justify-end mt-2">
+              <Link href="/password-recovery" className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors">¿Olvidaste tu contraseña?</Link>
+            </div>
           </div>
 
           {mounted && process.env.NODE_ENV === 'production' && (
