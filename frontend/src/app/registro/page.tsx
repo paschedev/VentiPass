@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, ChevronDown } from 'lucide-react';
 import CustomSelect from '@/components/CustomSelect';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { apiFetch } from '@/utils/api';
+import { AsYouType, CountryCode } from 'libphonenumber-js';
 
 export default function RegistroPage() {
   const router = useRouter();
@@ -16,25 +17,61 @@ export default function RegistroPage() {
   const [captchaToken, setCaptchaToken] = useState<string>('');
   const [captchaError, setCaptchaError] = useState(false);
   const [isOrganizer, setIsOrganizer] = useState(false);
-  const [country, setCountry] = useState('');
-  const [province, setProvince] = useState('');
-  const [cuil, setCuil] = useState('');
+  const [phonePrefix, setPhonePrefix] = useState('+54');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [isPhoneDropdownOpen, setIsPhoneDropdownOpen] = useState(false);
+  const [companyName, setCompanyName] = useState('');
   const [mounted, setMounted] = useState(false);
+  
+  const phoneDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
+    
+    const handleClickOutside = (event: MouseEvent) => {
+      if (phoneDropdownRef.current && !phoneDropdownRef.current.contains(event.target as Node)) {
+        setIsPhoneDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleCuilChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value.replace(/\D/g, '');
-    let formatted = val;
-    if (val.length > 2) {
-      formatted = val.slice(0, 2) + '-' + val.slice(2);
+  const prefixes = [
+    { code: "+54", country: "ar", label: "AR" },
+    { code: "+598", country: "uy", label: "UY" },
+    { code: "+56", country: "cl", label: "CL" },
+    { code: "+55", country: "br", label: "BR" },
+    { code: "+51", country: "pe", label: "PE" },
+    { code: "+52", country: "mx", label: "MX" },
+    { code: "+57", country: "co", label: "CO" },
+    { code: "+34", country: "es", label: "ES" },
+    { code: "+1", country: "us", label: "US" }
+  ];
+  const selectedPrefix = prefixes.find(p => p.code === phonePrefix) || prefixes[0];
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Si borró todo, limpiar
+    if (!e.target.value) {
+      setPhoneNumber('');
+      return;
     }
-    if (val.length > 10) {
-      formatted = formatted.slice(0, 11) + '-' + val.slice(10, 11);
-    }
-    setCuil(formatted);
+    // Formatear al vuelo según el país seleccionado
+    const formatter = new AsYouType(selectedPrefix.country.toUpperCase() as CountryCode);
+    const formatted = formatter.input(e.target.value);
+    setPhoneNumber(formatted);
+  };
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const start = e.target.selectionStart;
+    const formatted = e.target.value
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+    
+    e.target.value = formatted;
+    // Restaurar cursor para no arruinar la UX si edita en el medio
+    e.target.setSelectionRange(start, start);
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -59,14 +96,10 @@ export default function RegistroPage() {
     };
 
     if (isOrganizer) {
-      payload.cuil = formData.get('cuil');
-      payload.country = formData.get('country');
-      payload.province = formData.get('province');
-      payload.city = formData.get('city');
-      payload.street = formData.get('street');
-      payload.number = formData.get('number');
-      payload.zipCode = formData.get('zipCode');
-      payload.phone = formData.get('phone');
+      payload.phone = `${phonePrefix}${phoneNumber}`;
+      if (companyName.trim()) {
+        payload.companyName = companyName.trim();
+      }
     }
 
     try {
@@ -119,111 +152,94 @@ export default function RegistroPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-neutral-400 mb-1">Nombre</label>
-              <input name="firstName" type="text" spellCheck="false" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Juan" />
+              <input name="firstName" type="text" maxLength={16} onChange={handleNameChange} spellCheck="false" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Juan" />
             </div>
             <div>
               <label className="block text-sm font-medium text-neutral-400 mb-1">Apellido</label>
-              <input name="lastName" type="text" spellCheck="false" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Pérez" />
+              <input name="lastName" type="text" maxLength={16} onChange={handleNameChange} spellCheck="false" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Pérez" />
             </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-neutral-400 mb-1">Email</label>
-            <input name="email" type="email" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="tucorreo@ejemplo.com" />
+            <input name="email" type="email" maxLength={38} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="tucorreo@ejemplo.com" />
           </div>
           <div>
             <label className="block text-sm font-medium text-neutral-400 mb-1">Contraseña</label>
-            <input name="password" type="password" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="••••••••" />
+            <input name="password" type="password" maxLength={32} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="••••••••" />
           </div>
 
           <div className="flex items-center gap-3 bg-white/5 border border-white/10 p-4 rounded-xl mt-4">
             <input type="checkbox" id="isOrganizer" name="isOrganizer" checked={isOrganizer} onChange={(e) => setIsOrganizer(e.target.checked)} className="w-5 h-5 accent-indigo-500 rounded cursor-pointer" />
             <label htmlFor="isOrganizer" className="text-sm font-medium text-white cursor-pointer select-none">
-              Quiero organizar eventos (Perfil Creador)
+              Soy productor / organizador
             </label>
           </div>
 
           {isOrganizer && (
-            <div className="space-y-4 pt-4 border-t border-white/10 mt-4">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-4 pt-4 border-t border-white/10 mt-4 animate-in fade-in slide-in-from-top-4 duration-300">
+              <div className="grid grid-cols-1 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-neutral-400 mb-1">CUIL</label>
-                  <input name="cuil" type="text" value={cuil} onChange={handleCuilChange} maxLength={13} pattern="\d{2}-\d{8}-\d{1}" title="El formato debe ser XX-XXXXXXXX-X" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="20-12345678-9" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-neutral-400 mb-1">Teléfono</label>
-                  <input name="phone" type="text" pattern="^\+?[0-9\s\-]{8,20}$" title="Debe contener entre 8 y 20 números, permitiendo espacios, guiones y un + al inicio" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="+54 9 11..." />
-                </div>
-              </div>
+                  <label className="block text-sm font-medium text-neutral-400 mb-1">Teléfono Móvil / WhatsApp</label>
+                  <div className="flex bg-white/5 border border-white/10 rounded-xl focus-within:border-indigo-500 focus-within:bg-white/10 transition-all shadow-inner relative">
+                    <div className="w-[120px] border-r border-white/10 flex-shrink-0 bg-transparent relative" ref={phoneDropdownRef}>
+                      <button
+                        type="button"
+                        onClick={() => setIsPhoneDropdownOpen(!isPhoneDropdownOpen)}
+                        className="w-full h-full min-h-[48px] flex items-center justify-between px-3 py-3 bg-transparent text-sm text-white focus:outline-none cursor-pointer hover:bg-white/5 rounded-l-xl"
+                      >
+                        <div className="flex items-center gap-2">
+                          <img src={`https://flagcdn.com/w20/${selectedPrefix.country}.png`} alt={selectedPrefix.label} className="w-5 h-auto rounded-[2px]" />
+                          <span>{selectedPrefix.code}</span>
+                        </div>
+                        <ChevronDown className={`w-3 h-3 text-neutral-400 transition-transform ${isPhoneDropdownOpen ? 'rotate-180' : ''}`} />
+                      </button>
 
-              <div className="grid grid-cols-2 gap-4">
+                      {isPhoneDropdownOpen && (
+                        <div className="absolute top-full left-0 mt-1 w-48 bg-neutral-900 border border-white/10 rounded-xl shadow-2xl z-50 py-2 max-h-48 overflow-y-auto custom-scrollbar">
+                          {prefixes.map((pref) => (
+                            <button
+                              key={pref.code}
+                              type="button"
+                              onClick={() => {
+                                setPhonePrefix(pref.code);
+                                setIsPhoneDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-4 py-2 text-sm flex items-center gap-3 transition-colors ${
+                                phonePrefix === pref.code ? 'bg-indigo-600 text-white' : 'text-neutral-300 hover:bg-white/5 hover:text-white'
+                              }`}
+                            >
+                              <img src={`https://flagcdn.com/w20/${pref.country}.png`} alt={pref.label} className="w-5 h-auto rounded-[2px]" />
+                              <span className="w-8 text-neutral-400">{pref.label}</span>
+                              <span className="font-medium">{pref.code}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <input 
+                      name="phoneNumber" 
+                      type="tel" 
+                      maxLength={18}
+                      value={phoneNumber}
+                      onChange={handlePhoneChange}
+                      required 
+                      className="w-full bg-transparent px-4 py-3 text-white focus:outline-none placeholder-neutral-500 rounded-r-xl" 
+                      placeholder="11 2345 6789" 
+                    />
+                  </div>
+                </div>
                 <div>
-                  <label className="block text-sm font-medium text-neutral-400 mb-1">País</label>
-                  <CustomSelect
-                    name="country"
-                    value={country}
-                    onChange={setCountry}
-                    placeholder="País"
-                    options={[
-                      { value: "Argentina", label: "Argentina" },
-                      { value: "Uruguay", label: "Uruguay" },
-                      { value: "Chile", label: "Chile" }
-                    ]}
+                  <label className="block text-sm font-medium text-neutral-400 mb-1">Nombre de la Productora / Marca (Opcional)</label>
+                  <input 
+                    name="companyName" 
+                    type="text" 
+                    maxLength={50}
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    spellCheck="false" 
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" 
+                    placeholder="Ej: Producciones Norte, Studio 54" 
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-neutral-400 mb-1">Provincia</label>
-                  <CustomSelect
-                    name="province"
-                    value={province}
-                    onChange={setProvince}
-                    placeholder="Provincia"
-                    options={[
-                      { value: "Buenos Aires", label: "Buenos Aires" },
-                      { value: "Ciudad Autónoma de Buenos Aires", label: "CABA" },
-                      { value: "Catamarca", label: "Catamarca" },
-                      { value: "Chaco", label: "Chaco" },
-                      { value: "Chubut", label: "Chubut" },
-                      { value: "Córdoba", label: "Córdoba" },
-                      { value: "Corrientes", label: "Corrientes" },
-                      { value: "Entre Ríos", label: "Entre Ríos" },
-                      { value: "Formosa", label: "Formosa" },
-                      { value: "Jujuy", label: "Jujuy" },
-                      { value: "La Pampa", label: "La Pampa" },
-                      { value: "La Rioja", label: "La Rioja" },
-                      { value: "Mendoza", label: "Mendoza" },
-                      { value: "Misiones", label: "Misiones" },
-                      { value: "Neuquén", label: "Neuquén" },
-                      { value: "Río Negro", label: "Río Negro" },
-                      { value: "Salta", label: "Salta" },
-                      { value: "San Juan", label: "San Juan" },
-                      { value: "San Luis", label: "San Luis" },
-                      { value: "Santa Cruz", label: "Santa Cruz" },
-                      { value: "Santa Fe", label: "Santa Fe" },
-                      { value: "Santiago del Estero", label: "Santiago del Estero" },
-                      { value: "Tierra del Fuego", label: "Tierra del Fuego" },
-                      { value: "Tucumán", label: "Tucumán" }
-                    ]}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-neutral-400 mb-1">Localidad</label>
-                  <input name="city" type="text" spellCheck="false" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Ej: Rosario" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-neutral-400 mb-1">Cód. Postal</label>
-                  <input name="zipCode" type="text" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Ej: 2000" />
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-neutral-400 mb-1">Calle</label>
-                  <input name="street" type="text" spellCheck="false" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Ej: San Martín" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-neutral-400 mb-1">Altura</label>
-                  <input name="number" type="text" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="1234" />
                 </div>
               </div>
             </div>
