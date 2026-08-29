@@ -78,6 +78,22 @@ export class TicketsRepository {
     });
   }
 
+  async processCheckInTransaction(ticketId: string, scannerId: string, userAgent: string) {
+    return this.prisma.$transaction([
+      this.prisma.ticket.update({
+        where: { id: ticketId },
+        data: { status: 'USED', usedAt: new Date() },
+      }),
+      this.prisma.checkIn.create({
+        data: {
+          ticketId: ticketId,
+          scannerId: scannerId,
+          deviceInfo: userAgent || 'Unknown Device',
+        }
+      })
+    ]);
+  }
+
   async findEventStaff(eventId: string, userId: string, role: import('@prisma/client').StaffRole) {
     return this.prisma.eventStaff.findUnique({
       where: {

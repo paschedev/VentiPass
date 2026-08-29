@@ -13,3 +13,10 @@
 - **Soluciones Difíciles de Vulnerar:** Toda nueva implementación, refactorización o propuesta de código DEBE priorizar la adherencia a prácticas de código seguro rigurosas (basadas en estándares como OWASP Top 10), específicamente enfocándose en la prevención de IDOR (Broken Access Control), XSS, inyecciones (SQL/NoSQL) y configuraciones inseguras.
 - **Arquitectura Eficiente:** Implementa controles de acceso utilizando métodos que no generen código muerto o pérdida de rendimiento. Por ejemplo, al validar permisos de propiedad sobre un recurso, asegúrate de utilizar el usuario extraído de la sesión/token e inyectarlo directamente en la lógica de las consultas de base de datos (`where: { userId: currentUserId }`), evadiendo así ataques de enumeración (IDOR) sin duplicar consultas a la base de datos (una en un middleware/guard y otra en el controlador).
 - NUNCA introduzcas o sugieras código inseguro o abstracciones innecesarias si la solución puede resolverse de forma nativa e inquebrantable desde la raíz.
+
+# Reglas de Control de Versiones (Git)
+
+## Precaución en Entornos de Producción (Direct Push)
+- **Bloqueo de Push Directo:** Dado que cada push a la rama principal despliega automáticamente en producción, **queda estrictamente prohibido hacer push directo a la rama principal (`main` o `master`)** para cualquier desarrollo o refactorización.
+- **Workflow Obligatorio (Ramas):** Todo cambio, refactor o feature DEBE desarrollarse en una rama separada (ej. `refactor/arquitectura-backend` o `feat/validacion-dtos`).
+- **Verificación Pre-Merge:** Antes de fusionar (merge) la rama de trabajo hacia la principal y pushear, se DEBE verificar el correcto funcionamiento del proyecto en el entorno local. Los experimentos se hacen en ramas secundarias, nunca en producción.

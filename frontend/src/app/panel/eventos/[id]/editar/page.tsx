@@ -51,13 +51,19 @@ export default function EditarEventoPage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    // Validate image
+    if (!imageUrl) {
+      toast.error('La imagen (Flyer) del evento es obligatoria.');
+      return;
+    }
+
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
     const data = {
       title: formData.get('title'),
       description: formData.get('description'),
-      imageUrl: imageUrl || null,
+      imageUrl: imageUrl,
       youtubeLink: formData.get('youtubeLink') || null,
       startDate: new Date(formData.get('startDate') as string).toISOString(),
       endDate: new Date(formData.get('endDate') as string).toISOString(),

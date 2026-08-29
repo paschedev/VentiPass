@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import CustomSelect from '@/components/CustomSelect';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { apiFetch } from '@/utils/api';
+import { optimizeCloudinaryUrl } from '@/utils/cloudinary';
 
 const getYouTubeEmbedUrl = (url: string) => {
   if (!url) return null;
@@ -162,7 +163,7 @@ function EventContent() {
       <div className="bg-black/40 border border-white/10 rounded-3xl overflow-hidden">
         <div className="h-64 md:h-96 bg-gradient-to-br from-indigo-900/60 to-purple-900/60 relative flex items-end p-8 md:p-12 overflow-hidden">
           {event.imageUrl && (
-            <img src={event.imageUrl} alt={event.title} className="absolute inset-0 w-full h-full object-cover opacity-60" />
+            <img src={optimizeCloudinaryUrl(event.imageUrl, true)} alt={event.title} className="absolute inset-0 w-full h-full object-cover opacity-60" />
           )}
           <div className="absolute inset-0 bg-black/30 bg-gradient-to-t from-black/80 to-transparent" />
           <div className="relative z-10 w-full">

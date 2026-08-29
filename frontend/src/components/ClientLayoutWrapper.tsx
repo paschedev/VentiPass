@@ -15,7 +15,7 @@ if (typeof window !== 'undefined') {
 
 export default function ClientLayoutWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const hiddenRoutes = ['/', '/login', '/registro'];
+  const hiddenRoutes = ['/', '/login', '/registro', '/password-recovery', '/reset-password'];
 
   if (hiddenRoutes.includes(pathname)) {
     return <>{children}</>;
