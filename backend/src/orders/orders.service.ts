@@ -16,7 +16,19 @@ export class OrdersService {
 
   async createCheckoutSession(userId: string, items: { ticketTypeId: string; quantity: number }[], promoterId?: string) {
     // 1. Transaction to reserve stock and create order in PENDING status
-    const { order, mpItems, serviceFee, organizer } = await this.ordersRepository.createCheckoutOrderTransaction(userId, items, promoterId);
+    let order, mpItems, serviceFee, organizer;
+    try {
+      const result = await this.ordersRepository.createCheckoutOrderTransaction(userId, items, promoterId);
+      order = result.order;
+      mpItems = result.mpItems;
+      serviceFee = result.serviceFee;
+      organizer = result.organizer;
+    } catch (error: any) {
+      if (error.code === 'P2010' || error.message?.includes('check_stock_limits')) {
+        throw new BadRequestException('Se agotaron las entradas mientras procesabamos tu compra.');
+      }
+      throw error;
+    }
 
     // 2. Schedule expiration job (Queue doesn't hold the DB connection)
     await this.ordersQueue.add('expire-order', { orderId: order.id }, { delay: 10 * 60 * 1000 });
@@ -40,7 +52,16 @@ export class OrdersService {
 
   async createDevBypassOrder(userId: string, items: { ticketTypeId: string; quantity: number }[], promoterId?: string) {
     // 1. Transaction to reserve stock and create order in PENDING status
-    const { order, mpItems, serviceFee, organizer } = await this.ordersRepository.createCheckoutOrderTransaction(userId, items, promoterId);
+    let order;
+    try {
+      const result = await this.ordersRepository.createCheckoutOrderTransaction(userId, items, promoterId);
+      order = result.order;
+    } catch (error: any) {
+      if (error.code === 'P2010' || error.message?.includes('check_stock_limits')) {
+        throw new BadRequestException('Se agotaron las entradas mientras procesabamos tu compra.');
+      }
+      throw error;
+    }
 
     // 2. We don't schedule expiration because we will pay it immediately
 
