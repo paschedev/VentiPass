@@ -36,6 +36,9 @@ Thumbs.db
 
 # Agent Configs
 .agents/
-claude.md
+CLAUDE.md
 AGENTS.md
 GEMINI.md
+frontend/CLAUDE.md
+frontend/AGENTS.md
+frontend/GEMINI.md
