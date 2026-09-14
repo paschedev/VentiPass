@@ -109,8 +109,13 @@ function OrganizerDashboardContent() {
     
     const loadStats = async () => {
       try {
-        const data = await apiFetch('/events/organizer/stats').then(res => res.json());
-        setStats(data);
+        const res = await apiFetch('/events/organizer/stats');
+        if (res.ok) {
+          const data = await res.json();
+          setStats(data);
+        } else {
+          console.error('Error fetching stats: API returned status', res.status);
+        }
       } catch (err) {
         console.error('Error fetching stats:', err);
       }
