@@ -6,6 +6,16 @@ import Link from 'next/link';
 import { LogIn } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { apiFetch } from '@/utils/api';
+import { z } from 'zod';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+
+const loginSchema = z.object({
+  email: z.string().email("Correo electrónico inválido"),
+  password: z.string().min(1, "La contraseña es obligatoria"),
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
@@ -15,6 +25,19 @@ export default function LoginPage() {
   const [captchaError, setCaptchaError] = useState(false);
   const [mounted, setMounted] = useState(false);
 
+  const {
+    control,
+    handleSubmit,
+    formState: { errors }
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    mode: 'onChange',
+    defaultValues: {
+      email: '',
+      password: ''
+    }
+  });
+
   useEffect(() => {
     setMounted(true);
     if (window.location.search.includes('expired=1')) {
@@ -22,41 +45,36 @@ export default function LoginPage() {
     }
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const onSubmit = async (data: LoginFormValues) => {
     setLoading(true);
     setError('');
-
-    const formData = new FormData(e.currentTarget);
-    const email = formData.get('email')?.toString() || '';
-    const password = formData.get('password')?.toString() || '';
 
     try {
       const response = await apiFetch('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email, password, captchaToken }),
+        body: JSON.stringify({ email: data.email, password: data.password, captchaToken }),
       });
 
-      const data = await response.json();
+      const responseData = await response.json();
 
       if (response.ok) {
-        localStorage.setItem('token', data.access_token);
-        localStorage.setItem('user', JSON.stringify(data.user));
+        localStorage.setItem('token', responseData.access_token);
+        localStorage.setItem('user', JSON.stringify(responseData.user));
 
         const urlParams = new URLSearchParams(window.location.search);
         const callbackUrl = urlParams.get('callbackUrl');
 
         if (callbackUrl) {
           window.location.replace(callbackUrl);
-        } else if (data.user.role === 'ORGANIZER' || data.user.role === 'ADMIN') {
+        } else if (responseData.user.role === 'ORGANIZER' || responseData.user.role === 'ADMIN') {
           window.location.replace('/panel');
-        } else if (data.user.role === 'SCANNER') {
+        } else if (responseData.user.role === 'SCANNER') {
           window.location.replace('/panel/escanear');
         } else {
           window.location.replace('/panel/tickets');
         }
       } else {
-        setError(data.message || 'Credenciales inválidas');
+        setError(responseData.message || 'Credenciales inválidas');
       }
     } catch (err) {
       setError('Error de conexión con el servidor');
@@ -77,14 +95,40 @@ export default function LoginPage() {
 
         {error && <div className="mb-6 p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-sm text-center">{error}</div>}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div>
             <label className="block text-sm font-medium text-neutral-400 mb-1">Email</label>
-            <input name="email" type="email" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="tucorreo@ejemplo.com" />
+            <Controller
+              name="email"
+              control={control}
+              render={({ field }) => (
+                <input 
+                  {...field}
+                  type="email" 
+                  required 
+                  className={`w-full bg-white/5 border ${errors.email ? 'border-red-500' : 'border-white/10'} rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors`} 
+                  placeholder="tucorreo@ejemplo.com" 
+                />
+              )}
+            />
+            {errors.email && <span className="text-red-400 text-xs mt-1 block">{errors.email.message}</span>}
           </div>
           <div>
             <label className="block text-sm font-medium text-neutral-400 mb-1">Contraseña</label>
-            <input name="password" type="password" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="••••••••" />
+            <Controller
+              name="password"
+              control={control}
+              render={({ field }) => (
+                <input 
+                  {...field}
+                  type="password" 
+                  required 
+                  className={`w-full bg-white/5 border ${errors.password ? 'border-red-500' : 'border-white/10'} rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors`} 
+                  placeholder="••••••••" 
+                />
+              )}
+            />
+            {errors.password && <span className="text-red-400 text-xs mt-1 block">{errors.password.message}</span>}
             <div className="flex justify-end mt-2">
               <Link href="/password-recovery" className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors">¿Olvidaste tu contraseña?</Link>
             </div>
