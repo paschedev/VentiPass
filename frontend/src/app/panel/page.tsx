@@ -275,16 +275,18 @@ function OrganizerDashboardContent() {
     setSearchTerm('');
   };
 
-  const handleConnectMp = () => {
-    const userStr = localStorage.getItem('user');
-    const parsedUser = userStr ? JSON.parse(userStr) : null;
-    if (!parsedUser) return;
-    
-    const clientId = process.env.NEXT_PUBLIC_MP_CLIENT_ID;
-    const redirectUri = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/payments/oauth/callback`;
-    const authUrl = `https://auth.mercadopago.com/authorization?client_id=${clientId}&response_type=code&platform_id=mp&redirect_uri=${redirectUri}&state=${parsedUser.id}`;
-    
-    window.location.href = authUrl;
+  const handleConnectMp = async () => {
+    try {
+      const response = await apiFetch('/payments/oauth/link');
+      const data = await response.json();
+      if (response.ok && data.url) {
+        window.location.href = data.url;
+      } else {
+        toast.error(data.message || 'Error al generar link de MercadoPago');
+      }
+    } catch (err) {
+      toast.error('Error de conexión al servidor');
+    }
   };
 
   const handleCreateEventClick = () => {
@@ -608,7 +610,7 @@ function OrganizerDashboardContent() {
 
               <h2 className="text-2xl font-bold mb-2">Vincular Mercado Pago</h2>
               <p className="text-sm text-neutral-400 mb-6 leading-relaxed">
-                Al conectar tu cuenta de Mercado Pago autorizarás a VentiPass a procesar las ventas en tu nombre. El dinero del valor de tus entradas irá <strong>directamente a tu cuenta</strong> sin descuentos. El cargo por servicio de la plataforma se le cobra como un extra directamente al comprador final.
+                Al conectar tu cuenta de Mercado Pago autorizarás a NeoPass a procesar las ventas en tu nombre. El dinero del valor de tus entradas irá <strong>directamente a tu cuenta</strong> sin descuentos. El cargo por servicio de la plataforma se le cobra como un extra directamente al comprador final.
               </p>
               
               <button 

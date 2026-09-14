@@ -21,7 +21,16 @@ export class EventsService {
       // Fire and forget (no esperamos para no bloquear la respuesta)
       this.eventsRepository.incrementPromoterClicks(rppId).catch(err => console.error("Error tracking click", err));
     }
-    return this.eventsRepository.findOne(id);
+    const event = await this.eventsRepository.findOne(id);
+    if (!event) {
+      throw new BadRequestException('Evento no encontrado');
+    }
+    // RED TEAM FIX: IDOR on unpublished events. Only allow viewing if published.
+    // If organizers need preview, they should use a secured endpoint.
+    if (event.status !== 'PUBLISHED') {
+      throw new BadRequestException('El evento no está disponible públicamente');
+    }
+    return event;
   }
 
   async create(userId: string, data: any) {
@@ -111,7 +120,7 @@ export class EventsService {
         let orderRevenue = 0;
         order.orderItems.forEach(item => {
           if (eventIds.includes(item.ticketType.eventId)) {
-            // Organizer revenue is based on the ticket face value, without VentiPass fee
+            // Organizer revenue is based on the ticket face value, without NeoPass fee
             orderRevenue += item.quantity * Number(item.unitPrice);
           }
         });
@@ -156,7 +165,7 @@ export class EventsService {
 
     const user = await this.userRepository.findById(inviteeId);
     if (!user) {
-      throw new BadRequestException('Usuario no registrado. Pídele que se registre en VentiPass primero.');
+      throw new BadRequestException('Usuario no registrado. Pídele que se registre en NeoPass primero.');
     }
 
     // Verificar si ya existe para este rol específico

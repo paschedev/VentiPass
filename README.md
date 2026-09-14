@@ -1,9 +1,9 @@
-# VentiPass
+# NeoPass
 
 > Solución Full-Stack para gestión de eventos, venta de entradas y validación de accesos mediante QR.
 
 ## 🚀 Arquitectura
-VentiPass es un monorepo que contiene tanto el backend (API REST) como el frontend (Cliente Web). 
+NeoPass es un monorepo que contiene tanto el backend (API REST) como el frontend (Cliente Web). 
 
 ### Stack Tecnológico
 - **Frontend**: Next.js 16, React 19, TailwindCSS v4, Framer Motion.
@@ -27,8 +27,8 @@ VentiPass es un monorepo que contiene tanto el backend (API REST) como el fronte
 
 1. **Clonar el repositorio**
    ```bash
-   git clone https://github.com/paschedev/VentiPass.git
-   cd VentiPass
+   git clone https://github.com/paschedev/NeoPass.git
+   cd NeoPass
    ```
 
 2. **Levantar servicios de infraestructura**

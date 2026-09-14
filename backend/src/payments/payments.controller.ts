@@ -21,20 +21,43 @@ export class PaymentsController {
   @Get('oauth/callback')
   async oauthCallback(
     @Query('code') code: string,
-    @Query('state') userId: string,
+    @Query('state') stateToken: string,
     @Res() res: Response
   ) {
-    if (!code || !userId) {
-      return res.status(400).json({ message: 'Faltan parámetros code o state' });
+    if (!code || !stateToken) {
+      return res.redirect(`${process.env.FRONTEND_URL}/panel?mp_error=missing_params`);
     }
 
     try {
-      await this.paymentsService.exchangeOAuthCode(userId, code);
+      const jwt = require('jsonwebtoken');
+      const payload = jwt.verify(stateToken, process.env.JWT_SECRET || 'super-secret-jwt-key');
+      if (payload.purpose !== 'oauth_state' || !payload.sub) {
+        throw new Error('Invalid state token purpose');
+      }
+
+      await this.paymentsService.exchangeOAuthCode(payload.sub, code);
       // Redirect to frontend dashboard with success flag
       return res.redirect(`${process.env.FRONTEND_URL}/panel?mp_success=true`);
     } catch (error) {
       return res.redirect(`${process.env.FRONTEND_URL}/panel?mp_error=true`);
     }
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('oauth/link')
+  async getOauthLink(@Req() req: any) {
+    const jwt = require('jsonwebtoken');
+    const stateToken = jwt.sign(
+      { sub: req.user.userId, purpose: 'oauth_state' }, 
+      process.env.JWT_SECRET || 'super-secret-jwt-key', 
+      { expiresIn: '15m' }
+    );
+    
+    const clientId = process.env.MERCADOPAGO_CLIENT_ID;
+    const redirectUri = `${process.env.BACKEND_URL || 'http://localhost:3001'}/payments/oauth/callback`;
+    const url = `https://auth.mercadopago.com/authorization?client_id=${clientId}&response_type=code&platform_id=mp&redirect_uri=${redirectUri}&state=${stateToken}`;
+    
+    return { url };
   }
 
   @UseGuards(JwtAuthGuard)
