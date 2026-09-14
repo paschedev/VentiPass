@@ -11,7 +11,7 @@ export class OrdersRepository {
       let ticketAmount = 0;
       const mpItems = [];
       const orderItemsData = [];
-      let eventFeePercentage = 0.10;
+      let eventFeePercentage = 0.15;
       let organizer: any = null;
 
       for (const item of items) {
@@ -35,7 +35,7 @@ export class OrdersRepository {
           data: { reserved: { increment: item.quantity } },
         });
 
-        eventFeePercentage = Number(ticketType.event.wePassFeePercentage) / 100;
+        eventFeePercentage = Number(ticketType.event.neoPassFeePercentage) / 100;
 
         const itemTotal = Number(ticketType.price) * item.quantity;
         ticketAmount += itemTotal;

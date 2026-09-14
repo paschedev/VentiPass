@@ -41,7 +41,7 @@ export default function ConfiguracionPage() {
     if (!user) return;
     
     const clientId = process.env.NEXT_PUBLIC_MP_CLIENT_ID;
-    const redirectUri = `${process.env.NEXT_PUBLIC_REDIRECT_URI || 'http://localhost:3000/panel/configuracion'}`;
+    const redirectUri = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/payments/oauth/callback`;
     const authUrl = `https://auth.mercadopago.com/authorization?client_id=${clientId}&response_type=code&platform_id=mp&redirect_uri=${redirectUri}&state=${user.id}`;
     
     window.location.href = authUrl;
@@ -276,12 +276,13 @@ export default function ConfiguracionPage() {
               onClick={handleConnectMp}
               className="w-full bg-[#009EE3] hover:bg-[#0089C7] text-white py-4 rounded-full font-bold transition-all shadow-lg shadow-[#009EE3]/20 flex items-center justify-center gap-2 mb-6"
             >
-              Conectar con Mercado Pago (Producción)
+              Conectar con Mercado Pago
             </button>
             
             {/* DEVELOPMENT MODE: Manual Token Input */}
-            <div className="border border-white/10 rounded-2xl p-6 bg-black/20">
-              <h3 className="text-sm font-bold text-neutral-300 mb-2">Solo para Desarrollo (Test)</h3>
+            {process.env.NODE_ENV === 'development' && (
+              <div className="border border-white/10 rounded-2xl p-6 bg-black/20">
+                <h3 className="text-sm font-bold text-neutral-300 mb-2">Solo para Desarrollo (Test)</h3>
               <p className="text-xs text-neutral-500 mb-4">Ingresá tu "Access Token de Prueba" de Mercado Pago directamente para evitar la redirección OAuth mientras estamos en entorno local.</p>
               <div className="flex flex-col sm:flex-row gap-2">
                 <input 
@@ -300,6 +301,7 @@ export default function ConfiguracionPage() {
                 </button>
               </div>
             </div>
+            )}
           </div>
         )}
       </div>
