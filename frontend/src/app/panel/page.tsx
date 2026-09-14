@@ -615,10 +615,11 @@ function OrganizerDashboardContent() {
                 onClick={handleConnectMp}
                 className="w-full bg-[#009EE3] hover:bg-[#0089C7] text-white py-4 rounded-full font-bold transition-all shadow-lg shadow-[#009EE3]/20 flex items-center justify-center gap-2 mb-6"
               >
-                Conectar con Mercado Pago (Producción)
+                Conectar con Mercado Pago
               </button>
 
               {/* DEVELOPMENT MODE: Manual Token Input */}
+              {process.env.NODE_ENV === 'development' && (
               <div className="border border-white/10 rounded-2xl p-4 bg-black/20">
                 <h3 className="text-xs font-bold text-neutral-300 mb-2">Solo para Desarrollo (Test)</h3>
                 <div className="flex gap-2">
@@ -658,6 +659,7 @@ function OrganizerDashboardContent() {
                   </button>
                 </div>
               </div>
+              )}
             </motion.div>
           </div>
         )}
