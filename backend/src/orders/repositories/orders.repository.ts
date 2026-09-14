@@ -17,10 +17,31 @@ export class OrdersRepository {
       for (const item of items) {
         const ticketType = await tx.ticketType.findUnique({
           where: { id: item.ticketTypeId },
-          include: { event: { include: { organizer: true } } },
+          include: { 
+            event: { include: { organizer: true } },
+            batch: true 
+          },
         });
 
         if (!ticketType) throw new BadRequestException(`TicketType ${item.ticketTypeId} not found`);
+
+        const event = ticketType.event;
+        const now = new Date();
+
+        // Security / Lifecycle Checks
+        if (event.status !== 'PUBLISHED') {
+          throw new BadRequestException(`El evento no se encuentra activo.`);
+        }
+        if (event.endDate < now) {
+          throw new BadRequestException(`El evento ya ha finalizado.`);
+        }
+        if (ticketType.saleStart > now || ticketType.saleEnd < now) {
+          throw new BadRequestException(`La tanda de venta para este ticket no está activa en este momento.`);
+        }
+        // If it belongs to a batch, ensure the batch is PUBLISHED
+        if (ticketType.batchId && ticketType.batch?.status !== 'PUBLISHED') {
+          throw new BadRequestException(`El lote de entradas no está publicado.`);
+        }
         
         // Calculate available stock
         const availableStock = ticketType.stock - ticketType.sold - ticketType.reserved;
