@@ -4,10 +4,55 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { UserPlus, ChevronDown } from 'lucide-react';
-import CustomSelect from '@/components/CustomSelect';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { apiFetch } from '@/utils/api';
 import { AsYouType, CountryCode } from 'libphonenumber-js';
+import { z } from 'zod';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+
+const prefixes = [
+  { code: "+54", country: "ar", label: "AR" },
+  { code: "+598", country: "uy", label: "UY" },
+  { code: "+56", country: "cl", label: "CL" },
+  { code: "+55", country: "br", label: "BR" },
+  { code: "+51", country: "pe", label: "PE" },
+  { code: "+52", country: "mx", label: "MX" },
+  { code: "+57", country: "co", label: "CO" },
+  { code: "+34", country: "es", label: "ES" },
+  { code: "+1", country: "us", label: "US" }
+];
+
+const registerSchema = z.object({
+  firstName: z.string().min(2, "Mínimo 2 caracteres").max(16, "Máximo 16 caracteres"),
+  lastName: z.string().min(2, "Mínimo 2 caracteres").max(16, "Máximo 16 caracteres"),
+  email: z.string().email("Correo electrónico inválido").max(38, "Máximo 38 caracteres"),
+  password: z.string().min(8, "Mínimo 8 caracteres").max(32, "Máximo 32 caracteres"),
+  confirmPassword: z.string(),
+  isOrganizer: z.boolean(),
+  phonePrefix: z.string(),
+  phoneNumber: z.string().optional(),
+  companyName: z.string().max(50, "Máximo 50 caracteres").optional(),
+}).superRefine((data, ctx) => {
+  if (data.password !== data.confirmPassword) {
+    ctx.addIssue({
+      code: "custom",
+      message: "Las contraseñas no coinciden",
+      path: ["confirmPassword"]
+    });
+  }
+  if (data.isOrganizer) {
+    if (!data.phoneNumber || data.phoneNumber.length < 8) {
+      ctx.addIssue({
+        code: "custom",
+        message: "El número de teléfono es obligatorio",
+        path: ["phoneNumber"]
+      });
+    }
+  }
+});
+
+type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function RegistroPage() {
   const router = useRouter();
@@ -16,18 +61,39 @@ export default function RegistroPage() {
   const [success, setSuccess] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string>('');
   const [captchaError, setCaptchaError] = useState(false);
-  const [isOrganizer, setIsOrganizer] = useState(false);
-  const [phonePrefix, setPhonePrefix] = useState('+54');
-  const [phoneNumber, setPhoneNumber] = useState('');
   const [isPhoneDropdownOpen, setIsPhoneDropdownOpen] = useState(false);
-  const [companyName, setCompanyName] = useState('');
   const [mounted, setMounted] = useState(false);
   
   const phoneDropdownRef = useRef<HTMLDivElement>(null);
 
+  const {
+    control,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors }
+  } = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerSchema),
+    mode: 'onChange',
+    defaultValues: {
+      firstName: '',
+      lastName: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      isOrganizer: false,
+      phonePrefix: '+54',
+      phoneNumber: '',
+      companyName: ''
+    }
+  });
+
+  const isOrganizer = watch('isOrganizer');
+  const phonePrefix = watch('phonePrefix');
+  const selectedPrefix = prefixes.find(p => p.code === phonePrefix) || prefixes[0];
+
   useEffect(() => {
     setMounted(true);
-    
     const handleClickOutside = (event: MouseEvent) => {
       if (phoneDropdownRef.current && !phoneDropdownRef.current.contains(event.target as Node)) {
         setIsPhoneDropdownOpen(false);
@@ -37,31 +103,6 @@ export default function RegistroPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const prefixes = [
-    { code: "+54", country: "ar", label: "AR" },
-    { code: "+598", country: "uy", label: "UY" },
-    { code: "+56", country: "cl", label: "CL" },
-    { code: "+55", country: "br", label: "BR" },
-    { code: "+51", country: "pe", label: "PE" },
-    { code: "+52", country: "mx", label: "MX" },
-    { code: "+57", country: "co", label: "CO" },
-    { code: "+34", country: "es", label: "ES" },
-    { code: "+1", country: "us", label: "US" }
-  ];
-  const selectedPrefix = prefixes.find(p => p.code === phonePrefix) || prefixes[0];
-
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Si borró todo, limpiar
-    if (!e.target.value) {
-      setPhoneNumber('');
-      return;
-    }
-    // Formatear al vuelo según el país seleccionado
-    const formatter = new AsYouType(selectedPrefix.country.toUpperCase() as CountryCode);
-    const formatted = formatter.input(e.target.value);
-    setPhoneNumber(formatted);
-  };
-
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const start = e.target.selectionStart;
     const formatted = e.target.value
@@ -70,35 +111,26 @@ export default function RegistroPage() {
       .join(' ');
     
     e.target.value = formatted;
-    // Restaurar cursor para no arruinar la UX si edita en el medio
     e.target.setSelectionRange(start, start);
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const onSubmit = async (data: RegisterFormValues) => {
     setLoading(true);
     setError('');
 
-    const formData = new FormData(e.currentTarget);
-    const firstName = formData.get('firstName');
-    const lastName = formData.get('lastName');
-    const email = formData.get('email');
-    const password = formData.get('password') as string;
-    const isOrganizer = formData.get('isOrganizer') === 'on';
-
     const payload: any = {
-      firstName,
-      lastName,
-      email,
-      password,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      email: data.email,
+      password: data.password,
       captchaToken,
-      role: isOrganizer ? 'ORGANIZER' : 'CUSTOMER'
+      role: data.isOrganizer ? 'ORGANIZER' : 'CUSTOMER'
     };
 
-    if (isOrganizer) {
-      payload.phone = `${phonePrefix}${phoneNumber}`;
-      if (companyName.trim()) {
-        payload.companyName = companyName.trim();
+    if (data.isOrganizer) {
+      payload.phone = `${data.phonePrefix}${data.phoneNumber}`;
+      if (data.companyName?.trim()) {
+        payload.companyName = data.companyName.trim();
       }
     }
 
@@ -108,7 +140,7 @@ export default function RegistroPage() {
         body: JSON.stringify(payload),
       });
 
-      const data = await response.json();
+      const responseData = await response.json();
 
       if (response.ok) {
         setSuccess(true);
@@ -116,7 +148,7 @@ export default function RegistroPage() {
           router.push('/login');
         }, 2000);
       } else {
-        setError(data.message || 'Error al registrar el usuario');
+        setError(responseData.message || 'Error al registrar el usuario');
       }
     } catch (err) {
       setError('Error de conexión con el servidor');
@@ -149,28 +181,123 @@ export default function RegistroPage() {
 
         {error && <div className="mb-6 p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-sm text-center">{error}</div>}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-neutral-400 mb-1">Nombre</label>
-              <input name="firstName" type="text" maxLength={16} onChange={handleNameChange} spellCheck="false" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Juan" />
+              <Controller
+                name="firstName"
+                control={control}
+                render={({ field }) => (
+                  <input 
+                    {...field}
+                    type="text" 
+                    maxLength={16} 
+                    spellCheck="false" 
+                    className={`w-full bg-white/5 border ${errors.firstName ? 'border-red-500' : 'border-white/10'} rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors`} 
+                    placeholder="Juan" 
+                    onChange={(e) => {
+                      handleNameChange(e);
+                      field.onChange(e.target.value);
+                    }}
+                  />
+                )}
+              />
+              {errors.firstName && <span className="text-red-400 text-xs mt-1 block">{errors.firstName.message}</span>}
             </div>
             <div>
               <label className="block text-sm font-medium text-neutral-400 mb-1">Apellido</label>
-              <input name="lastName" type="text" maxLength={16} onChange={handleNameChange} spellCheck="false" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Pérez" />
+              <Controller
+                name="lastName"
+                control={control}
+                render={({ field }) => (
+                  <input 
+                    {...field}
+                    type="text" 
+                    maxLength={16} 
+                    spellCheck="false" 
+                    className={`w-full bg-white/5 border ${errors.lastName ? 'border-red-500' : 'border-white/10'} rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors`} 
+                    placeholder="Pérez"
+                    onChange={(e) => {
+                      handleNameChange(e);
+                      field.onChange(e.target.value);
+                    }}
+                  />
+                )}
+              />
+              {errors.lastName && <span className="text-red-400 text-xs mt-1 block">{errors.lastName.message}</span>}
             </div>
           </div>
+          
           <div>
             <label className="block text-sm font-medium text-neutral-400 mb-1">Email</label>
-            <input name="email" type="email" maxLength={38} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="tucorreo@ejemplo.com" />
+            <Controller
+              name="email"
+              control={control}
+              render={({ field }) => (
+                <input 
+                  {...field}
+                  type="email" 
+                  maxLength={38} 
+                  className={`w-full bg-white/5 border ${errors.email ? 'border-red-500' : 'border-white/10'} rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors`} 
+                  placeholder="tucorreo@ejemplo.com" 
+                />
+              )}
+            />
+            {errors.email && <span className="text-red-400 text-xs mt-1 block">{errors.email.message}</span>}
           </div>
+          
           <div>
             <label className="block text-sm font-medium text-neutral-400 mb-1">Contraseña</label>
-            <input name="password" type="password" maxLength={32} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="••••••••" />
+            <Controller
+              name="password"
+              control={control}
+              render={({ field }) => (
+                <input 
+                  {...field}
+                  type="password" 
+                  maxLength={32} 
+                  className={`w-full bg-white/5 border ${errors.password ? 'border-red-500' : 'border-white/10'} rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors`} 
+                  placeholder="••••••••" 
+                />
+              )}
+            />
+            {errors.password && <span className="text-red-400 text-xs mt-1 block">{errors.password.message}</span>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-neutral-400 mb-1">Confirmar Contraseña</label>
+            <Controller
+              name="confirmPassword"
+              control={control}
+              render={({ field }) => (
+                <input 
+                  {...field}
+                  type="password" 
+                  maxLength={32} 
+                  className={`w-full bg-white/5 border ${errors.confirmPassword ? 'border-red-500' : 'border-white/10'} rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors`} 
+                  placeholder="••••••••" 
+                />
+              )}
+            />
+            {errors.confirmPassword && <span className="text-red-400 text-xs mt-1 block">{errors.confirmPassword.message}</span>}
           </div>
 
           <div className="flex items-center gap-3 bg-white/5 border border-white/10 p-4 rounded-xl mt-4">
-            <input type="checkbox" id="isOrganizer" name="isOrganizer" checked={isOrganizer} onChange={(e) => setIsOrganizer(e.target.checked)} className="w-5 h-5 accent-indigo-500 rounded cursor-pointer" />
+            <Controller
+              name="isOrganizer"
+              control={control}
+              render={({ field: { value, onChange, ...field } }) => (
+                <input 
+                  {...field}
+                  type="checkbox" 
+                  id="isOrganizer" 
+                  checked={value}
+                  onChange={(e) => onChange(e.target.checked)}
+                  className="w-5 h-5 accent-indigo-500 rounded cursor-pointer" 
+                />
+              )}
+            />
             <label htmlFor="isOrganizer" className="text-sm font-medium text-white cursor-pointer select-none">
               Soy productor / organizador
             </label>
@@ -181,7 +308,7 @@ export default function RegistroPage() {
               <div className="grid grid-cols-1 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-neutral-400 mb-1">Teléfono Móvil / WhatsApp</label>
-                  <div className="flex bg-white/5 border border-white/10 rounded-xl focus-within:border-indigo-500 focus-within:bg-white/10 transition-all shadow-inner relative">
+                  <div className={`flex bg-white/5 border ${errors.phoneNumber ? 'border-red-500' : 'border-white/10'} rounded-xl focus-within:border-indigo-500 focus-within:bg-white/10 transition-all shadow-inner relative`}>
                     <div className="w-[120px] border-r border-white/10 flex-shrink-0 bg-transparent relative" ref={phoneDropdownRef}>
                       <button
                         type="button"
@@ -202,7 +329,7 @@ export default function RegistroPage() {
                               key={pref.code}
                               type="button"
                               onClick={() => {
-                                setPhonePrefix(pref.code);
+                                setValue('phonePrefix', pref.code, { shouldValidate: true });
                                 setIsPhoneDropdownOpen(false);
                               }}
                               className={`w-full text-left px-4 py-2 text-sm flex items-center gap-3 transition-colors ${
@@ -217,30 +344,49 @@ export default function RegistroPage() {
                         </div>
                       )}
                     </div>
-                    <input 
-                      name="phoneNumber" 
-                      type="tel" 
-                      maxLength={18}
-                      value={phoneNumber}
-                      onChange={handlePhoneChange}
-                      required 
-                      className="w-full bg-transparent px-4 py-3 text-white focus:outline-none placeholder-neutral-500 rounded-r-xl" 
-                      placeholder="11 2345 6789" 
+                    
+                    <Controller
+                      name="phoneNumber"
+                      control={control}
+                      render={({ field }) => (
+                        <input 
+                          {...field}
+                          type="tel" 
+                          maxLength={18}
+                          onChange={(e) => {
+                            if (!e.target.value) {
+                              field.onChange('');
+                              return;
+                            }
+                            const formatter = new AsYouType(selectedPrefix.country.toUpperCase() as CountryCode);
+                            const formatted = formatter.input(e.target.value);
+                            field.onChange(formatted);
+                          }}
+                          className="w-full bg-transparent px-4 py-3 text-white focus:outline-none placeholder-neutral-500 rounded-r-xl" 
+                          placeholder="11 2345 6789" 
+                        />
+                      )}
                     />
                   </div>
+                  {errors.phoneNumber && <span className="text-red-400 text-xs mt-1 block">{errors.phoneNumber.message}</span>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-neutral-400 mb-1">Nombre de la Productora / Marca (Opcional)</label>
-                  <input 
-                    name="companyName" 
-                    type="text" 
-                    maxLength={50}
-                    value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
-                    spellCheck="false" 
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" 
-                    placeholder="Ej: Producciones Norte, Studio 54" 
+                  <Controller
+                    name="companyName"
+                    control={control}
+                    render={({ field }) => (
+                      <input 
+                        {...field}
+                        type="text" 
+                        maxLength={50}
+                        spellCheck="false" 
+                        className={`w-full bg-white/5 border ${errors.companyName ? 'border-red-500' : 'border-white/10'} rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors`} 
+                        placeholder="Ej: Producciones Norte, Studio 54" 
+                      />
+                    )}
                   />
+                  {errors.companyName && <span className="text-red-400 text-xs mt-1 block">{errors.companyName.message}</span>}
                 </div>
               </div>
             </div>

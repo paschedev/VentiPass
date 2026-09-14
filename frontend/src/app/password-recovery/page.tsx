@@ -4,31 +4,48 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Send } from 'lucide-react';
 import { apiFetch } from '@/utils/api';
+import { z } from 'zod';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+
+const recoverySchema = z.object({
+  email: z.string().email("Correo electrónico inválido"),
+});
+
+type RecoveryFormValues = z.infer<typeof recoverySchema>;
 
 export default function PasswordRecoveryPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const {
+    control,
+    handleSubmit,
+    formState: { errors }
+  } = useForm<RecoveryFormValues>({
+    resolver: zodResolver(recoverySchema),
+    mode: 'onChange',
+    defaultValues: {
+      email: ''
+    }
+  });
+
+  const onSubmit = async (data: RecoveryFormValues) => {
     setLoading(true);
     setError('');
-    
-    const formData = new FormData(e.currentTarget);
-    const email = formData.get('email')?.toString() || '';
 
     try {
       const response = await apiFetch('/auth/forgot-password', {
         method: 'POST',
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: data.email }),
       });
 
       if (response.ok) {
         setSuccess(true);
       } else {
-        const data = await response.json();
-        setError(data.message || 'Error al intentar recuperar la contraseña');
+        const responseData = await response.json();
+        setError(responseData.message || 'Error al intentar recuperar la contraseña');
       }
     } catch (err) {
       setError('Error de conexión con el servidor');
@@ -68,16 +85,23 @@ export default function PasswordRecoveryPage() {
             </Link>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-neutral-400 mb-1">Email</label>
-              <input 
-                name="email" 
-                type="email" 
-                required 
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" 
-                placeholder="tucorreo@ejemplo.com" 
+              <Controller
+                name="email"
+                control={control}
+                render={({ field }) => (
+                  <input 
+                    {...field}
+                    type="email" 
+                    required 
+                    className={`w-full bg-white/5 border ${errors.email ? 'border-red-500' : 'border-white/10'} rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors`} 
+                    placeholder="tucorreo@ejemplo.com" 
+                  />
+                )}
               />
+              {errors.email && <span className="text-red-400 text-xs mt-1 block">{errors.email.message}</span>}
             </div>
 
             <button 
