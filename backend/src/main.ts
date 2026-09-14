@@ -14,6 +14,8 @@ async function bootstrap() {
       frontendUrl, 
       'https://neopass.com', 
       'https://www.neopass.com',
+      'https://ventipass.com',
+      'https://www.ventipass.com',
       'https://venti-pass.vercel.app',
       'http://localhost:3000', 
       'http://127.0.0.1:3000'
