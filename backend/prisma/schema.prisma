@@ -84,13 +84,13 @@ enum TicketCategory {
 }
 
 model User {
-  id           String      @id @default(uuid())
-  email        String      @unique
+  id           String   @id @default(uuid())
+  email        String   @unique
   passwordHash String
   name         String
-  role         UserRole    @default(CUSTOMER)
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @default(now()) @updatedAt
+  role         UserRole @default(CUSTOMER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
 
   // Mercado Pago
   mercadoPagoAccessToken String?
@@ -102,23 +102,23 @@ model User {
   passwordResetExpires DateTime?
 
   // Relations
-  orders       Order[]
-  tickets      Ticket[]    // Tickets currently owned by the user
-  checkIns     CheckIn[]   // Scans performed by this user
-  organizedEvents Event[]  @relation("EventOrganizer")
+  orders           Order[]
+  tickets          Ticket[] // Tickets currently owned by the user
+  checkIns         CheckIn[] // Scans performed by this user
+  organizedEvents  Event[]           @relation("EventOrganizer")
   organizerProfile OrganizerProfile?
-  eventStaff   EventStaff[]
-  ticketPresets TicketPreset[] @relation("OrganizerPresets")
-  notifications Notification[]
+  eventStaff       EventStaff[]
+  ticketPresets    TicketPreset[]    @relation("OrganizerPresets")
+  notifications    Notification[]
 }
 
 model OrganizerProfile {
-  id          String   @id @default(uuid())
+  id          String  @id @default(uuid())
   phone       String
   companyName String?
-  
-  userId      String   @unique
-  user        User     @relation(fields: [userId], references: [id])
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
 }
 
 model Event {
@@ -137,33 +137,37 @@ model Event {
   latitude      Float?
   longitude     Float?
 
-  imageUrl      String?
-  youtubeLink   String?
+  imageUrl    String?
+  youtubeLink String?
 
   neoPassFeePercentage Decimal @default(15.0) @map("wePassFeePercentage") @db.Decimal(5, 2)
 
   organizerId   String
-  organizer     User          @relation("EventOrganizer", fields: [organizerId], references: [id])
+  organizer     User           @relation("EventOrganizer", fields: [organizerId], references: [id])
   ticketBatches TicketBatch[]
   ticketTypes   TicketType[]
   discountCodes DiscountCode[]
   staff         EventStaff[]
   notifications Notification[]
+
+  @@index([organizerId])
 }
 
 model TicketBatch {
-  id                         String      @id @default(uuid())
+  id                         String       @id @default(uuid())
   eventId                    String
-  event                      Event       @relation(fields: [eventId], references: [id])
-  name                       String      // ej: "Preventa", "Lote 1"
-  status                     BatchStatus @default(DRAFT)
+  event                      Event        @relation(fields: [eventId], references: [id])
+  name                       String // ej: "Preventa", "Lote 1"
+  status                     BatchStatus  @default(DRAFT)
   publishAt                  DateTime?
   closeAt                    DateTime?
-  publishWhenPreviousSoldOut Boolean     @default(false)
-  showTimer                  Boolean     @default(false)
-  createdAt                  DateTime    @default(now())
-  updatedAt                  DateTime    @updatedAt
+  publishWhenPreviousSoldOut Boolean      @default(false)
+  showTimer                  Boolean      @default(false)
+  createdAt                  DateTime     @default(now())
+  updatedAt                  DateTime     @updatedAt
   ticketTypes                TicketType[]
+
+  @@index([eventId])
 }
 
 model TicketType {
@@ -182,60 +186,73 @@ model TicketType {
   saleStart   DateTime
   saleEnd     DateTime
 
-  tickets     Ticket[]
-  orderItems  OrderItem[]
+  tickets    Ticket[]
+  orderItems OrderItem[]
+
+  @@index([eventId])
+  @@index([batchId])
 }
 
 model TicketPreset {
-  id          String   @id @default(uuid())
+  id          String  @id @default(uuid())
   organizerId String
   name        String
-  price       Decimal  @db.Decimal(10, 2)
-  
-  organizer   User     @relation("OrganizerPresets", fields: [organizerId], references: [id])
+  price       Decimal @db.Decimal(10, 2)
+
+  organizer User @relation("OrganizerPresets", fields: [organizerId], references: [id])
+
+  @@index([organizerId])
 }
 
 model DiscountCode {
-  id          String      @id @default(uuid())
-  code        String      @unique
-  percentage  Int
-  maxUses     Int
-  usedCount   Int         @default(0)
-  expiresAt   DateTime
+  id         String   @id @default(uuid())
+  code       String   @unique
+  percentage Int
+  maxUses    Int
+  usedCount  Int      @default(0)
+  expiresAt  DateTime
 
-  eventId     String
-  event       Event       @relation(fields: [eventId], references: [id])
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id])
+
+  @@index([eventId])
 }
 
 model Order {
-  id          String      @id @default(uuid())
-  status      OrderStatus @default(PENDING)
-  totalAmount Decimal     @db.Decimal(10, 2)
-  serviceFee  Decimal     @default(0) @db.Decimal(10, 2)
-  ticketAmount Decimal    @default(0) @db.Decimal(10, 2)
-  createdAt   DateTime    @default(now())
-  expiresAt   DateTime
+  id           String      @id @default(uuid())
+  status       OrderStatus @default(PENDING)
+  totalAmount  Decimal     @db.Decimal(10, 2)
+  serviceFee   Decimal     @default(0) @db.Decimal(10, 2)
+  ticketAmount Decimal     @default(0) @db.Decimal(10, 2)
+  createdAt    DateTime    @default(now())
+  expiresAt    DateTime
 
-  userId      String
-  user        User        @relation(fields: [userId], references: [id])
-  
-  promoterId  String?
-  promoter    EventStaff? @relation("OrderPromoter", fields: [promoterId], references: [id])
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
 
-  payment     Payment?
-  orderItems  OrderItem[]
-  tickets     Ticket[]
+  promoterId String?
+  promoter   EventStaff? @relation("OrderPromoter", fields: [promoterId], references: [id])
+
+  payment    Payment?
+  orderItems OrderItem[]
+  tickets    Ticket[]
+
+  @@index([userId])
+  @@index([promoterId])
 }
 
 model OrderItem {
-  id           String     @id @default(uuid())
-  quantity     Int
-  unitPrice    Decimal    @db.Decimal(10, 2)
+  id        String  @id @default(uuid())
+  quantity  Int
+  unitPrice Decimal @db.Decimal(10, 2)
 
   orderId      String
   order        Order      @relation(fields: [orderId], references: [id])
   ticketTypeId String
   ticketType   TicketType @relation(fields: [ticketTypeId], references: [id])
+
+  @@index([orderId])
+  @@index([ticketTypeId])
 }
 
 model Payment {
@@ -246,77 +263,89 @@ model Payment {
   amount            Decimal         @db.Decimal(10, 2)
   createdAt         DateTime        @default(now())
 
-  orderId           String          @unique
-  order             Order           @relation(fields: [orderId], references: [id])
+  orderId String @unique
+  order   Order  @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
 }
 
 model Ticket {
-  id        String       @id @default(uuid())
-  qrCode    String       @unique @default(uuid())
-  status    TicketStatus @default(VALID)
-  isGuestList Boolean    @default(false)
-  createdAt DateTime     @default(now())
-  usedAt    DateTime?
+  id          String       @id @default(uuid())
+  qrCode      String       @unique @default(uuid())
+  status      TicketStatus @default(VALID)
+  isGuestList Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  usedAt      DateTime?
 
   orderId      String?
   order        Order?     @relation(fields: [orderId], references: [id])
   ticketTypeId String
   ticketType   TicketType @relation(fields: [ticketTypeId], references: [id])
   checkIn      CheckIn?
-  
-  userId       String?    // Current owner of the ticket (for transfers)
-  user         User?      @relation(fields: [userId], references: [id])
+
+  userId String? // Current owner of the ticket (for transfers)
+  user   User?   @relation(fields: [userId], references: [id])
+
+  @@index([orderId])
+  @@index([ticketTypeId])
+  @@index([userId])
 }
 
 model CheckIn {
-  id          String   @id @default(uuid())
-  checkedAt   DateTime @default(now())
-  deviceInfo  String?
+  id         String   @id @default(uuid())
+  checkedAt  DateTime @default(now())
+  deviceInfo String?
 
-  ticketId    String   @unique
-  ticket      Ticket   @relation(fields: [ticketId], references: [id])
-  scannerId   String
-  scanner     User     @relation(fields: [scannerId], references: [id])
+  ticketId  String @unique
+  ticket    Ticket @relation(fields: [ticketId], references: [id])
+  scannerId String
+  scanner   User   @relation(fields: [scannerId], references: [id])
+
+  @@index([ticketId])
+  @@index([scannerId])
 }
 
 model EventStaff {
-  id              String          @id @default(uuid())
-  eventId         String
-  userId          String
-  role            StaffRole
-  status          StaffStatus     @default(PENDING)
-  
+  id      String      @id @default(uuid())
+  eventId String
+  userId  String
+  role    StaffRole
+  status  StaffStatus @default(PENDING)
+
   // Especifico para Promotores (RPP)
   commissionType  CommissionType?
   commissionValue Decimal?        @db.Decimal(10, 2)
   totalEarned     Decimal         @default(0) @db.Decimal(10, 2)
   clicks          Int             @default(0)
   totalPaid       Decimal         @default(0) @db.Decimal(10, 2)
-  
-  event           Event           @relation(fields: [eventId], references: [id])
-  user            User            @relation(fields: [userId], references: [id])
-  orders          Order[]         @relation("OrderPromoter")
-  
-  @@unique([eventId, userId, role])
-}
 
+  event  Event   @relation(fields: [eventId], references: [id])
+  user   User    @relation(fields: [userId], references: [id])
+  orders Order[] @relation("OrderPromoter")
+
+  @@unique([eventId, userId, role])
+  @@index([eventId])
+  @@index([userId])
+}
 
 model Notification {
-  id          String           @id @default(uuid())
-  userId      String
-  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  type        NotificationType
-  title       String
-  message     String
-  isRead      Boolean          @default(false)
-  
-  eventId     String?
-  event       Event?           @relation(fields: [eventId], references: [id], onDelete: SetNull)
-  
-  actionUrl   String?
-  metadata    Json?
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  createdAt   DateTime         @default(now())
+  type    NotificationType
+  title   String
+  message String
+  isRead  Boolean          @default(false)
+
+  eventId String?
+  event   Event?  @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  actionUrl String?
+  metadata  Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([eventId])
 }
-
