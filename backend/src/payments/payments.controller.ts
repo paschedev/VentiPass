@@ -2,6 +2,9 @@ import { Controller, Post, Body, Req, Headers, Get, Query, Res, UseGuards } from
 import type { Response } from 'express';
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
+import { UserRole } from '@prisma/client';
 import { SaveManualTokenDto } from './dto/save-manual-token.dto';
 
 @Controller('payments')
@@ -43,7 +46,8 @@ export class PaymentsController {
     }
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ORGANIZER)
   @Get('oauth/link')
   async getOauthLink(@Req() req: any) {
     const jwt = require('jsonwebtoken');
@@ -60,7 +64,8 @@ export class PaymentsController {
     return { url };
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ORGANIZER)
   @Post('oauth/manual')
   async manualToken(@Req() req: any, @Body() body: SaveManualTokenDto) {
     await this.paymentsService.saveManualToken(req.user.userId, body.token);
