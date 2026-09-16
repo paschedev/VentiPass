@@ -248,68 +248,70 @@ export default function ConfiguracionPage() {
       </div>
 
       {/* Mercado Pago Section */}
-      <div className="bg-white/5 border border-white/10 rounded-3xl p-8 mb-8">
-        <div className="flex items-center gap-4 mb-6">
-          <div className="w-12 h-12 bg-indigo-500/20 rounded-xl flex items-center justify-center text-indigo-400">
-            <Link2 className="w-6 h-6" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-white">Mercado Pago</h2>
-            <p className="text-neutral-400 text-sm">Gestiona tu token de cobro de entradas</p>
-          </div>
-        </div>
-
-        {hasLinkedMp ? (
-          <div className="mb-6 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
-            <p className="text-emerald-400 text-sm font-medium flex items-center gap-2 mb-4">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
-              Ya tienes una cuenta de Mercado Pago vinculada.
-            </p>
-            <button 
-              onClick={handleConnectMp}
-              className="w-full sm:w-auto bg-white/5 hover:bg-white/10 text-white px-6 py-3 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2"
-            >
-              Cambiar Cuenta Vinculada
-            </button>
-          </div>
-        ) : (
-          <div className="mb-6">
-            <p className="text-sm text-neutral-400 mb-6 leading-relaxed">
-              Al conectar tu cuenta de Mercado Pago autorizarás a NeoPass a procesar las ventas en tu nombre. El dinero del valor de tus entradas irá <strong>directamente a tu cuenta</strong> sin descuentos. El cargo por servicio de la plataforma se le cobra como un extra directamente al comprador final.
-            </p>
-            <button 
-              onClick={handleConnectMp}
-              className="w-full bg-[#009EE3] hover:bg-[#0089C7] text-white py-4 rounded-full font-bold transition-all shadow-lg shadow-[#009EE3]/20 flex items-center justify-center gap-2 mb-6"
-            >
-              Conectar con Mercado Pago
-            </button>
-            
-            {/* DEVELOPMENT MODE: Manual Token Input */}
-            {process.env.NODE_ENV === 'development' && (
-              <div className="border border-white/10 rounded-2xl p-6 bg-black/20">
-                <h3 className="text-sm font-bold text-neutral-300 mb-2">Solo para Desarrollo (Test)</h3>
-              <p className="text-xs text-neutral-500 mb-4">Ingresá tu "Access Token de Prueba" de Mercado Pago directamente para evitar la redirección OAuth mientras estamos en entorno local.</p>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <input 
-                  type="text" 
-                  placeholder="APP_USR-..." 
-                  value={manualToken}
-                  onChange={(e) => setManualToken(e.target.value)}
-                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500"
-                />
-                <button 
-                  onClick={handleManualTokenSubmit}
-                  disabled={!manualToken.trim() || isSavingManual}
-                  className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white px-6 py-3 rounded-xl font-bold transition-colors text-sm"
-                >
-                  {isSavingManual ? 'Vinculando...' : 'Vincular'}
-                </button>
-              </div>
+      {user?.role === 'ORGANIZER' && (
+        <div className="bg-white/5 border border-white/10 rounded-3xl p-8 mb-8">
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-12 h-12 bg-indigo-500/20 rounded-xl flex items-center justify-center text-indigo-400">
+              <Link2 className="w-6 h-6" />
             </div>
-            )}
+            <div>
+              <h2 className="text-xl font-bold text-white">Mercado Pago</h2>
+              <p className="text-neutral-400 text-sm">Gestiona tu token de cobro de entradas</p>
+            </div>
           </div>
-        )}
-      </div>
+
+          {hasLinkedMp ? (
+            <div className="mb-6 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+              <p className="text-emerald-400 text-sm font-medium flex items-center gap-2 mb-4">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+                Ya tienes una cuenta de Mercado Pago vinculada.
+              </p>
+              <button 
+                onClick={handleConnectMp}
+                className="w-full sm:w-auto bg-white/5 hover:bg-white/10 text-white px-6 py-3 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                Cambiar Cuenta Vinculada
+              </button>
+            </div>
+          ) : (
+            <div className="mb-6">
+              <p className="text-sm text-neutral-400 mb-6 leading-relaxed">
+                Al conectar tu cuenta de Mercado Pago autorizarás a NeoPass a procesar las ventas en tu nombre. El dinero del valor de tus entradas irá <strong>directamente a tu cuenta</strong> sin descuentos. El cargo por servicio de la plataforma se le cobra como un extra directamente al comprador final.
+              </p>
+              <button 
+                onClick={handleConnectMp}
+                className="w-full bg-[#009EE3] hover:bg-[#0089C7] text-white py-4 rounded-full font-bold transition-all shadow-lg shadow-[#009EE3]/20 flex items-center justify-center gap-2 mb-6"
+              >
+                Conectar con Mercado Pago
+              </button>
+              
+              {/* DEVELOPMENT MODE: Manual Token Input */}
+              {process.env.NODE_ENV === 'development' && (
+                <div className="border border-white/10 rounded-2xl p-6 bg-black/20">
+                  <h3 className="text-sm font-bold text-neutral-300 mb-2">Solo para Desarrollo (Test)</h3>
+                  <p className="text-xs text-neutral-500 mb-4">Ingresá tu "Access Token de Prueba" de Mercado Pago directamente para evitar la redirección OAuth mientras estamos en entorno local.</p>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input 
+                      type="text" 
+                      placeholder="APP_USR-..." 
+                      value={manualToken}
+                      onChange={(e) => setManualToken(e.target.value)}
+                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500"
+                    />
+                    <button 
+                      onClick={handleManualTokenSubmit}
+                      disabled={!manualToken.trim() || isSavingManual}
+                      className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white px-6 py-3 rounded-xl font-bold transition-colors text-sm"
+                    >
+                      {isSavingManual ? 'Vinculando...' : 'Vincular'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Ticket Presets Section */}
       {user?.role === 'ORGANIZER' && (
