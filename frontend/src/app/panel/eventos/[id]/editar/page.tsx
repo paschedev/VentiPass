@@ -97,14 +97,38 @@ export default function EditarEventoPage() {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Validación de formato
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Formato no permitido. Solo JPG, PNG, WebP o AVIF.');
+      return;
+    }
+
+    // Validación de peso máximo: 10MB
+    const MAX_SIZE_MB = 10;
+    const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
+    
+    if (file.size > MAX_SIZE_BYTES) {
+      toast.error(`La imagen supera el límite máximo de ${MAX_SIZE_MB}MB.`);
+      return;
+    }
     
     const toastId = toast.loading('Subiendo imagen...');
     try {
+      // 1. Obtener firma del backend
+      const signRes = await apiFetch('/media/presign');
+      if (!signRes.ok) throw new Error('Error de autorización para subir archivos');
+      const { signature, timestamp, cloudName, apiKey, uploadPreset } = await signRes.json();
+
+      // 2. Armar FormData para Cloudinary
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'neopass_flyers');
+      formData.append('api_key', apiKey);
+      formData.append('timestamp', timestamp.toString());
+      formData.append('signature', signature);
+      formData.append('upload_preset', uploadPreset);
       
-      const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'calji3rf';
       const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
         method: 'POST',
         body: formData,
@@ -117,9 +141,9 @@ export default function EditarEventoPage() {
       } else {
         throw new Error(data.error?.message || 'Error al subir');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error('Error al subir la imagen', { id: toastId });
+      toast.error(error.message || 'Error al subir la imagen', { id: toastId });
     }
   };
 
