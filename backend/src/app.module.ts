@@ -11,6 +11,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { AuthModule } from './auth/auth.module';
 import { PresetsModule } from './presets/presets.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { MediaModule } from './media/media.module';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
@@ -48,6 +49,7 @@ if (process.env.REDIS_URL) {
     AuthModule,
     PresetsModule,
     NotificationsModule,
+    MediaModule,
     ScheduleModule.forRoot()
   ],
   controllers: [AppController],

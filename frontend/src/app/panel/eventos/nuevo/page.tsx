@@ -25,7 +25,7 @@ export default function CrearEventoPage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
+
     // Validate batches
     const invalidBatch = batches.find(b => b.status === 'SCHEDULED' && !b.publishAt);
     if (invalidBatch) {
@@ -80,19 +80,43 @@ export default function CrearEventoPage() {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
+    // Validación de formato
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Formato no permitido. Solo JPG, PNG, WebP o AVIF.');
+      return;
+    }
+
+    // Validación de peso máximo: 10MB
+    const MAX_SIZE_MB = 10;
+    const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
+
+    if (file.size > MAX_SIZE_BYTES) {
+      toast.error(`La imagen supera el límite máximo de ${MAX_SIZE_MB}MB.`);
+      return;
+    }
+
     const toastId = toast.loading('Subiendo imagen...');
     try {
+      // 1. Obtener firma del backend
+      const signRes = await apiFetch('/media/presign');
+      if (!signRes.ok) throw new Error('Error de autorización para subir archivos');
+      const { signature, timestamp, cloudName, apiKey, uploadPreset } = await signRes.json();
+
+      // 2. Armar FormData para Cloudinary
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'neopass_flyers');
-      
-      const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'calji3rf';
+      formData.append('api_key', apiKey);
+      formData.append('timestamp', timestamp.toString());
+      formData.append('signature', signature);
+      formData.append('upload_preset', uploadPreset);
+
       const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
         method: 'POST',
         body: formData,
       });
-      
+
       const data = await response.json();
       if (response.ok) {
         setImageUrl(data.secure_url);
@@ -100,9 +124,9 @@ export default function CrearEventoPage() {
       } else {
         throw new Error(data.error?.message || 'Error al subir');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error('Error al subir la imagen', { id: toastId });
+      toast.error(error.message || 'Error al subir la imagen', { id: toastId });
     }
   };
 
@@ -111,21 +135,21 @@ export default function CrearEventoPage() {
       <Link href="/panel?tab=events" className="inline-flex items-center gap-2 text-neutral-400 hover:text-white transition-colors mb-6 font-medium">
         <ArrowLeft className="w-4 h-4" /> Volver a mis eventos
       </Link>
-      
+
       <h1 className="font-outfit text-3xl font-bold mb-8">Crear Nuevo Evento</h1>
 
       <form onSubmit={handleSubmit} className="space-y-8">
         <div className="bg-black/40 border border-white/10 rounded-2xl p-6 md:p-8">
-          <h2 className="text-xl font-bold mb-6 flex items-center gap-2"><Info className="text-indigo-400 w-5 h-5"/> Información General</h2>
+          <h2 className="text-xl font-bold mb-6 flex items-center gap-2"><Info className="text-indigo-400 w-5 h-5" /> Información General</h2>
           <div className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-neutral-400 mb-2">Flyer / Portada del Evento</label>
               <div className="relative w-full h-48 bg-white/5 border-2 border-dashed border-white/10 hover:border-indigo-500 rounded-xl flex flex-col items-center justify-center cursor-pointer transition-colors overflow-hidden group">
-                <input 
-                  type="file" 
+                <input
+                  type="file"
                   accept="image/*"
                   onChange={handleImageUpload}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                   title="Subir imagen"
                 />
                 {imageUrl ? (
@@ -151,7 +175,7 @@ export default function CrearEventoPage() {
               <input name="title" required type="text" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Ej: Tech Meetup 2026" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-neutral-400 mb-1 flex items-center gap-2"><Video className="w-4 h-4"/> Link de YouTube (Opcional)</label>
+              <label className="block text-sm font-medium text-neutral-400 mb-1 flex items-center gap-2"><Video className="w-4 h-4" /> Link de YouTube (Opcional)</label>
               <input name="youtubeLink" type="url" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Ej: https://youtube.com/watch?v=..." />
             </div>
             <div>
@@ -162,35 +186,35 @@ export default function CrearEventoPage() {
         </div>
 
         <div className="bg-black/40 border border-white/10 rounded-2xl p-6 md:p-8">
-          <h2 className="text-xl font-bold mb-6 flex items-center gap-2"><Calendar className="text-purple-400 w-5 h-5"/> Fecha y Hora</h2>
+          <h2 className="text-xl font-bold mb-6 flex items-center gap-2"><Calendar className="text-purple-400 w-5 h-5" /> Fecha y Hora</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label className="block text-sm font-medium text-neutral-400 mb-1">Inicio</label>
-              <input 
-                name="startDate" 
-                required 
-                type="datetime-local" 
+              <input
+                name="startDate"
+                required
+                type="datetime-local"
                 min={toLocalInputFormat(new Date().toISOString())}
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full max-w-full bg-white/5 border border-white/10 rounded-xl px-2 md:px-4 py-3 text-sm md:text-base text-white focus:outline-none focus:border-indigo-500 transition-colors [color-scheme:dark] block" 
+                className="w-full max-w-full bg-white/5 border border-white/10 rounded-xl px-2 md:px-4 py-3 text-sm md:text-base text-white focus:outline-none focus:border-indigo-500 transition-colors [color-scheme:dark] block"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-neutral-400 mb-1">Fin</label>
-              <input 
-                name="endDate" 
-                required 
-                type="datetime-local" 
+              <input
+                name="endDate"
+                required
+                type="datetime-local"
                 min={startDate || toLocalInputFormat(new Date().toISOString())}
-                className="w-full max-w-full bg-white/5 border border-white/10 rounded-xl px-2 md:px-4 py-3 text-sm md:text-base text-white focus:outline-none focus:border-indigo-500 transition-colors [color-scheme:dark] block" 
+                className="w-full max-w-full bg-white/5 border border-white/10 rounded-xl px-2 md:px-4 py-3 text-sm md:text-base text-white focus:outline-none focus:border-indigo-500 transition-colors [color-scheme:dark] block"
               />
             </div>
           </div>
         </div>
 
         <div className="bg-black/40 border border-white/10 rounded-2xl p-6 md:p-8">
-          <h2 className="text-xl font-bold mb-6 flex items-center gap-2"><MapPin className="text-emerald-400 w-5 h-5"/> Ubicación</h2>
+          <h2 className="text-xl font-bold mb-6 flex items-center gap-2"><MapPin className="text-emerald-400 w-5 h-5" /> Ubicación</h2>
           <div className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-neutral-400 mb-1">Nombre del lugar</label>
