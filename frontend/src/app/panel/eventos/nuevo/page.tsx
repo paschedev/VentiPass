@@ -82,9 +82,9 @@ export default function CrearEventoPage() {
     if (!file) return;
 
     // Validación de formato
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif'];
     if (!allowedTypes.includes(file.type)) {
-      toast.error('Formato no permitido. Solo JPG, PNG, WebP o AVIF.');
+      toast.error('Formato no permitido. Solo JPG, PNG, WebP, AVIF o GIF.');
       return;
     }
 
@@ -165,7 +165,7 @@ export default function CrearEventoPage() {
                   <>
                     <UploadCloud className="w-8 h-8 text-neutral-500 mb-2" />
                     <span className="text-sm text-neutral-400">Click o arrastra una imagen aquí</span>
-                    <span className="text-xs text-neutral-600 mt-1">Recomendado: 1920x1080px (Máx 5MB)</span>
+                    <span className="text-xs text-neutral-600 mt-1">Recomendado: 1920x1080px (Máx 10MB)</span>
                   </>
                 )}
               </div>
