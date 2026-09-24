@@ -67,7 +67,15 @@ export default function CrearEventoPage() {
         toast.success('Evento creado exitosamente.');
         router.push(`/panel?tab=events`);
       } else {
-        toast.error(responseData.message || 'Error al crear el evento');
+        const errorMsg = Array.isArray(responseData.message) 
+          ? responseData.message.join(' \n• ') 
+          : (responseData.message || 'Error al crear el evento');
+        toast.error(
+          <div style={{ whiteSpace: 'pre-line' }}>
+            {Array.isArray(responseData.message) ? `• ${errorMsg}` : errorMsg}
+          </div>, 
+          { duration: 5000 }
+        );
         setLoading(false);
       }
     } catch (error) {
