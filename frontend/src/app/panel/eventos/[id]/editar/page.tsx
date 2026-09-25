@@ -37,8 +37,12 @@ export default function EditarEventoPage() {
   };
 
   useEffect(() => {
-    apiFetch(`/events/${id}`)
-      .then((res) => res.json())
+    apiFetch(`/events/organizer/${id}`)
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message);
+        return data;
+      })
       .then((data) => {
         setEventData(data);
         if (data.imageUrl) setImageUrl(data.imageUrl);

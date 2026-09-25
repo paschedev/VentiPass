@@ -62,6 +62,7 @@ describe('Checkout', () => {
     expect(order.totalAmount.toFixed(2)).toBe('383.33');
     const [preference] = mercadoPagoMock.preferenceCreate.mock.calls[0] as [
       { body: { items: MpItem[] } },
+      string,
     ];
     const fee = preference.body.items.find((i) => i.id === 'service_fee');
     expect(fee?.unit_price).toBe(50);

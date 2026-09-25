@@ -1,12 +1,24 @@
 import {
   Injectable,
   BadRequestException,
+  ConflictException,
   ForbiddenException,
+  NotFoundException,
 } from '@nestjs/common';
 import { EventsRepository } from './repositories/events.repository';
 import { UserRepository } from '../auth/repositories/user.repository';
 import { Prisma, StaffRole, CommissionType } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
+
+type EventDates = { startDate: string; endDate: string };
+
+function assertEndAfterStart(startDate: Date, endDate: Date) {
+  if (endDate <= startDate) {
+    throw new BadRequestException(
+      'La fecha de fin tiene que ser posterior a la de inicio',
+    );
+  }
+}
 
 type ExistingBatch = { id: string; ticketTypes: { id: string }[] };
 type IncomingBatch = { id?: string; ticketTypes?: { id?: string }[] };
@@ -82,14 +94,25 @@ export class EventsService {
       );
     }
     assertOwnBatchIds([], batches);
+    const dates = data as EventDates;
+    const startDate = new Date(dates.startDate);
+    if (startDate <= new Date()) {
+      throw new BadRequestException('La fecha de inicio tiene que ser futura');
+    }
+    assertEndAfterStart(startDate, new Date(dates.endDate));
 
-    const event = await this.eventsRepository.create({
-      ...eventData,
-      organizerId: userId,
-    });
+    return this.eventsRepository.createWithBatches(
+      { ...eventData, organizerId: userId },
+      batches ?? [],
+    );
+  }
 
-    if (batches && batches.length > 0) {
-      await this.updateBatches(event.id, userId, batches);
+  // For the organizer's own screens (edit, preview): any status, owner only.
+  async findOneForOrganizer(id: string, organizerId: string) {
+    const event = await this.eventsRepository.findOne(id);
+    if (!event) throw new NotFoundException('Evento no encontrado');
+    if (event.organizerId !== organizerId) {
+      throw new ForbiddenException('No tenés permiso sobre este evento');
     }
     return event;
   }
@@ -100,6 +123,14 @@ export class EventsService {
     if (!event || event.organizerId !== organizerId) {
       throw new ForbiddenException('No tienes permiso para editar este evento');
     }
+    if (event.status === 'FINISHED') {
+      throw new ConflictException('Un evento finalizado no se puede editar');
+    }
+    const dates = data as Partial<EventDates>;
+    assertEndAfterStart(
+      dates.startDate ? new Date(dates.startDate) : event.startDate,
+      dates.endDate ? new Date(dates.endDate) : event.endDate,
+    );
     assertOwnBatchIds(event.ticketBatches, batches);
 
     const updatedEvent = await this.eventsRepository.update(id, eventData);
