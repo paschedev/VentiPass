@@ -1,6 +1,7 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import * as qrcode from 'qrcode';
 import { TicketsRepository } from './repositories/tickets.repository';
+import { NotificationsService } from '../notifications/notifications.service';
 import { Prisma } from '@prisma/client';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -13,6 +14,7 @@ export class TicketsService {
   constructor(
     private readonly ticketsRepository: TicketsRepository,
     @InjectQueue('mail') private mailQueue: Queue,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async generateTicketsForOrder(
@@ -164,7 +166,7 @@ export class TicketsService {
       );
     }
 
-    const ticket = await this.ticketsRepository.findTicketById(ticketId);
+    const ticket = await this.ticketsRepository.findTicketWithEvent(ticketId);
 
     if (!ticket || ticket.userId !== currentUserId) {
       throw new BadRequestException('La entrada no te pertenece o no existe.');
@@ -176,7 +178,32 @@ export class TicketsService {
       );
     }
 
-    return this.ticketsRepository.transferTicket(ticketId, targetUser.id);
+    const { event } = ticket.ticketType;
+    if (event.status === 'FINISHED' || event.status === 'CANCELLED') {
+      throw new BadRequestException(
+        'No se pueden transferir entradas de un evento finalizado o cancelado.',
+      );
+    }
+
+    const transferred = await this.ticketsRepository.transferTicket(
+      ticketId,
+      currentUserId,
+      targetUser.id,
+    );
+    if (!transferred) {
+      throw new BadRequestException(
+        'La entrada cambió mientras la transferías. Probá de nuevo.',
+      );
+    }
+
+    await this.notificationsService.create({
+      userId: targetUser.id,
+      type: 'SYSTEM',
+      title: 'Te transfirieron una entrada',
+      message: `Recibiste una entrada para ${event.title}. La encontrás en Mis entradas.`,
+      eventId: event.id,
+      actionUrl: '/panel/tickets',
+    });
   }
 }
 
