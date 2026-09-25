@@ -75,31 +75,29 @@ export class TicketsRepository {
     });
   }
 
-  async markTicketAsUsed(ticketId: string) {
-    return this.prisma.ticket.update({
-      where: { id: ticketId },
-      data: { status: 'USED', usedAt: new Date() },
-    });
-  }
-
   async processCheckInTransaction(
     ticketId: string,
     scannerId: string,
     userAgent: string,
   ) {
-    return this.prisma.$transaction([
-      this.prisma.ticket.update({
-        where: { id: ticketId },
+    // Conditional on VALID: of two simultaneous scans only one marks the
+    // ticket as used. Returns false if it was already used.
+    return this.prisma.$transaction(async (tx) => {
+      const { count } = await tx.ticket.updateMany({
+        where: { id: ticketId, status: 'VALID' },
         data: { status: 'USED', usedAt: new Date() },
-      }),
-      this.prisma.checkIn.create({
+      });
+      if (count === 0) return false;
+
+      await tx.checkIn.create({
         data: {
           ticketId: ticketId,
           scannerId: scannerId,
           deviceInfo: userAgent || 'Unknown Device',
         },
-      }),
-    ]);
+      });
+      return true;
+    });
   }
 
   async findEventStaff(

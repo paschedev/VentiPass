@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import { CheckCircle2, XCircle, ScanLine, AlertTriangle } from 'lucide-react';
 import { apiFetch } from '@/utils/api';
+import { isRepeatedScan, LastScan } from '@/utils/scan-cooldown';
 
 export default function EscanearPage() {
   const [scanResult, setScanResult] = useState<{
@@ -15,6 +16,7 @@ export default function EscanearPage() {
     type?: string;
   } | null>(null);
   const [loading, setLoading] = useState(false);
+  const lastScan = useRef<LastScan | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -33,6 +35,10 @@ export default function EscanearPage() {
   const handleScan = async (result: any) => {
     if (!result || !result[0] || loading) return;
     const qrCode = result[0].rawValue;
+
+    const now = Date.now();
+    if (isRepeatedScan(qrCode, lastScan.current, now)) return;
+    lastScan.current = { code: qrCode, at: now };
 
     setLoading(true);
     try {
@@ -180,32 +186,34 @@ export default function EscanearPage() {
           )}
         </div>
 
-        {/* Testing Mode Buttons (Only visible in Development/Testing) */}
-        <div className="mt-8 flex flex-col items-center w-full">
-          <p className="text-xs text-neutral-500 uppercase tracking-widest font-bold mb-3">
-            Modo Prueba (Simulación)
-          </p>
-          <div className="flex gap-2 w-full">
-            <button
-              onClick={simulateSuccess}
-              className="flex-1 bg-emerald-900/30 hover:bg-emerald-800/50 text-emerald-400 border border-emerald-500/30 py-2 rounded-xl font-medium transition-all text-xs"
-            >
-              Válido
-            </button>
-            <button
-              onClick={simulateUsed}
-              className="flex-1 bg-amber-900/30 hover:bg-amber-800/50 text-amber-400 border border-amber-500/30 py-2 rounded-xl font-medium transition-all text-xs"
-            >
-              Usado
-            </button>
-            <button
-              onClick={simulateError}
-              className="flex-1 bg-red-900/30 hover:bg-red-800/50 text-red-400 border border-red-500/30 py-2 rounded-xl font-medium transition-all text-xs"
-            >
-              Inválido
-            </button>
+        {/* Testing Mode Buttons (development only) */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-8 flex flex-col items-center w-full">
+            <p className="text-xs text-neutral-500 uppercase tracking-widest font-bold mb-3">
+              Modo Prueba (Simulación)
+            </p>
+            <div className="flex gap-2 w-full">
+              <button
+                onClick={simulateSuccess}
+                className="flex-1 bg-emerald-900/30 hover:bg-emerald-800/50 text-emerald-400 border border-emerald-500/30 py-2 rounded-xl font-medium transition-all text-xs"
+              >
+                Válido
+              </button>
+              <button
+                onClick={simulateUsed}
+                className="flex-1 bg-amber-900/30 hover:bg-amber-800/50 text-amber-400 border border-amber-500/30 py-2 rounded-xl font-medium transition-all text-xs"
+              >
+                Usado
+              </button>
+              <button
+                onClick={simulateError}
+                className="flex-1 bg-red-900/30 hover:bg-red-800/50 text-red-400 border border-red-500/30 py-2 rounded-xl font-medium transition-all text-xs"
+              >
+                Inválido
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

@@ -72,35 +72,6 @@ export class TicketsService {
     return this.ticketsRepository.findMyTickets(userId);
   }
 
-  async validateTicket(qrCode: string, scannerUserId: string) {
-    const ticket = await this.ticketsRepository.findTicketForValidation(qrCode);
-
-    if (!ticket) {
-      return { success: false, message: 'Entrada inválida o no encontrada' };
-    }
-
-    const isStaff = await this.ticketsRepository.findEventStaff(
-      ticket.ticketType.eventId,
-      scannerUserId,
-      'SCANNER',
-    );
-    if (!isStaff || isStaff.status !== 'ACCEPTED') {
-      throw new BadRequestException(
-        'No tienes permisos para validar entradas en este evento',
-      );
-    }
-
-    if (ticket.status !== 'VALID') {
-      return {
-        success: false,
-        message: 'La entrada ya fue utilizada o no es válida',
-      };
-    }
-
-    await this.ticketsRepository.markTicketAsUsed(ticket.id);
-    return { success: true, message: 'Entrada validada correctamente' };
-  }
-
   async processCheckIn(qrCode: string, scannerId: string, userAgent: string) {
     const ticket = await this.ticketsRepository.findTicketForValidation(qrCode);
 
@@ -136,19 +107,34 @@ export class TicketsService {
       }
     }
 
-    if (ticket.status === 'USED') {
-      return { success: false, status: 'USED', message: 'USADO' };
+    if (event.status === 'CANCELLED' || event.status === 'FINISHED') {
+      return {
+        success: false,
+        status: 'EVENT_CLOSED',
+        message: 'EVENTO CERRADO',
+      };
     }
+
+    const used = { success: false, status: 'USED', message: 'USADO' };
+    if (ticket.status === 'USED') return used;
 
     if (ticket.status !== 'VALID') {
       return { success: false, status: 'INVALID', message: 'INVÁLIDO' };
     }
 
-    await this.ticketsRepository.processCheckInTransaction(
-      ticket.id,
-      scannerId,
-      userAgent,
-    );
+    try {
+      const checkedIn = await this.ticketsRepository.processCheckInTransaction(
+        ticket.id,
+        scannerId,
+        userAgent,
+      );
+      if (!checkedIn) return used;
+    } catch (error) {
+      // A simultaneous scan that got past the status check hits the unique
+      // CheckIn.ticketId: for the door it is simply "already used".
+      if (isUniqueViolation(error)) return used;
+      throw error;
+    }
 
     return {
       success: true,
@@ -192,4 +178,11 @@ export class TicketsService {
 
     return this.ticketsRepository.transferTicket(ticketId, targetUser.id);
   }
+}
+
+function isUniqueViolation(error: unknown) {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === 'P2002'
+  );
 }
