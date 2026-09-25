@@ -1,8 +1,42 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { EventsRepository } from './repositories/events.repository';
 import { UserRepository } from '../auth/repositories/user.repository';
 import { Prisma, StaffRole, CommissionType } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
+
+type ExistingBatch = { id: string; ticketTypes: { id: string }[] };
+type IncomingBatch = { id?: string; ticketTypes?: { id?: string }[] };
+
+// Batch and ticket type IDs come from the client: each one has to belong to the
+// event being edited (and each ticket type to its batch) before anything is written.
+function assertOwnBatchIds(
+  existing: ExistingBatch[],
+  incoming: IncomingBatch[] = [],
+) {
+  const typeIdsByBatch = new Map(
+    existing.map((batch) => [
+      batch.id,
+      new Set(batch.ticketTypes.map((ticketType) => ticketType.id)),
+    ]),
+  );
+  for (const batch of incoming) {
+    const ownTypeIds = batch.id
+      ? typeIdsByBatch.get(batch.id)
+      : new Set<string>();
+    const hasForeignType = batch.ticketTypes?.some(
+      (ticketType) => ticketType.id && !ownTypeIds?.has(ticketType.id),
+    );
+    if (!ownTypeIds || hasForeignType) {
+      throw new ForbiddenException(
+        'No tenés permiso sobre esa tanda o entrada',
+      );
+    }
+  }
+}
 
 @Injectable()
 export class EventsService {
@@ -47,6 +81,7 @@ export class EventsService {
         'Debes vincular Mercado Pago antes de crear un evento',
       );
     }
+    assertOwnBatchIds([], batches);
 
     const event = await this.eventsRepository.create({
       ...eventData,
@@ -63,10 +98,9 @@ export class EventsService {
     const { batches, ...eventData } = data;
     const event = await this.eventsRepository.findOne(id);
     if (!event || event.organizerId !== organizerId) {
-      throw new BadRequestException(
-        'No tienes permiso para editar este evento',
-      );
+      throw new ForbiddenException('No tienes permiso para editar este evento');
     }
+    assertOwnBatchIds(event.ticketBatches, batches);
 
     const updatedEvent = await this.eventsRepository.update(id, eventData);
 
@@ -88,8 +122,9 @@ export class EventsService {
     const eventContext = await this.eventsRepository.findOne(eventId);
 
     if (!eventContext || eventContext.organizerId !== organizerId) {
-      throw new BadRequestException('No tienes permiso sobre este evento');
+      throw new ForbiddenException('No tienes permiso sobre este evento');
     }
+    assertOwnBatchIds(eventContext.ticketBatches, batchesData);
 
     return this.eventsRepository.updateBatchesTransaction(
       eventId,

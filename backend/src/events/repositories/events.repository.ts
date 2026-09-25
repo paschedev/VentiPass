@@ -84,7 +84,7 @@ export class EventsRepository {
         let savedBatch;
         if (batch.id) {
           savedBatch = await tx.ticketBatch.update({
-            where: { id: batch.id },
+            where: { id: batch.id, eventId },
             data: {
               name: batch.name,
               status: status,
@@ -131,7 +131,7 @@ export class EventsRepository {
         for (const tType of batch.ticketTypes) {
           if (tType.id) {
             await tx.ticketType.update({
-              where: { id: tType.id },
+              where: { id: tType.id, batchId: savedBatch.id },
               data: {
                 name: tType.name,
                 price: tType.price,
