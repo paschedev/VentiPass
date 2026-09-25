@@ -7,6 +7,7 @@ import { TicketsService } from '../tickets/tickets.service';
 import { Prisma } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import { isValidWebhookSignature } from './webhook-signature';
+import { NotificationsService } from '../notifications/notifications.service';
 import type { PaymentNotificationJob } from './payments.processor';
 
 // 8 attempts, the last one about an hour after the notification.
@@ -25,6 +26,7 @@ export class PaymentsService {
     private ticketsService: TicketsService,
     private readonly config: ConfigService,
     @InjectQueue('payments') private readonly paymentsQueue: Queue,
+    private readonly notificationsService: NotificationsService,
   ) {
     this.client = new MercadoPagoConfig({
       accessToken: this.config.getOrThrow<string>('MERCADOPAGO_ACCESS_TOKEN'),
@@ -176,18 +178,111 @@ export class PaymentsService {
       return;
     }
 
-    const existingPayment =
-      await this.paymentsRepository.findPaymentByProviderId(paymentId);
-    if (existingPayment) return;
+    const amount = paymentData.transaction_amount ?? 0;
 
-    await this.paymentsRepository.processPaymentWebhookTransaction(
-      orderId,
-      paymentId,
-      paymentData.transaction_amount || 0,
-      async (tx: Prisma.TransactionClient) => {
-        await this.ticketsService.generateTicketsForOrder(orderId, tx);
-      },
+    // Two passes: if an expiration (or another webhook) changes the order
+    // between reading and paying it, the second pass sees the new status.
+    for (let pass = 0; pass < 2; pass++) {
+      if (await this.paymentsRepository.findPaymentByProviderId(paymentId)) {
+        return;
+      }
+      const order = await this.paymentsRepository.findOrderForPayment(orderId);
+      if (!order) {
+        this.logger.error(
+          `Approved payment ${paymentId} references unknown order ${orderId}`,
+        );
+        return;
+      }
+      if (!sameAmount(amount, order.totalAmount)) {
+        return this.reportPaymentIssue(order, paymentId, 'AMOUNT_MISMATCH', {
+          amount,
+        });
+      }
+      if (order.status === 'PAID') {
+        return this.reportPaymentIssue(order, paymentId, 'DUPLICATE_PAYMENT');
+      }
+
+      try {
+        const paid = await this.paymentsRepository.payOrderTransaction(
+          orderId,
+          order.status,
+          { providerPaymentId: paymentId, amount },
+          async (tx: Prisma.TransactionClient) => {
+            await this.ticketsService.generateTicketsForOrder(orderId, tx);
+          },
+        );
+        if (paid) {
+          this.logger.log(
+            `Order ${orderId} marked as PAID and tickets generated.`,
+          );
+          return;
+        }
+      } catch (error) {
+        if (!isStockLimitError(error)) throw error;
+        return this.reportPaymentIssue(order, paymentId, 'OUT_OF_STOCK');
+      }
+    }
+    throw new Error(
+      `Order ${orderId} kept changing while processing payment ${paymentId}`,
     );
-    this.logger.log(`Order ${orderId} marked as PAID and tickets generated.`);
   }
+
+  // A payment Mercado Pago approved but that cannot be turned into tickets:
+  // it is logged and the organizer gets a notification to refund it by hand.
+  private async reportPaymentIssue(
+    order: NonNullable<
+      Awaited<ReturnType<PaymentsRepository['findOrderForPayment']>>
+    >,
+    paymentId: string,
+    reason: PaymentIssueReason,
+    details: Record<string, unknown> = {},
+  ) {
+    this.logger.error(
+      `Payment ${paymentId} for order ${order.id} needs review: ${reason}`,
+    );
+    const event = order.orderItems[0]?.ticketType.event;
+    if (!event) return;
+
+    await this.notificationsService.create({
+      userId: event.organizerId,
+      type: 'SYSTEM',
+      eventId: event.id,
+      ...PAYMENT_ISSUE_MESSAGES[reason](paymentId),
+      metadata: { reason, orderId: order.id, paymentId, ...details },
+    });
+  }
+}
+
+type PaymentIssueReason =
+  | 'AMOUNT_MISMATCH'
+  | 'DUPLICATE_PAYMENT'
+  | 'OUT_OF_STOCK';
+
+const PAYMENT_ISSUE_MESSAGES: Record<
+  PaymentIssueReason,
+  (paymentId: string) => { title: string; message: string }
+> = {
+  AMOUNT_MISMATCH: (paymentId) => ({
+    title: 'Pago con un monto distinto',
+    message: `Mercado Pago aprobó el pago ${paymentId} por un monto distinto al de la orden. No se emitieron entradas: revisalo y reembolsalo si corresponde.`,
+  }),
+  DUPLICATE_PAYMENT: (paymentId) => ({
+    title: 'Pago duplicado',
+    message: `La orden ya estaba pagada y Mercado Pago aprobó otro pago (${paymentId}). Reembolsalo desde tu cuenta de Mercado Pago.`,
+  }),
+  OUT_OF_STOCK: (paymentId) => ({
+    title: 'Pago sin entradas disponibles',
+    message: `Llegó el pago ${paymentId} de una orden vencida y ya no quedan entradas. No se emitieron entradas: reembolsalo desde tu cuenta de Mercado Pago.`,
+  }),
+};
+
+// Mercado Pago reports the amount as a float: compare at cent precision.
+function sameAmount(amount: number, total: Prisma.Decimal) {
+  return new Prisma.Decimal(amount)
+    .toDecimalPlaces(2)
+    .equals(total.toDecimalPlaces(2));
+}
+
+function isStockLimitError(error: unknown) {
+  return error instanceof Error && error.message.includes('check_stock_limits');
 }

@@ -7,12 +7,14 @@ import { TicketsModule } from '../tickets/tickets.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PaymentsRepository } from './repositories/payments.repository';
 import { AuthModule } from '../auth/auth.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
     TicketsModule,
     PrismaModule,
     AuthModule,
+    NotificationsModule,
     BullModule.registerQueue({ name: 'payments' }),
   ],
   controllers: [PaymentsController],
