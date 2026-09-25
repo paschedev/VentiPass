@@ -15,7 +15,6 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { UserRole } from '@prisma/client';
-import { SaveManualTokenDto } from './dto/save-manual-token.dto';
 
 @Controller('payments')
 export class PaymentsController {
@@ -77,13 +76,5 @@ export class PaymentsController {
     const url = `https://auth.mercadopago.com/authorization?client_id=${clientId}&response_type=code&platform_id=mp&redirect_uri=${redirectUri}&state=${stateToken}`;
 
     return { url };
-  }
-
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ORGANIZER)
-  @Post('oauth/manual')
-  async manualToken(@Req() req: any, @Body() body: SaveManualTokenDto) {
-    await this.paymentsService.saveManualToken(req.user.userId, body.token);
-    return { success: true };
   }
 }

@@ -56,13 +56,6 @@ export class PaymentsService {
     }
   }
 
-  async saveManualToken(userId: string, token: string) {
-    await this.paymentsRepository.updateUserMercadoPagoCredentials(userId, {
-      accessToken: token,
-    });
-    return { success: true };
-  }
-
   async createPreference(
     orderId: string,
     items: any[],
@@ -162,21 +155,5 @@ export class PaymentsService {
         );
       }
     }
-  }
-
-  async processDevBypassPayment(orderId: string, amount: number) {
-    const paymentId = 'dev-bypass-' + Date.now();
-    await this.paymentsRepository.processPaymentWebhookTransaction(
-      orderId,
-      paymentId,
-      amount,
-      async (tx: Prisma.TransactionClient) => {
-        // Trigger ticket generation
-        await this.ticketsService.generateTicketsForOrder(orderId, tx);
-      },
-    );
-    this.logger.log(
-      `Order ${orderId} marked as PAID and tickets generated via DEV BYPASS.`,
-    );
   }
 }

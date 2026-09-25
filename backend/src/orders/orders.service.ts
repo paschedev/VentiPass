@@ -73,41 +73,4 @@ export class OrdersService {
 
     return { orderId: order.id, checkoutUrl: initPoint };
   }
-
-  async createDevBypassOrder(
-    userId: string,
-    items: { ticketTypeId: string; quantity: number }[],
-    promoterId?: string,
-  ) {
-    // 1. Transaction to reserve stock and create order in PENDING status
-    let order;
-    try {
-      const result = await this.ordersRepository.createCheckoutOrderTransaction(
-        userId,
-        items,
-        promoterId,
-      );
-      order = result.order;
-    } catch (error: any) {
-      if (
-        error.code === 'P2010' ||
-        error.message?.includes('check_stock_limits')
-      ) {
-        throw new BadRequestException(
-          'Se agotaron las entradas mientras procesabamos tu compra.',
-        );
-      }
-      throw error;
-    }
-
-    // 2. We don't schedule expiration because we will pay it immediately
-
-    // 3. Process fake payment
-    await this.paymentsService.processDevBypassPayment(
-      order.id,
-      Number(order.totalAmount),
-    );
-
-    return { orderId: order.id, success: true };
-  }
 }

@@ -19,8 +19,6 @@ export default function ConfiguracionPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loadingPwd, setLoadingPwd] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [manualToken, setManualToken] = useState('');
-  const [isSavingManual, setIsSavingManual] = useState(false);
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -49,36 +47,6 @@ export default function ConfiguracionPage() {
       }
     } catch (err) {
       toast.error('Error de conexión al servidor');
-    }
-  };
-
-  const handleManualTokenSubmit = async () => {
-    if (!manualToken.trim()) return;
-    setIsSavingManual(true);
-    try {
-      const response = await apiFetch('/payments/oauth/manual', {
-        method: 'POST',
-        body: JSON.stringify({ token: manualToken.trim() }),
-      });
-      if (response.ok) {
-        // Actualizar el estado local para que la UI refleje el cambio inmediatamente
-        const userStr = localStorage.getItem('user');
-        if (userStr) {
-          const userObj = JSON.parse(userStr);
-          userObj.hasLinkedMp = true;
-          localStorage.setItem('user', JSON.stringify(userObj));
-        }
-        toast.success('Token de prueba vinculado correctamente');
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000);
-      } else {
-        toast.error('Error al vincular token');
-      }
-    } catch (error) {
-      toast.error('Error de conexión');
-    } finally {
-      setIsSavingManual(false);
     }
   };
 
@@ -310,36 +278,6 @@ export default function ConfiguracionPage() {
               >
                 Conectar con Mercado Pago
               </button>
-
-              {/* DEVELOPMENT MODE: Manual Token Input */}
-              {process.env.NODE_ENV === 'development' && (
-                <div className="border border-white/10 rounded-2xl p-6 bg-black/20">
-                  <h3 className="text-sm font-bold text-neutral-300 mb-2">
-                    Solo para Desarrollo (Test)
-                  </h3>
-                  <p className="text-xs text-neutral-500 mb-4">
-                    Ingresá tu "Access Token de Prueba" de Mercado Pago
-                    directamente para evitar la redirección OAuth mientras
-                    estamos en entorno local.
-                  </p>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <input
-                      type="text"
-                      placeholder="APP_USR-..."
-                      value={manualToken}
-                      onChange={(e) => setManualToken(e.target.value)}
-                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500"
-                    />
-                    <button
-                      onClick={handleManualTokenSubmit}
-                      disabled={!manualToken.trim() || isSavingManual}
-                      className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white px-6 py-3 rounded-xl font-bold transition-colors text-sm"
-                    >
-                      {isSavingManual ? 'Vinculando...' : 'Vincular'}
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </div>

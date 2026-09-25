@@ -160,55 +160,6 @@ export class TicketsService {
     };
   }
 
-  async emitGuestTicket(
-    eventId: string,
-    organizerId: string,
-    email: string,
-    ticketTypeId: string,
-  ) {
-    const event = await this.ticketsRepository.findEvent(eventId);
-    if (!event || event.organizerId !== organizerId) {
-      throw new BadRequestException('No tienes permiso sobre este evento');
-    }
-
-    const ticketType =
-      await this.ticketsRepository.findTicketType(ticketTypeId);
-    if (!ticketType || ticketType.eventId !== eventId) {
-      throw new BadRequestException('Tipo de ticket inválido');
-    }
-
-    // Exigimos que el usuario exista en el sistema, mitigando creación de usuarios falsos (reducción superficie de ataque)
-    let targetUser = await this.ticketsRepository.findUserByEmail(email);
-    if (!targetUser) {
-      throw new BadRequestException(
-        'El usuario destino no está registrado. Por favor, indícale que cree una cuenta en NeoPass primero.',
-      );
-    }
-
-    const ticket = await this.ticketsRepository.createTicket({
-      ticketTypeId,
-      userId: targetUser.id,
-      isGuestList: true,
-    });
-
-    const qrDataUrl = await qrcode.toDataURL(ticket.qrCode);
-
-    await this.mailQueue.add('send-tickets', {
-      to: targetUser.email,
-      name: targetUser.name,
-      tickets: [
-        {
-          id: ticket.id,
-          eventName: event.title,
-          ticketTypeName: ticketType.name + ' (Cortesía)',
-          qrDataUrl,
-        },
-      ],
-    });
-
-    return { success: true, ticketId: ticket.id };
-  }
-
   async transferTicket(
     ticketId: string,
     currentUserId: string,
