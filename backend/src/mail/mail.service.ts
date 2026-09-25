@@ -1,6 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Resend } from 'resend';
 
+// Must be a domain verified in Resend, otherwise every send is rejected.
+const MAIL_DOMAIN = 'neopass.ar';
+const TICKETS_SENDER = `NeoPass <entradas@${MAIL_DOMAIN}>`;
+const SUPPORT_SENDER = `NeoPass <soporte@${MAIL_DOMAIN}>`;
+
 @Injectable()
 export class MailService {
   private resend: Resend;
@@ -21,7 +26,7 @@ export class MailService {
       `).join('');
 
       const { data, error } = await this.resend.emails.send({
-        from: 'NeoPass <entradas@neopass.com>',
+        from: TICKETS_SENDER,
         to: [to],
         subject: '¡Tus entradas para el evento están listas!',
         html: `
@@ -53,7 +58,7 @@ export class MailService {
 
     try {
       const { data, error } = await this.resend.emails.send({
-        from: 'NeoPass <soporte@neopass.com>',
+        from: SUPPORT_SENDER,
         to: [to],
         subject: 'Recuperación de contraseña - NeoPass',
         html: `<p>Hola ${name},</p><p>Has solicitado restablecer tu contraseña.</p><p>Haz clic en el siguiente enlace para crear una nueva:</p><p><a href="${resetLink}">Restablecer mi contraseña</a></p><p>Este enlace expirará en 1 hora.</p>`
