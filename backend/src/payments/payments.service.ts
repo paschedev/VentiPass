@@ -184,7 +184,9 @@ export class PaymentsService {
     // between reading and paying it, the second pass sees the new status.
     for (let pass = 0; pass < 2; pass++) {
       if (await this.paymentsRepository.findPaymentByProviderId(paymentId)) {
-        return;
+        // Already paid: make sure the tickets mail is queued (a retry after a
+        // failed enqueue lands here). Idempotent per order.
+        return this.ticketsService.queueOrderTicketsEmail(orderId);
       }
       const order = await this.paymentsRepository.findOrderForPayment(orderId);
       if (!order) {
@@ -215,7 +217,7 @@ export class PaymentsService {
           this.logger.log(
             `Order ${orderId} marked as PAID and tickets generated.`,
           );
-          return;
+          return this.ticketsService.queueOrderTicketsEmail(orderId);
         }
       } catch (error) {
         if (!isStockLimitError(error)) throw error;

@@ -148,11 +148,11 @@ export class AuthService {
 
     const resetLink = `${this.config.getOrThrow<string>('FRONTEND_URL')}/panel/configuracion?token=${resetToken}`;
 
-    await this.mailService.sendPasswordResetEmail(
-      user.email,
-      user.name,
+    await this.mailService.queuePasswordResetEmail({
+      to: user.email,
+      name: user.name,
       resetLink,
-    );
+    });
 
     return {
       message: 'Si el correo existe, se ha enviado un enlace de recuperación.',
