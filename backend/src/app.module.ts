@@ -15,15 +15,12 @@ import { MediaModule } from './media/media.module';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { validateEnv } from './config/env.validation';
 
-let redisConfig: any = {
-  host: process.env.REDIS_HOST || 'localhost',
-  port: parseInt(process.env.REDIS_PORT || '6379', 10),
-};
-
-if (process.env.REDIS_URL) {
-  const url = new URL(process.env.REDIS_URL);
-  redisConfig = {
+function redisConnection(redisUrl: string) {
+  const url = new URL(redisUrl);
+  return {
     host: url.hostname,
     port: parseInt(url.port, 10),
     username: url.username || undefined,
@@ -33,14 +30,22 @@ if (process.env.REDIS_URL) {
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      cache: true,
+      validate: validateEnv,
+    }),
     ThrottlerModule.forRoot([
       {
         ttl: 60000,
         limit: 100,
       },
     ]),
-    BullModule.forRoot({
-      connection: redisConfig,
+    BullModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        connection: redisConnection(config.getOrThrow<string>('REDIS_URL')),
+      }),
     }),
     PrismaModule,
     EventsModule,

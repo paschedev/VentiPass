@@ -21,13 +21,7 @@ export class OrdersController {
   @UseGuards(JwtAuthGuard)
   @Post('checkout')
   async createCheckout(@Req() req: any, @Body() body: CreateOrderDto) {
-    if (!body.captchaToken)
-      throw new BadRequestException(
-        'Validación de seguridad fallida. Recargá la página.',
-      );
-    const isHuman = await this.captchaService.verifyToken(body.captchaToken);
-    if (!isHuman)
-      throw new BadRequestException('Validación de seguridad fallida');
+    await this.captchaService.assertHuman(body.captchaToken);
 
     const finalUserId = req.user?.userId;
     if (!finalUserId) {

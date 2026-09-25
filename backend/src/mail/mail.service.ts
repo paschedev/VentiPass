@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
 
 // Must be a domain verified in Resend, otherwise every send is rejected.
@@ -11,8 +12,8 @@ export class MailService {
   private resend: Resend;
   private readonly logger = new Logger(MailService.name);
 
-  constructor() {
-    this.resend = new Resend(process.env.RESEND_API_KEY || 're_test_key');
+  constructor(config: ConfigService) {
+    this.resend = new Resend(config.getOrThrow<string>('RESEND_API_KEY'));
   }
 
   async sendTicketsEmail(to: string, name: string, tickets: any[]) {
@@ -53,15 +54,6 @@ export class MailService {
   }
 
   async sendPasswordResetEmail(to: string, name: string, resetLink: string) {
-    if (!process.env.RESEND_API_KEY) {
-      if (process.env.NODE_ENV !== 'production') {
-        this.logger.log(
-          `[DEV ONLY] Reset link generated for ${to}: ${resetLink}`,
-        );
-      }
-      return;
-    }
-
     try {
       const { data, error } = await this.resend.emails.send({
         from: SUPPORT_SENDER,
