@@ -3,6 +3,7 @@ import { OrdersRepository } from './repositories/orders.repository';
 import { PaymentsService } from '../payments/payments.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import { MAX_TICKETS_PER_ORDER } from './dto/create-order.dto';
 
 @Injectable()
 export class OrdersService {
@@ -19,6 +20,13 @@ export class OrdersService {
     items: { ticketTypeId: string; quantity: number }[],
     promoterId?: string,
   ) {
+    const ticketCount = items.reduce((sum, item) => sum + item.quantity, 0);
+    if (ticketCount > MAX_TICKETS_PER_ORDER) {
+      throw new BadRequestException(
+        `Podés comprar hasta ${MAX_TICKETS_PER_ORDER} entradas por orden`,
+      );
+    }
+
     // 1. Transaction to reserve stock and create order in PENDING status
     let order, mpItems, serviceFee, organizer;
     try {
@@ -56,7 +64,7 @@ export class OrdersService {
       const res = await this.paymentsService.createPreference(
         order.id,
         mpItems,
-        serviceFee,
+        serviceFee.toNumber(),
         organizer.mercadoPagoAccessToken || undefined,
       );
       initPoint = res.initPoint || '';
