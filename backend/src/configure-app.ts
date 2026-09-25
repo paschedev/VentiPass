@@ -1,4 +1,5 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
 
 // Configuración HTTP compartida entre main.ts y los tests e2e,
@@ -6,7 +7,7 @@ import helmet from 'helmet';
 export function configureApp(app: INestApplication) {
   app.use(helmet());
   app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const frontendUrl = app.get(ConfigService).getOrThrow<string>('FRONTEND_URL');
   app.enableCors({
     origin: [
       frontendUrl,

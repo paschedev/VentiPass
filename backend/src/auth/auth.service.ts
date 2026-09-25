@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   ConflictException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { UserRepository } from './repositories/user.repository';
 import { MailService } from '../mail/mail.service';
@@ -17,6 +18,7 @@ export class AuthService {
     private readonly userRepository: UserRepository,
     private readonly jwtService: JwtService,
     private readonly mailService: MailService,
+    private readonly config: ConfigService,
   ) {}
 
   async validateUser(email: string, pass: string): Promise<any> {
@@ -144,7 +146,7 @@ export class AuthService {
       passwordResetExpires: resetTokenExpires,
     });
 
-    const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/panel/configuracion?token=${resetToken}`;
+    const resetLink = `${this.config.getOrThrow<string>('FRONTEND_URL')}/panel/configuracion?token=${resetToken}`;
 
     await this.mailService.sendPasswordResetEmail(
       user.email,
