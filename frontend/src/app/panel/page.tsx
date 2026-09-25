@@ -847,60 +847,6 @@ function OrganizerDashboardContent() {
               >
                 Conectar con Mercado Pago
               </button>
-
-              {/* DEVELOPMENT MODE: Manual Token Input */}
-              {process.env.NODE_ENV === 'development' && (
-                <div className="border border-white/10 rounded-2xl p-4 bg-black/20">
-                  <h3 className="text-xs font-bold text-neutral-300 mb-2">
-                    Solo para Desarrollo (Test)
-                  </h3>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="APP_USR-..."
-                      id="devTokenInput"
-                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500"
-                    />
-                    <button
-                      onClick={async () => {
-                        const token = (
-                          document.getElementById(
-                            'devTokenInput',
-                          ) as HTMLInputElement
-                        ).value;
-                        if (!token.trim()) return;
-                        try {
-                          const response = await apiFetch(
-                            '/payments/oauth/manual',
-                            {
-                              method: 'POST',
-                              body: JSON.stringify({ token: token.trim() }),
-                            },
-                          );
-                          if (response.ok) {
-                            const userStr = localStorage.getItem('user');
-                            if (userStr) {
-                              const userObj = JSON.parse(userStr);
-                              userObj.hasLinkedMp = true;
-                              localStorage.setItem(
-                                'user',
-                                JSON.stringify(userObj),
-                              );
-                            }
-                            toast.success('Token vinculado');
-                            setTimeout(() => window.location.reload(), 1000);
-                          } else toast.error('Error al vincular token');
-                        } catch (e) {
-                          toast.error('Error de conexión');
-                        }
-                      }}
-                      className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl font-bold transition-colors text-xs"
-                    >
-                      Vincular
-                    </button>
-                  </div>
-                </div>
-              )}
             </motion.div>
           </div>
         )}

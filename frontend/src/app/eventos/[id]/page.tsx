@@ -80,46 +80,6 @@ function EventContent() {
 
   const getTotalItems = () => Object.values(cart).reduce((a, b) => a + b, 0);
 
-  const handleDevBypass = async () => {
-    setBuying(true);
-    const items = Object.entries(cart).map(([ticketTypeId, quantity]) => ({
-      ticketTypeId,
-      quantity,
-    }));
-    const userStr = localStorage.getItem('user');
-    if (!userStr) {
-      const currentUrl = encodeURIComponent(
-        `${window.location.pathname}${window.location.search}`,
-      );
-      router.push(`/login?callbackUrl=${currentUrl}`);
-      return;
-    }
-    const user = JSON.parse(userStr);
-
-    try {
-      const response = await apiFetch('/orders/dev-bypass', {
-        method: 'POST',
-        body: JSON.stringify({
-          userId: user?.id,
-          promoterId: selectedRpp || undefined,
-          captchaToken,
-          items,
-        }),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        toast.success('Bypass exitoso. Entradas generadas.');
-        router.push('/panel/tickets');
-      } else {
-        toast.error(data.message || 'Error en el bypass');
-        setBuying(false);
-      }
-    } catch (error) {
-      toast.error('Error de conexión');
-      setBuying(false);
-    }
-  };
-
   const initiateCheckout = async (email?: string) => {
     const items = Object.entries(cart).map(([ticketTypeId, quantity]) => ({
       ticketTypeId,
@@ -452,19 +412,6 @@ function EventContent() {
                       </>
                     )}
                   </button>
-
-                  {/* DEV BYPASS BUTTON (Development Only) */}
-                  {process.env.NODE_ENV === 'development' && (
-                    <button
-                      onClick={handleDevBypass}
-                      disabled={
-                        buying || getTotalItems() === 0 || !captchaToken
-                      }
-                      className="w-full md:w-auto px-6 bg-red-600/20 border border-red-500/50 hover:bg-red-600/40 text-red-400 py-2 rounded-xl font-bold transition-all text-xs flex items-center justify-center disabled:opacity-50"
-                    >
-                      🚀 Comprar (Dev Bypass Sin MP)
-                    </button>
-                  )}
                 </div>
               </div>
             </div>

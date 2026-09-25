@@ -16,7 +16,6 @@ import { Roles } from '../auth/roles.decorator';
 import { TicketsService } from './tickets.service';
 import { TransferTicketDto } from './dto/transfer-ticket.dto';
 import { CheckInDto } from './dto/check-in.dto';
-import { EmitGuestTicketDto } from './dto/emit-guest-ticket.dto';
 
 @Controller('tickets')
 export class TicketsController {
@@ -60,21 +59,5 @@ export class TicketsController {
       scannerId,
       userAgent,
     );
-  }
-
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ORGANIZER', 'ADMIN')
-  @Post('guest-list')
-  async emitGuestTicket(@Body() body: EmitGuestTicketDto, @Req() req: any) {
-    try {
-      return await this.ticketsService.emitGuestTicket(
-        body.eventId,
-        req.user.userId,
-        body.email,
-        body.ticketTypeId,
-      );
-    } catch (e: any) {
-      throw new BadRequestException(e.message);
-    }
   }
 }

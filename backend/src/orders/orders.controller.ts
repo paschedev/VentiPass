@@ -42,29 +42,4 @@ export class OrdersController {
       body.promoterId,
     );
   }
-
-  @UseGuards(JwtAuthGuard)
-  @Post('dev-bypass')
-  async createDevBypassOrder(@Req() req: any, @Body() body: CreateOrderDto) {
-    if (!body.captchaToken)
-      throw new BadRequestException(
-        'Validación de seguridad fallida. Recargá la página.',
-      );
-    const isHuman = await this.captchaService.verifyToken(body.captchaToken);
-    if (!isHuman)
-      throw new BadRequestException('Validación de seguridad fallida');
-
-    const finalUserId = req.user?.userId;
-    if (!finalUserId) {
-      throw new BadRequestException(
-        'Se requiere sesión activa para procesar la compra.',
-      );
-    }
-
-    return this.ordersService.createDevBypassOrder(
-      finalUserId,
-      body.items,
-      body.promoterId,
-    );
-  }
 }

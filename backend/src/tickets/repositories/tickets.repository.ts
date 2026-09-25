@@ -121,27 +121,7 @@ export class TicketsRepository {
     });
   }
 
-  async findEvent(eventId: string) {
-    return this.prisma.event.findUnique({ where: { id: eventId } });
-  }
-
-  async findTicketType(ticketTypeId: string) {
-    return this.prisma.ticketType.findUnique({ where: { id: ticketTypeId } });
-  }
-
-  async findUserByEmail(email: string) {
-    return this.prisma.user.findUnique({ where: { email } });
-  }
-
   async findUserById(id: string) {
     return this.prisma.user.findUnique({ where: { id } });
-  }
-
-  async createUser(data: Prisma.UserCreateInput) {
-    return this.prisma.user.create({ data });
-  }
-
-  async createTicket(data: Prisma.TicketUncheckedCreateInput) {
-    return this.prisma.ticket.create({ data });
   }
 }

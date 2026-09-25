@@ -33,9 +33,6 @@
     },
     "react-hooks/set-state-in-effect": {
       "count": 1
-    },
-    "react/no-unescaped-entities": {
-      "count": 2
     }
   },
   "src/app/panel/configuracion/presets/page.tsx": {
