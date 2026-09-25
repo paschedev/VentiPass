@@ -25,10 +25,6 @@ export class EventsRepository {
     });
   }
 
-  async create(data: Prisma.EventCreateInput) {
-    return this.prisma.event.create({ data });
-  }
-
   async update(id: string, data: Prisma.EventUpdateInput) {
     return this.prisma.event.update({
       where: { id },
@@ -53,116 +49,135 @@ export class EventsRepository {
     eventContext: any,
   ) {
     return this.prisma.$transaction(async (tx) => {
-      const incomingBatchIds = batchesData.filter((b) => b.id).map((b) => b.id);
-
-      const batchesToDelete = eventContext.ticketBatches.filter(
-        (b: any) => !incomingBatchIds.includes(b.id),
-      );
-      for (const b of batchesToDelete) {
-        const totalSold = b.ticketTypes.reduce(
-          (acc: number, tt: any) => acc + tt.sold,
-          0,
-        );
-        if (totalSold > 0) {
-          throw new BadRequestException(
-            `No puedes eliminar la tanda "${b.name}" porque ya tiene entradas vendidas. Pausa su venta en su lugar.`,
-          );
-        }
-        await tx.ticketType.deleteMany({ where: { batchId: b.id } });
-        await tx.ticketBatch.delete({ where: { id: b.id } });
-      }
-      for (const batch of batchesData) {
-        let status = batch.status || 'DRAFT';
-        if (
-          batch.publishAt &&
-          new Date(batch.publishAt) > new Date() &&
-          status !== 'DRAFT'
-        ) {
-          status = 'SCHEDULED';
-        }
-
-        let savedBatch;
-        if (batch.id) {
-          savedBatch = await tx.ticketBatch.update({
-            where: { id: batch.id, eventId },
-            data: {
-              name: batch.name,
-              status: status,
-              publishAt: batch.publishAt ? new Date(batch.publishAt) : null,
-              closeAt: batch.closeAt ? new Date(batch.closeAt) : null,
-              publishWhenPreviousSoldOut:
-                batch.publishWhenPreviousSoldOut || false,
-            },
-          });
-        } else {
-          savedBatch = await tx.ticketBatch.create({
-            data: {
-              eventId,
-              name: batch.name,
-              status: status,
-              publishAt: batch.publishAt ? new Date(batch.publishAt) : null,
-              closeAt: batch.closeAt ? new Date(batch.closeAt) : null,
-              publishWhenPreviousSoldOut:
-                batch.publishWhenPreviousSoldOut || false,
-            },
-          });
-        }
-
-        const incomingTypeIds = batch.ticketTypes
-          .filter((t: any) => t.id)
-          .map((t: any) => t.id);
-        const existingTypes = batch.id
-          ? eventContext.ticketBatches.find((b: any) => b.id === batch.id)
-              ?.ticketTypes || []
-          : [];
-        const typesToDelete = existingTypes.filter(
-          (t: any) => !incomingTypeIds.includes(t.id),
-        );
-
-        for (const t of typesToDelete) {
-          if (t.sold > 0) {
-            throw new BadRequestException(
-              `No puedes eliminar el ticket "${t.name}" porque ya tiene ventas. Pon su stock en 0 en su lugar.`,
-            );
-          }
-          await tx.ticketType.delete({ where: { id: t.id } });
-        }
-
-        for (const tType of batch.ticketTypes) {
-          if (tType.id) {
-            await tx.ticketType.update({
-              where: { id: tType.id, batchId: savedBatch.id },
-              data: {
-                name: tType.name,
-                price: tType.price,
-                stock: tType.stock,
-                saleStart: savedBatch.publishAt || new Date(),
-                saleEnd:
-                  savedBatch.closeAt || new Date(Date.now() + 31536000000),
-              },
-            });
-          } else {
-            await tx.ticketType.create({
-              data: {
-                eventId,
-                batchId: savedBatch.id,
-                name: tType.name,
-                price: tType.price,
-                stock: tType.stock,
-                saleStart: savedBatch.publishAt || new Date(),
-                saleEnd:
-                  savedBatch.closeAt || new Date(Date.now() + 31536000000),
-              },
-            });
-          }
-        }
-      }
-
+      await this.applyBatches(tx, eventId, batchesData, eventContext);
       return tx.event.findUnique({
         where: { id: eventId },
         include: { ticketBatches: { include: { ticketTypes: true } } },
       });
     });
+  }
+
+  // Event and batches in one transaction: if a batch fails, no half-created
+  // event is left behind (and retrying doesn't duplicate it).
+  async createWithBatches(
+    data: Prisma.EventUncheckedCreateInput,
+    batchesData: any[],
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const event = await tx.event.create({ data });
+      await this.applyBatches(tx, event.id, batchesData, { ticketBatches: [] });
+      return event;
+    });
+  }
+
+  private async applyBatches(
+    tx: Prisma.TransactionClient,
+    eventId: string,
+    batchesData: any[],
+    eventContext: any,
+  ) {
+    const incomingBatchIds = batchesData.filter((b) => b.id).map((b) => b.id);
+
+    const batchesToDelete = eventContext.ticketBatches.filter(
+      (b: any) => !incomingBatchIds.includes(b.id),
+    );
+    for (const b of batchesToDelete) {
+      const totalSold = b.ticketTypes.reduce(
+        (acc: number, tt: any) => acc + tt.sold,
+        0,
+      );
+      if (totalSold > 0) {
+        throw new BadRequestException(
+          `No puedes eliminar la tanda "${b.name}" porque ya tiene entradas vendidas. Pausa su venta en su lugar.`,
+        );
+      }
+      await tx.ticketType.deleteMany({ where: { batchId: b.id } });
+      await tx.ticketBatch.delete({ where: { id: b.id } });
+    }
+    for (const batch of batchesData) {
+      let status = batch.status || 'DRAFT';
+      if (
+        batch.publishAt &&
+        new Date(batch.publishAt) > new Date() &&
+        status !== 'DRAFT'
+      ) {
+        status = 'SCHEDULED';
+      }
+
+      let savedBatch;
+      if (batch.id) {
+        savedBatch = await tx.ticketBatch.update({
+          where: { id: batch.id, eventId },
+          data: {
+            name: batch.name,
+            status: status,
+            publishAt: batch.publishAt ? new Date(batch.publishAt) : null,
+            closeAt: batch.closeAt ? new Date(batch.closeAt) : null,
+            publishWhenPreviousSoldOut:
+              batch.publishWhenPreviousSoldOut || false,
+          },
+        });
+      } else {
+        savedBatch = await tx.ticketBatch.create({
+          data: {
+            eventId,
+            name: batch.name,
+            status: status,
+            publishAt: batch.publishAt ? new Date(batch.publishAt) : null,
+            closeAt: batch.closeAt ? new Date(batch.closeAt) : null,
+            publishWhenPreviousSoldOut:
+              batch.publishWhenPreviousSoldOut || false,
+          },
+        });
+      }
+
+      const incomingTypeIds = batch.ticketTypes
+        .filter((t: any) => t.id)
+        .map((t: any) => t.id);
+      const existingTypes = batch.id
+        ? eventContext.ticketBatches.find((b: any) => b.id === batch.id)
+            ?.ticketTypes || []
+        : [];
+      const typesToDelete = existingTypes.filter(
+        (t: any) => !incomingTypeIds.includes(t.id),
+      );
+
+      for (const t of typesToDelete) {
+        if (t.sold > 0) {
+          throw new BadRequestException(
+            `No puedes eliminar el ticket "${t.name}" porque ya tiene ventas. Pon su stock en 0 en su lugar.`,
+          );
+        }
+        await tx.ticketType.delete({ where: { id: t.id } });
+      }
+
+      for (const tType of batch.ticketTypes) {
+        if (tType.id) {
+          await tx.ticketType.update({
+            where: { id: tType.id, batchId: savedBatch.id },
+            data: {
+              name: tType.name,
+              price: tType.price,
+              stock: tType.stock,
+              saleStart: savedBatch.publishAt || new Date(),
+              saleEnd: savedBatch.closeAt || new Date(Date.now() + 31536000000),
+            },
+          });
+        } else {
+          await tx.ticketType.create({
+            data: {
+              eventId,
+              batchId: savedBatch.id,
+              name: tType.name,
+              price: tType.price,
+              stock: tType.stock,
+              saleStart: savedBatch.publishAt || new Date(),
+              saleEnd: savedBatch.closeAt || new Date(Date.now() + 31536000000),
+            },
+          });
+        }
+      }
+    }
   }
 
   async getOrganizerEventsWithTickets(userId: string) {

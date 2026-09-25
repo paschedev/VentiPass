@@ -18,6 +18,7 @@ import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { UpdateBatchesDto } from './dto/update-batches.dto';
 import { AddStaffDto } from './dto/add-staff.dto';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('events')
 export class EventsController {
@@ -47,6 +48,17 @@ export class EventsController {
   @Get('organizer/stats')
   getOrganizerStats(@Req() req: any) {
     return this.eventsService.getOrganizerStats(req.user.userId);
+  }
+
+  // After the fixed organizer/* routes so it doesn't swallow them.
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ORGANIZER', 'ADMIN')
+  @Get('organizer/:id')
+  findOneForOrganizer(
+    @Param('id') id: string,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return this.eventsService.findOneForOrganizer(id, userId);
   }
 
   @Get(':id')
