@@ -1,0 +1,165 @@
+{
+  "src/app/eventos/[id]/comprar/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "src/app/eventos/[id]/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "src/app/eventos/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    },
+    "react/no-unescaped-entities": {
+      "count": 2
+    }
+  },
+  "src/app/login/page.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "src/app/page.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "src/app/panel/configuracion/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    },
+    "react/no-unescaped-entities": {
+      "count": 2
+    }
+  },
+  "src/app/panel/configuracion/presets/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "src/app/panel/escanear/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/panel/eventos/[id]/editar/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "src/app/panel/eventos/nuevo/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "src/app/panel/layout.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "src/app/panel/notificaciones/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    },
+    "react-hooks/immutability": {
+      "count": 1
+    }
+  },
+  "src/app/panel/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 14
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 3
+    },
+    "react/no-unescaped-entities": {
+      "count": 2
+    }
+  },
+  "src/app/panel/perfil/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "src/app/panel/rpp/[eventId]/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/app/panel/rpp/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "src/app/panel/tickets/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 5
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "src/app/registro/page.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/components/BottomNav.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 4
+    },
+    "prefer-const": {
+      "count": 1
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "src/components/ClientLayoutWrapper.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "src/components/GlobalSidebar.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 2
+    },
+    "react-hooks/static-components": {
+      "count": 7
+    }
+  },
+  "src/components/Navbar.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    },
+    "react-hooks/immutability": {
+      "count": 1
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "src/components/TandasManager.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 7
+    },
+    "react-hooks/immutability": {
+      "count": 1
+    }
+  }
+}
