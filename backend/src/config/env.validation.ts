@@ -51,6 +51,11 @@ export class EnvironmentVariables {
   @IsNotEmpty()
   MERCADOPAGO_CLIENT_SECRET: string;
 
+  // Signature secret of the Mercado Pago app (Tus integraciones → Webhooks).
+  @IsString()
+  @IsNotEmpty()
+  MERCADOPAGO_WEBHOOK_SECRET: string;
+
   @IsString()
   @IsNotEmpty()
   RESEND_API_KEY: string;

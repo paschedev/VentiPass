@@ -1,9 +1,19 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { JobsOptions, Queue } from 'bullmq';
 import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
 import { PaymentsRepository } from './repositories/payments.repository';
 import { TicketsService } from '../tickets/tickets.service';
 import { Prisma } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
+import { isValidWebhookSignature } from './webhook-signature';
+import type { PaymentNotificationJob } from './payments.processor';
+
+// 8 attempts, the last one about an hour after the notification.
+const PAYMENT_JOB_OPTIONS: JobsOptions = {
+  attempts: 8,
+  backoff: { type: 'exponential', delay: 30_000 },
+};
 
 @Injectable()
 export class PaymentsService {
@@ -14,6 +24,7 @@ export class PaymentsService {
     private readonly paymentsRepository: PaymentsRepository,
     private ticketsService: TicketsService,
     private readonly config: ConfigService,
+    @InjectQueue('payments') private readonly paymentsQueue: Queue,
   ) {
     this.client = new MercadoPagoConfig({
       accessToken: this.config.getOrThrow<string>('MERCADOPAGO_ACCESS_TOKEN'),
@@ -116,50 +127,67 @@ export class PaymentsService {
     }
   }
 
-  async handleWebhook(body: any, signature?: string) {
-    // In production, you should verify the signature here.
-    // X-Signature validation logic...
-
-    if (body.type === 'payment') {
-      const paymentId = body.data.id;
-      try {
-        const paymentData = await new Payment(this.client).get({
-          id: paymentId,
-        });
-
-        if (paymentData.status === 'approved') {
-          const orderId = paymentData.external_reference;
-          if (!orderId) return;
-
-          // Check if payment already exists
-          const existingPayment =
-            await this.paymentsRepository.findPaymentByProviderId(
-              paymentId.toString(),
-            );
-
-          if (!existingPayment) {
-            // Update order, create payment and perform all logic via repository transaction
-            await this.paymentsRepository.processPaymentWebhookTransaction(
-              orderId,
-              paymentId.toString(),
-              paymentData.transaction_amount || 0,
-              async (tx: Prisma.TransactionClient) => {
-                // Trigger ticket generation
-                await this.ticketsService.generateTicketsForOrder(orderId, tx);
-              },
-            );
-
-            this.logger.log(
-              `Order ${orderId} marked as PAID and tickets generated.`,
-            );
-          }
-        }
-      } catch (error) {
-        this.logger.error(
-          `Error processing webhook for payment ${paymentId}`,
-          error,
-        );
-      }
+  // Only checks the signature and queues the notification: Mercado Pago gets its
+  // answer right away and the processing retries on its own if it fails.
+  async enqueueNotification(notification: {
+    signature?: string;
+    requestId?: string;
+    dataId?: string;
+    type?: string;
+    mpUserId?: string;
+  }) {
+    const isValid = isValidWebhookSignature({
+      xSignature: notification.signature,
+      xRequestId: notification.requestId,
+      dataId: notification.dataId,
+      secret: this.config.getOrThrow<string>('MERCADOPAGO_WEBHOOK_SECRET'),
+    });
+    if (!isValid) {
+      this.logger.warn(
+        `Rejected Mercado Pago webhook with an invalid signature (request ${notification.requestId})`,
+      );
+      throw new UnauthorizedException();
     }
+    if (notification.type !== 'payment' || !notification.dataId) return;
+
+    const job: PaymentNotificationJob = {
+      paymentId: notification.dataId,
+      mpUserId: notification.mpUserId,
+    };
+    await this.paymentsQueue.add('process-payment', job, PAYMENT_JOB_OPTIONS);
+  }
+
+  async processPaymentNotification(paymentId: string, mpUserId?: string) {
+    // The payment lives in the seller's account: read it with the token of the
+    // organizer that Mercado Pago names in the notification, if we know them.
+    const sellerToken = mpUserId
+      ? await this.paymentsRepository.findMercadoPagoTokenByUserId(mpUserId)
+      : null;
+    const client = sellerToken
+      ? new MercadoPagoConfig({ accessToken: sellerToken })
+      : this.client;
+
+    const paymentData = await new Payment(client).get({ id: paymentId });
+    if (paymentData.status !== 'approved') return;
+
+    const orderId = paymentData.external_reference;
+    if (!orderId) {
+      this.logger.warn(`Approved payment ${paymentId} has no order reference`);
+      return;
+    }
+
+    const existingPayment =
+      await this.paymentsRepository.findPaymentByProviderId(paymentId);
+    if (existingPayment) return;
+
+    await this.paymentsRepository.processPaymentWebhookTransaction(
+      orderId,
+      paymentId,
+      paymentData.transaction_amount || 0,
+      async (tx: Prisma.TransactionClient) => {
+        await this.ticketsService.generateTicketsForOrder(orderId, tx);
+      },
+    );
+    this.logger.log(`Order ${orderId} marked as PAID and tickets generated.`);
   }
 }

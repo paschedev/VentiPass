@@ -8,6 +8,7 @@ import {
   Query,
   Res,
   UseGuards,
+  HttpCode,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { PaymentsService } from './payments.service';
@@ -29,13 +30,28 @@ export class PaymentsController {
     private readonly config: ConfigService,
   ) {}
 
+  // The signature covers data.id from the query, not the body: the body is only
+  // used to pick the seller's token when reading the payment.
   @Post('webhook')
+  @HttpCode(200)
   async handleWebhook(
-    @Body() body: any,
-    @Headers('x-signature') signature: string,
+    @Headers('x-signature') signature: string | undefined,
+    @Headers('x-request-id') requestId: string | undefined,
+    @Query('data.id') dataId: string | undefined,
+    @Query('type') type: string | undefined,
+    @Body() body: Record<string, unknown>,
   ) {
-    // Acknowledge webhook immediately
-    this.paymentsService.handleWebhook(body, signature);
+    const userId = body?.user_id;
+    await this.paymentsService.enqueueNotification({
+      signature,
+      requestId,
+      dataId,
+      type,
+      mpUserId:
+        typeof userId === 'number' || typeof userId === 'string'
+          ? String(userId)
+          : undefined,
+    });
     return { status: 'received' };
   }
 

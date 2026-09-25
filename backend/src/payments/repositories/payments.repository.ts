@@ -20,6 +20,14 @@ export class PaymentsRepository {
     });
   }
 
+  async findMercadoPagoTokenByUserId(mercadoPagoUserId: string) {
+    const user = await this.prisma.user.findFirst({
+      where: { mercadoPagoUserId },
+      select: { mercadoPagoAccessToken: true },
+    });
+    return user?.mercadoPagoAccessToken ?? null;
+  }
+
   async findPaymentByProviderId(providerPaymentId: string) {
     return this.prisma.payment.findFirst({
       where: { providerPaymentId },
