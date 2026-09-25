@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
@@ -69,9 +70,16 @@ export class TicketsRepository {
     });
   }
 
-  async findTicketById(ticketId: string) {
+  async findTicketWithEvent(ticketId: string) {
     return this.prisma.ticket.findUnique({
       where: { id: ticketId },
+      include: {
+        ticketType: {
+          select: {
+            event: { select: { id: true, title: true, status: true } },
+          },
+        },
+      },
     });
   }
 
@@ -112,11 +120,19 @@ export class TicketsRepository {
     });
   }
 
-  async transferTicket(ticketId: string, newUserId: string) {
-    return this.prisma.ticket.update({
-      where: { id: ticketId },
-      data: { userId: newUserId },
+  // Moves a still-valid ticket to its new owner with a fresh QR, so the one the
+  // previous owner has (mail, screenshots) stops working. Conditional on owner
+  // and status: returns false if the ticket changed in the meantime.
+  async transferTicket(
+    ticketId: string,
+    currentUserId: string,
+    newUserId: string,
+  ) {
+    const { count } = await this.prisma.ticket.updateMany({
+      where: { id: ticketId, userId: currentUserId, status: 'VALID' },
+      data: { userId: newUserId, qrCode: randomUUID() },
     });
+    return count === 1;
   }
 
   async findUserById(id: string) {
