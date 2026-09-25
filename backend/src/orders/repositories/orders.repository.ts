@@ -2,6 +2,10 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma, Order } from '@prisma/client';
 
+type EventWithOrganizer = Prisma.EventGetPayload<{
+  include: { organizer: true };
+}>;
+
 @Injectable()
 export class OrdersRepository {
   constructor(private prisma: PrismaService) {}
@@ -12,11 +16,10 @@ export class OrdersRepository {
     promoterId?: string,
   ) {
     return this.prisma.$transaction(async (tx) => {
-      let ticketAmount = 0;
+      let ticketAmount = new Prisma.Decimal(0);
       const mpItems = [];
       const orderItemsData = [];
-      let eventFeePercentage = 0.15;
-      let organizer: any = null;
+      let orderEvent: EventWithOrganizer | undefined;
 
       for (const item of items) {
         const ticketType = await tx.ticketType.findUnique({
@@ -33,6 +36,13 @@ export class OrdersRepository {
           );
 
         const event = ticketType.event;
+        // One order = one event: the fee and the organizer who gets paid come from it.
+        if (orderEvent && orderEvent.id !== event.id) {
+          throw new BadRequestException(
+            'Una orden solo puede tener entradas de un evento.',
+          );
+        }
+        orderEvent = event;
         const now = new Date();
 
         // Security / Lifecycle Checks
@@ -70,21 +80,13 @@ export class OrdersRepository {
           data: { reserved: { increment: item.quantity } },
         });
 
-        eventFeePercentage =
-          Number(ticketType.event.neoPassFeePercentage) / 100;
-
-        const itemTotal = Number(ticketType.price) * item.quantity;
-        ticketAmount += itemTotal;
-
-        if (!organizer) {
-          organizer = ticketType.event.organizer;
-        }
+        ticketAmount = ticketAmount.add(ticketType.price.mul(item.quantity));
 
         mpItems.push({
           id: ticketType.id,
           title: `${ticketType.event.title} - ${ticketType.name}`,
           quantity: item.quantity,
-          unit_price: Number(ticketType.price),
+          unit_price: ticketType.price.toNumber(),
           currency_id: 'ARS',
         });
 
@@ -95,16 +97,34 @@ export class OrdersRepository {
         });
       }
 
-      // Add service fee
-      const serviceFee = ticketAmount * eventFeePercentage;
+      // items is never empty (DTO), so the event is always set here.
+      const event = orderEvent!;
+      const serviceFee = ticketAmount
+        .mul(event.neoPassFeePercentage)
+        .div(100)
+        .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
       mpItems.push({
         id: 'service_fee',
         title: 'Cargo por servicio',
         quantity: 1,
-        unit_price: serviceFee,
+        unit_price: serviceFee.toNumber(),
         currency_id: 'ARS',
       });
-      const totalAmount = ticketAmount + serviceFee;
+      const totalAmount = ticketAmount.add(serviceFee);
+
+      // Only an accepted promoter of this event earns a commission; any other
+      // id is dropped so a stale or foreign referral link doesn't block the sale.
+      const promoter = promoterId
+        ? await tx.eventStaff.findFirst({
+            where: {
+              id: promoterId,
+              eventId: event.id,
+              role: 'PROMOTER',
+              status: 'ACCEPTED',
+            },
+            select: { id: true },
+          })
+        : null;
 
       // Create Order in PENDING status
       const order = await tx.order.create({
@@ -114,7 +134,7 @@ export class OrdersRepository {
           totalAmount,
           ticketAmount,
           serviceFee,
-          promoterId,
+          promoterId: promoter?.id,
           expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes to pay
           orderItems: {
             create: orderItemsData,
@@ -131,7 +151,7 @@ export class OrdersRepository {
         },
       });
 
-      return { order, mpItems, serviceFee, organizer };
+      return { order, mpItems, serviceFee, organizer: event.organizer };
     });
   }
 
