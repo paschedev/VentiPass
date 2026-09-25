@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { LogIn } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { apiFetch } from '@/utils/api';
+import { getSafeRedirect } from '@/utils/redirect';
 import { z } from 'zod';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -41,7 +42,7 @@ export default function LoginPage() {
   useEffect(() => {
     setMounted(true);
     if (window.location.search.includes('expired=1')) {
-      setError('Acceso denegado (401). Verifica redirecciones.');
+      setError('Tu sesión expiró. Ingresá de nuevo.');
     }
   }, []);
 
@@ -66,7 +67,7 @@ export default function LoginPage() {
         localStorage.setItem('user', JSON.stringify(responseData.user));
 
         const urlParams = new URLSearchParams(window.location.search);
-        const callbackUrl = urlParams.get('callbackUrl');
+        const callbackUrl = getSafeRedirect(urlParams.get('callbackUrl'));
 
         if (callbackUrl) {
           window.location.replace(callbackUrl);
