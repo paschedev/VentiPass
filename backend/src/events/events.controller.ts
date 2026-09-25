@@ -19,14 +19,15 @@ import { UpdateEventDto } from './dto/update-event.dto';
 import { UpdateBatchesDto } from './dto/update-batches.dto';
 import { AddStaffDto } from './dto/add-staff.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { ListEventsQueryDto } from './dto/list-events-query.dto';
 
 @Controller('events')
 export class EventsController {
   constructor(private readonly eventsService: EventsService) {}
 
   @Get()
-  findAll() {
-    return this.eventsService.findAll();
+  findPublicPage(@Query() query: ListEventsQueryDto) {
+    return this.eventsService.findPublicPage(query.page, query.limit);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

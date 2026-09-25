@@ -43,9 +43,11 @@ function EventContent() {
 
   useEffect(() => {
     Promise.all([
+      // A 404 (draft, finished or missing event) leaves `event` empty and the
+      // page shows "Evento no encontrado" instead of the error JSON.
       apiFetch(
         rppFromUrl ? `/events/${id}?rpp=${rppFromUrl}` : `/events/${id}`,
-      ).then((res) => res.json()),
+      ).then((res) => (res.ok ? res.json() : null)),
       apiFetch(`/events/${id}/promoters`).then((res) =>
         res.ok ? res.json() : [],
       ),
@@ -306,7 +308,7 @@ function EventContent() {
                       </h4>
                       <div className="bg-black/40 border border-white/10 rounded-xl flex flex-col divide-y divide-white/5">
                         {batch.ticketTypes?.map((ticket: any) => {
-                          const available = ticket.stock - ticket.sold;
+                          const available: number = ticket.available;
                           const qty = cart[ticket.id] || 0;
                           return (
                             <div
