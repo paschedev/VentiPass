@@ -58,8 +58,13 @@ export class EventsService {
     private readonly notificationsService: NotificationsService,
   ) {}
 
-  async findAll() {
-    return this.eventsRepository.findAll();
+  async findPublicPage(page: number, limit: number) {
+    const { items, total } = await this.eventsRepository.findPublicPage(
+      new Date(),
+      (page - 1) * limit,
+      limit,
+    );
+    return { items, total, page, limit };
   }
 
   async findOne(id: string, rppId?: string) {
@@ -69,18 +74,24 @@ export class EventsService {
         .incrementPromoterClicks(rppId)
         .catch((err) => console.error('Error tracking click', err));
     }
-    const event = await this.eventsRepository.findOne(id);
-    if (!event) {
-      throw new BadRequestException('Evento no encontrado');
-    }
-    // RED TEAM FIX: IDOR on unpublished events. Only allow viewing if published.
-    // If organizers need preview, they should use a secured endpoint.
-    if (event.status !== 'PUBLISHED') {
-      throw new BadRequestException(
-        'El evento no está disponible públicamente',
-      );
-    }
-    return event;
+    // Drafts, cancelled and finished events are not public; organizers use
+    // GET /events/organizer/:id instead.
+    const event = await this.eventsRepository.findPublicById(id, new Date());
+    if (!event) throw new NotFoundException('Evento no encontrado');
+
+    // Buyers see how many tickets are left, not the raw stock counters.
+    return {
+      ...event,
+      ticketBatches: event.ticketBatches.map((batch) => ({
+        ...batch,
+        ticketTypes: batch.ticketTypes.map(
+          ({ stock, sold, reserved, ...ticketType }) => ({
+            ...ticketType,
+            available: Math.max(0, stock - sold - reserved),
+          }),
+        ),
+      })),
+    };
   }
 
   async create(userId: string, data: any) {
@@ -431,6 +442,9 @@ export class EventsService {
   }
 
   async getPublicPromoters(eventId: string) {
+    if (!(await this.eventsRepository.isPublicEvent(eventId, new Date()))) {
+      throw new NotFoundException('Evento no encontrado');
+    }
     const staff = await this.eventsRepository.getEventStaffByEvent(eventId);
     // Return only PROMOTERs with their ID and Name for public use
     return staff

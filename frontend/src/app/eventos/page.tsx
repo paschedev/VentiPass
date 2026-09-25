@@ -7,25 +7,43 @@ import { motion } from 'framer-motion';
 import { apiFetch } from '@/utils/api';
 import { optimizeCloudinaryUrl } from '@/utils/cloudinary';
 
+const EVENTS_PER_PAGE = 24;
+
+// What GET /events returns for each card.
+type EventSummary = {
+  id: string;
+  title: string;
+  imageUrl: string | null;
+  startDate: string;
+  venueName: string | null;
+};
+
 export default function EventosPage() {
-  const [events, setEvents] = useState([]);
+  const [events, setEvents] = useState<EventSummary[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    apiFetch('/events')
-      .then((res) => res.json())
-      .then((data) => {
-        setEvents(data);
-        setLoading(false);
+    apiFetch(`/events?page=${page}&limit=${EVENTS_PER_PAGE}`)
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
       })
-      .catch((err) => {
-        console.error(err);
-        setLoading(false);
-      });
-  }, []);
+      .then((data: { items: EventSummary[]; total: number }) => {
+        setEvents((prev) =>
+          page === 1 ? data.items : [...prev, ...data.items],
+        );
+        setTotal(data.total);
+        setLoadError(false);
+      })
+      .catch(() => setLoadError(true))
+      .finally(() => setLoading(false));
+  }, [page]);
 
-  const filteredEvents = events.filter((event: any) => {
+  const filteredEvents = events.filter((event) => {
     const searchLower = searchTerm.toLowerCase();
     const titleMatch = event.title?.toLowerCase().includes(searchLower);
     const venueMatch = event.venueName?.toLowerCase().includes(searchLower);
@@ -62,6 +80,10 @@ export default function EventosPage() {
         <div className="text-center text-neutral-400 py-20">
           Cargando eventos...
         </div>
+      ) : loadError && events.length === 0 ? (
+        <div className="text-center text-neutral-400 py-20">
+          No pudimos cargar los eventos. Probá de nuevo en unos minutos.
+        </div>
       ) : events.length === 0 ? (
         <div className="flex flex-col items-center justify-center bg-white/5 border border-white/10 rounded-2xl p-12 text-center">
           <p className="text-neutral-400 mb-6 text-lg">
@@ -79,7 +101,7 @@ export default function EventosPage() {
           layout
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
         >
-          {filteredEvents.map((event: any, index: number) => (
+          {filteredEvents.map((event, index) => (
             <motion.div
               layout
               initial={{ opacity: 0, y: 20 }}
@@ -135,6 +157,17 @@ export default function EventosPage() {
           {filteredEvents.length === 0 && searchTerm && (
             <div className="col-span-full text-center py-20 text-neutral-400">
               No se encontraron eventos para "{searchTerm}"
+            </div>
+          )}
+
+          {events.length < total && (
+            <div className="col-span-full flex justify-center">
+              <button
+                onClick={() => setPage((p) => p + 1)}
+                className="bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-xl font-medium transition-colors border border-white/10"
+              >
+                Ver más eventos
+              </button>
             </div>
           )}
         </motion.div>

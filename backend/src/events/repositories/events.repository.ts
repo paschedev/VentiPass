@@ -2,16 +2,87 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma, StaffRole, CommissionType } from '@prisma/client';
 
+// Public = published and not over yet.
+function publicEventWhere(now: Date): Prisma.EventWhereInput {
+  return { status: 'PUBLISHED', endDate: { gt: now } };
+}
+
 @Injectable()
 export class EventsRepository {
   constructor(private prisma: PrismaService) {}
 
-  async findAll() {
-    return this.prisma.event.findMany({
-      include: {
-        ticketBatches: { include: { ticketTypes: true } },
-        ticketTypes: true,
+  async findPublicPage(now: Date, skip: number, take: number) {
+    const where = publicEventWhere(now);
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.event.findMany({
+        where,
+        orderBy: { startDate: 'asc' },
+        skip,
+        take,
+        select: {
+          id: true,
+          title: true,
+          imageUrl: true,
+          startDate: true,
+          endDate: true,
+          venueName: true,
+          venueAddress: true,
+        },
+      }),
+      this.prisma.event.count({ where }),
+    ]);
+    return { items, total };
+  }
+
+  async findPublicById(id: string, now: Date) {
+    return this.prisma.event.findFirst({
+      where: { id, ...publicEventWhere(now) },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        imageUrl: true,
+        youtubeLink: true,
+        startDate: true,
+        endDate: true,
+        venueName: true,
+        venueAddress: true,
+        status: true,
+        neoPassFeePercentage: true,
+        ticketBatches: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            publishAt: true,
+            closeAt: true,
+            ticketTypes: {
+              select: {
+                id: true,
+                name: true,
+                price: true,
+                stock: true,
+                sold: true,
+                reserved: true,
+              },
+            },
+          },
+        },
       },
+    });
+  }
+
+  async isPublicEvent(id: string, now: Date) {
+    const count = await this.prisma.event.count({
+      where: { id, ...publicEventWhere(now) },
+    });
+    return count > 0;
+  }
+
+  async finishPublishedEventsEndedBefore(now: Date) {
+    return this.prisma.event.updateMany({
+      where: { status: 'PUBLISHED', endDate: { lte: now } },
+      data: { status: 'FINISHED' },
     });
   }
 
