@@ -1,23 +1,41 @@
-import { IsString, IsOptional, IsDateString, IsIn, IsNumber, Min } from 'class-validator';
+import { IsString, IsOptional, IsDateString, IsIn, IsNumber, Min, IsArray, ValidateNested, IsBoolean } from 'class-validator';
+import { Type } from 'class-transformer';
 
-export class BatchDto {
+export class TicketTypeDto {
   @IsOptional()
   @IsString()
   id?: string;
 
-  @IsString({ message: 'El nombre de la tanda debe ser texto' })
+  @IsOptional()
+  @IsString()
+  tempId?: string;
+
+  @IsString({ message: 'El nombre del ticket debe ser texto' })
   name: string;
 
   @IsNumber({}, { message: 'El precio debe ser un número' })
   @Min(0)
   price: number;
 
-  @IsNumber({}, { message: 'La capacidad debe ser un número' })
+  @IsNumber({}, { message: 'El stock debe ser un número mayor a 0' })
   @Min(1)
-  capacity: number;
+  stock: number;
+}
+
+export class BatchDto {
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @IsOptional()
+  @IsString()
+  tempId?: string;
+
+  @IsString({ message: 'El nombre de la tanda debe ser texto' })
+  name: string;
 
   @IsString()
-  @IsIn(['ACTIVE', 'SCHEDULED', 'PAUSED', 'SOLD_OUT', 'ARCHIVED'])
+  @IsIn(['DRAFT', 'SCHEDULED', 'PUBLISHED', 'ENDED'])
   status: string;
 
   @IsOptional()
@@ -25,6 +43,15 @@ export class BatchDto {
   publishAt?: string;
 
   @IsOptional()
-  @IsNumber()
-  feePercentage?: number;
+  @IsDateString()
+  closeAt?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  publishWhenPreviousSoldOut?: boolean;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TicketTypeDto)
+  ticketTypes: TicketTypeDto[];
 }
