@@ -10,6 +10,7 @@ const PRODUCTION_ENV = {
   MERCADOPAGO_ACCESS_TOKEN: 'APP_USR-platform-token',
   MERCADOPAGO_CLIENT_ID: 'mp-client-id',
   MERCADOPAGO_CLIENT_SECRET: 'mp-client-secret',
+  MERCADOPAGO_WEBHOOK_SECRET: 'mp-webhook-secret',
   RESEND_API_KEY: 're_resend_key',
   TURNSTILE_SECRET_KEY: 'turnstile-secret',
   CLOUDINARY_URL: 'cloudinary://key:secret@neopass',

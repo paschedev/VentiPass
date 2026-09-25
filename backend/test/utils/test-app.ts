@@ -7,6 +7,7 @@ import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/configure-app';
 import { MailProcessor } from '../../src/mail/mail.processor';
 import { OrdersProcessor } from '../../src/orders/orders.processor';
+import { PaymentsProcessor } from '../../src/payments/payments.processor';
 import { PrismaService } from '../../src/prisma/prisma.service';
 
 type QueueMock = { add: jest.Mock };
@@ -14,7 +15,7 @@ type QueueMock = { add: jest.Mock };
 export interface TestApp {
   app: INestApplication<App>;
   prisma: PrismaService;
-  queues: { mail: QueueMock; orders: QueueMock };
+  queues: { mail: QueueMock; orders: QueueMock; payments: QueueMock };
   close: () => Promise<void>;
 }
 
@@ -23,16 +24,24 @@ export interface TestApp {
 // process()) y los crons quedan frenados para que no escriban en la base en
 // medio de un test.
 export async function createTestApp(): Promise<TestApp> {
-  const queues = { mail: { add: jest.fn() }, orders: { add: jest.fn() } };
+  const queues = {
+    mail: { add: jest.fn() },
+    orders: { add: jest.fn() },
+    payments: { add: jest.fn() },
+  };
 
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(getQueueToken('mail'))
     .useValue(queues.mail)
     .overrideProvider(getQueueToken('orders'))
     .useValue(queues.orders)
+    .overrideProvider(getQueueToken('payments'))
+    .useValue(queues.payments)
     .overrideProvider(MailProcessor)
     .useValue({})
     .overrideProvider(OrdersProcessor)
+    .useValue({})
+    .overrideProvider(PaymentsProcessor)
     .useValue({})
     .compile();
 
