@@ -14,7 +14,7 @@ export class OrdersProcessor extends WorkerHost {
   async process(job: Job<any, any, string>): Promise<any> {
     if (job.name === 'expire-order') {
       const { orderId } = job.data;
-      
+
       try {
         await this.prisma.$transaction(async (tx) => {
           const order = await tx.order.findUnique({
@@ -26,7 +26,7 @@ export class OrdersProcessor extends WorkerHost {
 
           if (order.status === 'PENDING') {
             this.logger.log(`Expiring order ${orderId} due to timeout`);
-            
+
             // Mark order as expired
             await tx.order.update({
               where: { id: orderId },

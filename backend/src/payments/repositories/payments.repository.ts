@@ -6,7 +6,10 @@ import { Prisma } from '@prisma/client';
 export class PaymentsRepository {
   constructor(private prisma: PrismaService) {}
 
-  async updateUserMercadoPagoCredentials(userId: string, data: { accessToken: string; publicKey?: string; userId?: string }) {
+  async updateUserMercadoPagoCredentials(
+    userId: string,
+    data: { accessToken: string; publicKey?: string; userId?: string },
+  ) {
     return this.prisma.user.update({
       where: { id: userId },
       data: {
@@ -19,11 +22,16 @@ export class PaymentsRepository {
 
   async findPaymentByProviderId(providerPaymentId: string) {
     return this.prisma.payment.findFirst({
-      where: { providerPaymentId }
+      where: { providerPaymentId },
     });
   }
 
-  async processPaymentWebhookTransaction(orderId: string, paymentId: string, transactionAmount: number, generateTicketsCallback: (tx: Prisma.TransactionClient) => Promise<void>) {
+  async processPaymentWebhookTransaction(
+    orderId: string,
+    paymentId: string,
+    transactionAmount: number,
+    generateTicketsCallback: (tx: Prisma.TransactionClient) => Promise<void>,
+  ) {
     return this.prisma.$transaction(async (tx) => {
       // 1. Fetch current order state to handle Race Conditions (Late Webhooks)
       const currentOrder = await tx.order.findUnique({
@@ -46,7 +54,9 @@ export class PaymentsRepository {
             // Here we should ideally flag it for manual review or refund.
             // For now, we throw an error to prevent DB corruption.
             // A higher level catch should notify admins.
-            throw new Error(`RACE_CONDITION: Cannot revive order ${orderId}, out of stock for ticket ${tt.name}`);
+            throw new Error(
+              `RACE_CONDITION: Cannot revive order ${orderId}, out of stock for ticket ${tt.name}`,
+            );
           }
         }
       }
@@ -72,20 +82,30 @@ export class PaymentsRepository {
 
       // Calculate promoter commission if a promoter is linked
       if (order.promoterId) {
-        const promoter = await tx.eventStaff.findUnique({ where: { id: order.promoterId } });
+        const promoter = await tx.eventStaff.findUnique({
+          where: { id: order.promoterId },
+        });
         if (promoter) {
           let commission = 0;
           if (promoter.commissionType === 'FIXED' && promoter.commissionValue) {
-            const ticketCount = order.orderItems.reduce((acc, curr) => acc + curr.quantity, 0);
+            const ticketCount = order.orderItems.reduce(
+              (acc, curr) => acc + curr.quantity,
+              0,
+            );
             commission = Number(promoter.commissionValue) * ticketCount;
-          } else if (promoter.commissionType === 'PERCENTAGE' && promoter.commissionValue) {
-            commission = Number(order.ticketAmount) * (Number(promoter.commissionValue) / 100);
+          } else if (
+            promoter.commissionType === 'PERCENTAGE' &&
+            promoter.commissionValue
+          ) {
+            commission =
+              Number(order.ticketAmount) *
+              (Number(promoter.commissionValue) / 100);
           }
-          
+
           if (commission > 0) {
             await tx.eventStaff.update({
               where: { id: promoter.id },
-              data: { totalEarned: { increment: commission } }
+              data: { totalEarned: { increment: commission } },
             });
           }
         }
@@ -99,8 +119,8 @@ export class PaymentsRepository {
           await tx.ticketType.update({
             where: { id: item.ticketTypeId },
             data: {
-              sold: { increment: item.quantity }
-            }
+              sold: { increment: item.quantity },
+            },
           });
         } else {
           // Normal flow: transition from reserved to sold
@@ -108,12 +128,12 @@ export class PaymentsRepository {
             where: { id: item.ticketTypeId },
             data: {
               reserved: { decrement: item.quantity },
-              sold: { increment: item.quantity }
-            }
+              sold: { increment: item.quantity },
+            },
           });
         }
       }
-      
+
       return order;
     });
   }

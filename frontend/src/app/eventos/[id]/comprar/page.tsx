@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -11,10 +11,12 @@ const NEOPASS_FEE_PERCENTAGE = 0.15; // 15% recargo
 export default function CheckoutPage() {
   const { id } = useParams();
   const router = useRouter();
-  
+
   const [event, setEvent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [ticketSelections, setTicketSelections] = useState<Record<string, number>>({});
+  const [ticketSelections, setTicketSelections] = useState<
+    Record<string, number>
+  >({});
   const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
@@ -24,7 +26,7 @@ export default function CheckoutPage() {
         if (res.ok) {
           const data = await res.json();
           setEvent(data);
-          
+
           // Inicializar conteos
           const initialSelections: Record<string, number> = {};
           data.ticketTypes.forEach((tt: any) => {
@@ -41,12 +43,12 @@ export default function CheckoutPage() {
         setLoading(false);
       }
     };
-    
+
     fetchEvent();
   }, [id, router]);
 
   const handleIncrement = (ttId: string, limit: number) => {
-    setTicketSelections(prev => {
+    setTicketSelections((prev) => {
       const current = prev[ttId] || 0;
       if (current >= Math.min(10, limit)) return prev; // Max 10 per order or stock limit
       return { ...prev, [ttId]: current + 1 };
@@ -54,7 +56,7 @@ export default function CheckoutPage() {
   };
 
   const handleDecrement = (ttId: string) => {
-    setTicketSelections(prev => {
+    setTicketSelections((prev) => {
       const current = prev[ttId] || 0;
       if (current <= 0) return prev;
       return { ...prev, [ttId]: current - 1 };
@@ -62,30 +64,32 @@ export default function CheckoutPage() {
   };
 
   const calculateTotals = () => {
-    if (!event) return { subtotal: 0, serviceFee: 0, total: 0, ticketsCount: 0 };
-    
+    if (!event)
+      return { subtotal: 0, serviceFee: 0, total: 0, ticketsCount: 0 };
+
     let subtotal = 0;
     let ticketsCount = 0;
-    
+
     event.ticketTypes.forEach((tt: any) => {
       const count = ticketSelections[tt.id] || 0;
       subtotal += count * Number(tt.price);
       ticketsCount += count;
     });
-    
+
     const serviceFee = subtotal * NEOPASS_FEE_PERCENTAGE;
-    return { 
-      subtotal, 
-      serviceFee, 
+    return {
+      subtotal,
+      serviceFee,
       total: subtotal + serviceFee,
-      ticketsCount 
+      ticketsCount,
     };
   };
 
   const handleCheckout = async () => {
     const { ticketsCount } = calculateTotals();
-    if (ticketsCount === 0) return toast.error('Selecciona al menos una entrada');
-    
+    if (ticketsCount === 0)
+      return toast.error('Selecciona al menos una entrada');
+
     const token = localStorage.getItem('token');
     if (!token) {
       toast.error('Debes iniciar sesión para comprar');
@@ -102,7 +106,6 @@ export default function CheckoutPage() {
       // Phase 2: Llamada al backend POST /orders
       toast.success('Orden creada (MVP Mock)');
       setTimeout(() => router.push('/panel/tickets'), 1500);
-      
     } catch (e) {
       toast.error('Ocurrió un error al procesar tu orden');
     } finally {
@@ -125,8 +128,8 @@ export default function CheckoutPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 md:py-12 pb-32">
-      <button 
-        onClick={() => router.back()} 
+      <button
+        onClick={() => router.back()}
         className="mb-8 flex items-center gap-2 text-neutral-400 hover:text-white transition-colors w-fit group"
       >
         <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
@@ -134,11 +137,12 @@ export default function CheckoutPage() {
       </button>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
         {/* Selección de Entradas */}
         <div className="lg:col-span-2 space-y-6">
           <div>
-            <h1 className="font-outfit text-3xl font-bold text-white mb-2">Comprar Entradas</h1>
+            <h1 className="font-outfit text-3xl font-bold text-white mb-2">
+              Comprar Entradas
+            </h1>
             <p className="text-neutral-400">{event.title}</p>
           </div>
 
@@ -146,30 +150,49 @@ export default function CheckoutPage() {
             {event.ticketTypes.map((tt: any) => {
               const count = ticketSelections[tt.id] || 0;
               const isSoldOut = tt.capacity - tt.sold <= 0;
-              
+
               return (
-                <div key={tt.id} className={`flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-2xl border ${isSoldOut ? 'bg-black/50 border-red-500/10' : 'bg-white/5 border-white/10 hover:border-indigo-500/30 transition-colors'}`}>
+                <div
+                  key={tt.id}
+                  className={`flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-2xl border ${isSoldOut ? 'bg-black/50 border-red-500/10' : 'bg-white/5 border-white/10 hover:border-indigo-500/30 transition-colors'}`}
+                >
                   <div className="flex-1">
                     <h3 className="text-lg font-bold text-white flex items-center gap-2">
                       {tt.name}
-                      {isSoldOut && <span className="bg-red-500/10 text-red-400 text-[10px] uppercase px-2 py-0.5 rounded font-bold">Agotado</span>}
+                      {isSoldOut && (
+                        <span className="bg-red-500/10 text-red-400 text-[10px] uppercase px-2 py-0.5 rounded font-bold">
+                          Agotado
+                        </span>
+                      )}
                     </h3>
-                    <p className="text-sm text-neutral-400 mb-2">{tt.description || 'Sin descripción'}</p>
-                    <div className="text-xl font-bold text-emerald-400">${Number(tt.price).toLocaleString('es-AR')}</div>
+                    <p className="text-sm text-neutral-400 mb-2">
+                      {tt.description || 'Sin descripción'}
+                    </p>
+                    <div className="text-xl font-bold text-emerald-400">
+                      ${Number(tt.price).toLocaleString('es-AR')}
+                    </div>
                   </div>
-                  
+
                   <div className="flex items-center bg-black/50 rounded-xl border border-white/10 p-1 w-fit self-end md:self-auto">
-                    <button 
+                    <button
                       onClick={() => handleDecrement(tt.id)}
                       disabled={count === 0 || isSoldOut}
                       className="w-10 h-10 flex items-center justify-center text-white hover:bg-white/10 rounded-lg disabled:opacity-30 transition-colors"
-                    >-</button>
-                    <span className="w-12 text-center font-bold text-lg">{count}</span>
-                    <button 
-                      onClick={() => handleIncrement(tt.id, tt.capacity - tt.sold)}
+                    >
+                      -
+                    </button>
+                    <span className="w-12 text-center font-bold text-lg">
+                      {count}
+                    </span>
+                    <button
+                      onClick={() =>
+                        handleIncrement(tt.id, tt.capacity - tt.sold)
+                      }
                       disabled={count >= 10 || isSoldOut}
                       className="w-10 h-10 flex items-center justify-center text-white hover:bg-white/10 rounded-lg disabled:opacity-30 transition-colors"
-                    >+</button>
+                    >
+                      +
+                    </button>
                   </div>
                 </div>
               );
@@ -194,42 +217,58 @@ export default function CheckoutPage() {
                   const count = ticketSelections[tt.id] || 0;
                   if (count === 0) return null;
                   return (
-                    <div key={tt.id} className="flex justify-between text-neutral-300">
-                      <span>{count}x {tt.name}</span>
-                      <span>${(count * Number(tt.price)).toLocaleString('es-AR')}</span>
+                    <div
+                      key={tt.id}
+                      className="flex justify-between text-neutral-300"
+                    >
+                      <span>
+                        {count}x {tt.name}
+                      </span>
+                      <span>
+                        ${(count * Number(tt.price)).toLocaleString('es-AR')}
+                      </span>
                     </div>
                   );
                 })}
-                
+
                 <div className="border-t border-white/10 pt-4 flex justify-between text-neutral-400">
                   <span>Subtotal</span>
                   <span>${subtotal.toLocaleString('es-AR')}</span>
                 </div>
-                
+
                 <div className="flex justify-between text-neutral-400">
-                  <span className="flex items-center gap-1">Cargo por servicio <AlertCircle className="w-3 h-3" /></span>
+                  <span className="flex items-center gap-1">
+                    Cargo por servicio <AlertCircle className="w-3 h-3" />
+                  </span>
                   <span>${serviceFee.toLocaleString('es-AR')}</span>
                 </div>
 
                 <div className="border-t border-white/10 pt-4 mt-4">
                   <div className="flex justify-between items-center mb-6">
-                    <span className="text-lg text-white font-medium">Total</span>
-                    <span className="text-2xl font-bold text-emerald-400">${total.toLocaleString('es-AR')}</span>
+                    <span className="text-lg text-white font-medium">
+                      Total
+                    </span>
+                    <span className="text-2xl font-bold text-emerald-400">
+                      ${total.toLocaleString('es-AR')}
+                    </span>
                   </div>
 
-                  <button 
+                  <button
                     onClick={handleCheckout}
                     disabled={isProcessing}
                     className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-4 rounded-xl font-bold text-lg transition-all active:scale-95 flex justify-center items-center gap-2 disabled:opacity-50"
                   >
-                    {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Continuar al pago'}
+                    {isProcessing ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      'Continuar al pago'
+                    )}
                   </button>
                 </div>
               </div>
             )}
           </div>
         </div>
-
       </div>
     </div>
   );

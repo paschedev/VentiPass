@@ -11,7 +11,9 @@ export class MediaController {
 
   @UseGuards(JwtAuthGuard)
   @Get('presign')
-  @ApiOperation({ summary: 'Obtiene firma temporal para subida segura a Cloudinary' })
+  @ApiOperation({
+    summary: 'Obtiene firma temporal para subida segura a Cloudinary',
+  })
   getPresignedToken() {
     return this.mediaService.generateSignature();
   }

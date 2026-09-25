@@ -33,32 +33,34 @@ if (process.env.REDIS_URL) {
 
 @Module({
   imports: [
-    ThrottlerModule.forRoot([{
-      ttl: 60000,
-      limit: 100,
-    }]),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 100,
+      },
+    ]),
     BullModule.forRoot({
       connection: redisConfig,
     }),
-    PrismaModule, 
-    EventsModule, 
-    OrdersModule, 
-    PaymentsModule, 
-    MailModule, 
-    TicketsModule, 
+    PrismaModule,
+    EventsModule,
+    OrdersModule,
+    PaymentsModule,
+    MailModule,
+    TicketsModule,
     AuthModule,
     PresetsModule,
     NotificationsModule,
     MediaModule,
-    ScheduleModule.forRoot()
+    ScheduleModule.forRoot(),
   ],
   controllers: [AppController],
   providers: [
     AppService,
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard
-    }
+      useClass: ThrottlerGuard,
+    },
   ],
 })
 export class AppModule {}

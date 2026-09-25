@@ -11,14 +11,14 @@ async function bootstrap() {
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   app.enableCors({
     origin: [
-      frontendUrl, 
-      'https://neopass.com', 
+      frontendUrl,
+      'https://neopass.com',
       'https://www.neopass.com',
       'https://ventipass.com',
       'https://www.ventipass.com',
       'https://venti-pass.vercel.app',
-      'http://localhost:3000', 
-      'http://127.0.0.1:3000'
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,

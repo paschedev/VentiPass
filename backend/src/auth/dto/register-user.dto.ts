@@ -1,4 +1,13 @@
-import { IsString, IsEmail, MinLength, MaxLength, ValidateIf, IsOptional, IsIn, Matches } from 'class-validator';
+import {
+  IsString,
+  IsEmail,
+  MinLength,
+  MaxLength,
+  ValidateIf,
+  IsOptional,
+  IsIn,
+  Matches,
+} from 'class-validator';
 
 export class RegisterUserDto {
   @IsString({ message: 'El nombre debe ser un texto' })
@@ -12,20 +21,27 @@ export class RegisterUserDto {
 
   @IsString({ message: 'La contraseña debe ser un texto' })
   @MinLength(6, { message: 'La contraseña debe tener al menos 6 caracteres' })
-  @MaxLength(32, { message: 'La contraseña no puede tener más de 32 caracteres' })
+  @MaxLength(32, {
+    message: 'La contraseña no puede tener más de 32 caracteres',
+  })
   password: string;
 
   @IsString({ message: 'El rol debe ser un texto' })
-  @IsIn(['CUSTOMER', 'ORGANIZER', 'ADMIN'], { message: 'El rol proporcionado no es válido' })
+  @IsIn(['CUSTOMER', 'ORGANIZER', 'ADMIN'], {
+    message: 'El rol proporcionado no es válido',
+  })
   role: string;
 
   // Organizer specific fields
-  @ValidateIf(o => o.role === 'ORGANIZER')
+  @ValidateIf((o) => o.role === 'ORGANIZER')
   @IsString({ message: 'El teléfono debe ser un texto' })
-  @Matches(/^\+[1-9]\d{6,14}$/, { message: 'El número de teléfono debe tener formato internacional (ej: +549112345678)' })
+  @Matches(/^\+[1-9]\d{6,14}$/, {
+    message:
+      'El número de teléfono debe tener formato internacional (ej: +549112345678)',
+  })
   phone: string;
 
-  @ValidateIf(o => o.role === 'ORGANIZER')
+  @ValidateIf((o) => o.role === 'ORGANIZER')
   @IsOptional()
   @IsString({ message: 'El nombre de la productora debe ser un texto' })
   companyName?: string;

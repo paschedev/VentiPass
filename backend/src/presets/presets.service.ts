@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -13,10 +17,10 @@ export class PresetsService {
 
     if (presets.length === 0) {
       const general = await this.prisma.ticketPreset.create({
-        data: { organizerId, name: 'General', price: 0 }
+        data: { organizerId, name: 'General', price: 0 },
       });
       const vip = await this.prisma.ticketPreset.create({
-        data: { organizerId, name: 'VIP', price: 0 }
+        data: { organizerId, name: 'VIP', price: 0 },
       });
       presets = [general, vip];
     }
@@ -25,9 +29,13 @@ export class PresetsService {
   }
 
   async create(organizerId: string, name: string, price: number) {
-    const count = await this.prisma.ticketPreset.count({ where: { organizerId } });
+    const count = await this.prisma.ticketPreset.count({
+      where: { organizerId },
+    });
     if (count >= 7) {
-      throw new BadRequestException('Has alcanzado el límite máximo de 7 plantillas.');
+      throw new BadRequestException(
+        'Has alcanzado el límite máximo de 7 plantillas.',
+      );
     }
 
     return this.prisma.ticketPreset.create({
