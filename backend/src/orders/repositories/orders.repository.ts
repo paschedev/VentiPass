@@ -137,19 +137,15 @@ export class OrdersRepository {
 
   async markOrderFailedAndRollbackStock(orderId: string) {
     return this.prisma.$transaction(async (tx) => {
-      const order = await tx.order.findUnique({
-        where: { id: orderId },
-        include: { orderItems: true },
-      });
-
-      if (!order || order.status !== 'PENDING') return;
-
-      await tx.order.update({
-        where: { id: orderId },
+      // Conditional on PENDING so the reservation is released exactly once.
+      const { count } = await tx.order.updateMany({
+        where: { id: orderId, status: 'PENDING' },
         data: { status: 'CANCELLED' },
       });
+      if (count === 0) return;
 
-      for (const item of order.orderItems) {
+      const items = await tx.orderItem.findMany({ where: { orderId } });
+      for (const item of items) {
         await tx.ticketType.update({
           where: { id: item.ticketTypeId },
           data: { reserved: { decrement: item.quantity } },

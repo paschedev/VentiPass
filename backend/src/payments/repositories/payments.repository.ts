@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { Prisma } from '@prisma/client';
+import { OrderStatus, Prisma } from '@prisma/client';
 
 @Injectable()
 export class PaymentsRepository {
@@ -34,54 +34,67 @@ export class PaymentsRepository {
     });
   }
 
-  async processPaymentWebhookTransaction(
+  async findOrderForPayment(orderId: string) {
+    return this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: {
+        id: true,
+        status: true,
+        totalAmount: true,
+        orderItems: {
+          take: 1,
+          select: {
+            ticketType: {
+              select: { event: { select: { id: true, organizerId: true } } },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  // Moves the order from `fromStatus` to PAID only if it is still in that
+  // status, so concurrent webhooks or an expiration cannot apply it twice.
+  // Returns false if the status changed in the meantime. A late payment
+  // (EXPIRED/CANCELLED) no longer has a reservation: it only adds to `sold`,
+  // and the stock CHECK aborts the transaction if there are no tickets left.
+  async payOrderTransaction(
     orderId: string,
-    paymentId: string,
-    transactionAmount: number,
+    fromStatus: OrderStatus,
+    payment: { providerPaymentId: string; amount: number },
     generateTicketsCallback: (tx: Prisma.TransactionClient) => Promise<void>,
   ) {
     return this.prisma.$transaction(async (tx) => {
-      // 1. Fetch current order state to handle Race Conditions (Late Webhooks)
-      const currentOrder = await tx.order.findUnique({
-        where: { id: orderId },
-        include: { orderItems: { include: { ticketType: true } } },
-      });
-
-      if (!currentOrder) throw new Error(`Order ${orderId} not found`);
-
-      // 2. Check if we are reviving a CANCELLED/EXPIRED order
-      const isReviving = currentOrder.status === 'CANCELLED';
-
-      if (isReviving) {
-        // Validate stock again because it was released when cancelled
-        for (const item of currentOrder.orderItems) {
-          const tt = item.ticketType;
-          const available = tt.stock - tt.sold - tt.reserved;
-          if (available < item.quantity) {
-            // LATE WEBHOOK RACE CONDITION FAILED: No stock available
-            // Here we should ideally flag it for manual review or refund.
-            // For now, we throw an error to prevent DB corruption.
-            // A higher level catch should notify admins.
-            throw new Error(
-              `RACE_CONDITION: Cannot revive order ${orderId}, out of stock for ticket ${tt.name}`,
-            );
-          }
-        }
-      }
-
-      const order = await tx.order.update({
-        where: { id: orderId },
+      const { count } = await tx.order.updateMany({
+        where: { id: orderId, status: fromStatus },
         data: { status: 'PAID' },
+      });
+      if (count === 0) return false;
+
+      const order = await tx.order.findUniqueOrThrow({
+        where: { id: orderId },
         include: { orderItems: true },
       });
+      const hadReservation = fromStatus === 'PENDING';
+      for (const item of order.orderItems) {
+        await tx.ticketType.update({
+          where: { id: item.ticketTypeId },
+          data: hadReservation
+            ? {
+                reserved: { decrement: item.quantity },
+                sold: { increment: item.quantity },
+              }
+            : { sold: { increment: item.quantity } },
+        });
+      }
 
       await tx.payment.create({
         data: {
           orderId: order.id,
           provider: 'MERCADO_PAGO',
-          providerPaymentId: paymentId,
+          providerPaymentId: payment.providerPaymentId,
           status: 'APPROVED',
-          amount: transactionAmount,
+          amount: payment.amount,
         },
       });
 
@@ -119,30 +132,7 @@ export class PaymentsRepository {
         }
       }
 
-      // Decrement reserved and increment sold
-      for (const item of order.orderItems) {
-        if (isReviving) {
-          // If reviving, reserved was already decremented by the expiry job.
-          // We only increment sold.
-          await tx.ticketType.update({
-            where: { id: item.ticketTypeId },
-            data: {
-              sold: { increment: item.quantity },
-            },
-          });
-        } else {
-          // Normal flow: transition from reserved to sold
-          await tx.ticketType.update({
-            where: { id: item.ticketTypeId },
-            data: {
-              reserved: { decrement: item.quantity },
-              sold: { increment: item.quantity },
-            },
-          });
-        }
-      }
-
-      return order;
+      return true;
     });
   }
 }
