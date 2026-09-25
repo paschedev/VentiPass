@@ -28,7 +28,7 @@ export class PaymentsService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
-          'Authorization': `Bearer ${process.env.MERCADOPAGO_ACCESS_TOKEN}`
+          Authorization: `Bearer ${process.env.MERCADOPAGO_ACCESS_TOKEN}`,
         },
         body: new URLSearchParams({
           client_id: clientId || '',
@@ -57,16 +57,23 @@ export class PaymentsService {
   }
 
   async saveManualToken(userId: string, token: string) {
-    await this.paymentsRepository.updateUserMercadoPagoCredentials(userId, { accessToken: token });
+    await this.paymentsRepository.updateUserMercadoPagoCredentials(userId, {
+      accessToken: token,
+    });
     return { success: true };
   }
 
-  async createPreference(orderId: string, items: any[], feeAmount: number, organizerToken?: string) {
+  async createPreference(
+    orderId: string,
+    items: any[],
+    feeAmount: number,
+    organizerToken?: string,
+  ) {
     // If the organizer linked their MP account, we use their token. Otherwise fallback to the platform's test token.
-    const client = organizerToken 
-      ? new MercadoPagoConfig({ accessToken: organizerToken }) 
+    const client = organizerToken
+      ? new MercadoPagoConfig({ accessToken: organizerToken })
       : this.client;
-      
+
     const preference = new Preference(client);
 
     try {
@@ -84,14 +91,18 @@ export class PaymentsService {
 
       if (organizerToken && feeAmount > 0) {
         // Podemos detectarlos si la app está en desarrollo o si no pasamos validaciones estrictas.
-        const isTestToken = organizerToken.includes('test') || organizerToken.startsWith('TEST');
+        const isTestToken =
+          organizerToken.includes('test') || organizerToken.startsWith('TEST');
         if (!isTestToken && !process.env.BACKEND_URL?.includes('localhost')) {
-           bodyParams.marketplace_fee = feeAmount;
+          bodyParams.marketplace_fee = feeAmount;
         }
       }
 
       // MP bloquea webhooks a localhost, lo omitimos en desarrollo local
-      if (process.env.BACKEND_URL?.includes('localhost') || process.env.BACKEND_URL?.includes('127.0.0.1')) {
+      if (
+        process.env.BACKEND_URL?.includes('localhost') ||
+        process.env.BACKEND_URL?.includes('127.0.0.1')
+      ) {
         delete bodyParams.notification_url;
       }
 
@@ -113,14 +124,19 @@ export class PaymentsService {
     if (body.type === 'payment') {
       const paymentId = body.data.id;
       try {
-        const paymentData = await new Payment(this.client).get({ id: paymentId });
-        
+        const paymentData = await new Payment(this.client).get({
+          id: paymentId,
+        });
+
         if (paymentData.status === 'approved') {
           const orderId = paymentData.external_reference;
           if (!orderId) return;
 
           // Check if payment already exists
-          const existingPayment = await this.paymentsRepository.findPaymentByProviderId(paymentId.toString());
+          const existingPayment =
+            await this.paymentsRepository.findPaymentByProviderId(
+              paymentId.toString(),
+            );
 
           if (!existingPayment) {
             // Update order, create payment and perform all logic via repository transaction
@@ -131,14 +147,19 @@ export class PaymentsService {
               async (tx: Prisma.TransactionClient) => {
                 // Trigger ticket generation
                 await this.ticketsService.generateTicketsForOrder(orderId, tx);
-              }
+              },
             );
 
-            this.logger.log(`Order ${orderId} marked as PAID and tickets generated.`);
+            this.logger.log(
+              `Order ${orderId} marked as PAID and tickets generated.`,
+            );
           }
         }
       } catch (error) {
-        this.logger.error(`Error processing webhook for payment ${paymentId}`, error);
+        this.logger.error(
+          `Error processing webhook for payment ${paymentId}`,
+          error,
+        );
       }
     }
   }
@@ -152,8 +173,10 @@ export class PaymentsService {
       async (tx: Prisma.TransactionClient) => {
         // Trigger ticket generation
         await this.ticketsService.generateTicketsForOrder(orderId, tx);
-      }
+      },
     );
-    this.logger.log(`Order ${orderId} marked as PAID and tickets generated via DEV BYPASS.`);
+    this.logger.log(
+      `Order ${orderId} marked as PAID and tickets generated via DEV BYPASS.`,
+    );
   }
 }

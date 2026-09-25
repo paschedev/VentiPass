@@ -19,7 +19,11 @@ export class TicketsRepository {
     });
   }
 
-  async createTicketsTransaction(orderId: string, ticketData: Prisma.TicketCreateManyInput[], tx?: Prisma.TransactionClient) {
+  async createTicketsTransaction(
+    orderId: string,
+    ticketData: Prisma.TicketCreateManyInput[],
+    tx?: Prisma.TransactionClient,
+  ) {
     const createTicketsFn = async (client: any) => {
       await client.ticket.createMany({
         data: ticketData,
@@ -45,11 +49,11 @@ export class TicketsRepository {
       include: {
         ticketType: {
           include: {
-            event: true
-          }
-        }
+            event: true,
+          },
+        },
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     });
   }
 
@@ -58,27 +62,31 @@ export class TicketsRepository {
       where: { qrCode },
       include: {
         ticketType: {
-          include: { event: true }
+          include: { event: true },
         },
         user: true,
-      }
+      },
     });
   }
 
   async findTicketById(ticketId: string) {
     return this.prisma.ticket.findUnique({
-      where: { id: ticketId }
+      where: { id: ticketId },
     });
   }
 
   async markTicketAsUsed(ticketId: string) {
     return this.prisma.ticket.update({
       where: { id: ticketId },
-      data: { status: 'USED', usedAt: new Date() }
+      data: { status: 'USED', usedAt: new Date() },
     });
   }
 
-  async processCheckInTransaction(ticketId: string, scannerId: string, userAgent: string) {
+  async processCheckInTransaction(
+    ticketId: string,
+    scannerId: string,
+    userAgent: string,
+  ) {
     return this.prisma.$transaction([
       this.prisma.ticket.update({
         where: { id: ticketId },
@@ -89,23 +97,27 @@ export class TicketsRepository {
           ticketId: ticketId,
           scannerId: scannerId,
           deviceInfo: userAgent || 'Unknown Device',
-        }
-      })
+        },
+      }),
     ]);
   }
 
-  async findEventStaff(eventId: string, userId: string, role: import('@prisma/client').StaffRole) {
+  async findEventStaff(
+    eventId: string,
+    userId: string,
+    role: import('@prisma/client').StaffRole,
+  ) {
     return this.prisma.eventStaff.findUnique({
       where: {
-        eventId_userId_role: { eventId, userId, role }
-      }
+        eventId_userId_role: { eventId, userId, role },
+      },
     });
   }
 
   async transferTicket(ticketId: string, newUserId: string) {
     return this.prisma.ticket.update({
       where: { id: ticketId },
-      data: { userId: newUserId }
+      data: { userId: newUserId },
     });
   }
 

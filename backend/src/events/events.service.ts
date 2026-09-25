@@ -9,7 +9,7 @@ export class EventsService {
   constructor(
     private readonly eventsRepository: EventsRepository,
     private readonly userRepository: UserRepository,
-    private readonly notificationsService: NotificationsService
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async findAll() {
@@ -19,7 +19,9 @@ export class EventsService {
   async findOne(id: string, rppId?: string) {
     if (rppId) {
       // Fire and forget (no esperamos para no bloquear la respuesta)
-      this.eventsRepository.incrementPromoterClicks(rppId).catch(err => console.error("Error tracking click", err));
+      this.eventsRepository
+        .incrementPromoterClicks(rppId)
+        .catch((err) => console.error('Error tracking click', err));
     }
     const event = await this.eventsRepository.findOne(id);
     if (!event) {
@@ -28,7 +30,9 @@ export class EventsService {
     // RED TEAM FIX: IDOR on unpublished events. Only allow viewing if published.
     // If organizers need preview, they should use a secured endpoint.
     if (event.status !== 'PUBLISHED') {
-      throw new BadRequestException('El evento no está disponible públicamente');
+      throw new BadRequestException(
+        'El evento no está disponible públicamente',
+      );
     }
     return event;
   }
@@ -39,12 +43,14 @@ export class EventsService {
 
     if (!user) throw new BadRequestException('Usuario no encontrado');
     if (!user.mercadoPagoAccessToken) {
-      throw new BadRequestException('Debes vincular Mercado Pago antes de crear un evento');
+      throw new BadRequestException(
+        'Debes vincular Mercado Pago antes de crear un evento',
+      );
     }
 
     const event = await this.eventsRepository.create({
       ...eventData,
-      organizerId: userId
+      organizerId: userId,
     });
 
     if (batches && batches.length > 0) {
@@ -57,7 +63,9 @@ export class EventsService {
     const { batches, ...eventData } = data;
     const event = await this.eventsRepository.findOne(id);
     if (!event || event.organizerId !== organizerId) {
-      throw new BadRequestException('No tienes permiso para editar este evento');
+      throw new BadRequestException(
+        'No tienes permiso para editar este evento',
+      );
     }
 
     const updatedEvent = await this.eventsRepository.update(id, eventData);
@@ -72,33 +80,45 @@ export class EventsService {
     return this.eventsRepository.findByOrganizer(userId);
   }
 
-  async updateBatches(eventId: string, organizerId: string, batchesData: any[]) {
+  async updateBatches(
+    eventId: string,
+    organizerId: string,
+    batchesData: any[],
+  ) {
     const eventContext = await this.eventsRepository.findOne(eventId);
 
     if (!eventContext || eventContext.organizerId !== organizerId) {
       throw new BadRequestException('No tienes permiso sobre este evento');
     }
 
-    return this.eventsRepository.updateBatchesTransaction(eventId, batchesData, eventContext);
+    return this.eventsRepository.updateBatchesTransaction(
+      eventId,
+      batchesData,
+      eventContext,
+    );
   }
 
   async getOrganizerStats(userId: string) {
-    const events = await this.eventsRepository.getOrganizerEventsWithTickets(userId);
+    const events =
+      await this.eventsRepository.getOrganizerEventsWithTickets(userId);
 
-    const eventIds = events.map(e => e.id);
+    const eventIds = events.map((e) => e.id);
 
     // Fetch PAID orders containing items from these events
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const paidOrders = await this.eventsRepository.getPaidOrdersForEvents(eventIds, thirtyDaysAgo);
+    const paidOrders = await this.eventsRepository.getPaidOrdersForEvents(
+      eventIds,
+      thirtyDaysAgo,
+    );
 
     let totalSold = 0;
     let totalRevenue = 0;
-    
+
     // Calculate totals for ALL time based on ticketTypes.sold
-    events.forEach(event => {
-      event.ticketTypes.forEach(tt => {
+    events.forEach((event) => {
+      event.ticketTypes.forEach((tt) => {
         totalSold += tt.sold;
         totalRevenue += tt.sold * Number(tt.price);
       });
@@ -114,11 +134,11 @@ export class EventsService {
       chartMap.set(dateStr, 0);
     }
 
-    paidOrders.forEach(order => {
+    paidOrders.forEach((order) => {
       const dateStr = order.createdAt.toISOString().split('T')[0];
       if (chartMap.has(dateStr)) {
         let orderRevenue = 0;
-        order.orderItems.forEach(item => {
+        order.orderItems.forEach((item) => {
           if (eventIds.includes(item.ticketType.eventId)) {
             // Organizer revenue is based on the ticket face value, without NeoPass fee
             orderRevenue += item.quantity * Number(item.unitPrice);
@@ -130,26 +150,26 @@ export class EventsService {
 
     const chartData = Array.from(chartMap.entries()).map(([date, revenue]) => ({
       date,
-      revenue
+      revenue,
     }));
 
     // Las últimas 50 ventas para el widget de "Últimas Ventas" y el Historial
-    const recentTransactions = paidOrders.slice(0, 50).map(order => ({
+    const recentTransactions = paidOrders.slice(0, 50).map((order) => ({
       id: order.id,
       name: order.user?.name || 'Usuario',
       event: order.orderItems[0]?.ticketType?.event?.title || 'Evento',
       amount: Number(order.ticketAmount),
       time: order.createdAt,
-      status: order.status
+      status: order.status,
     }));
 
     return {
       totalEvents: events.length,
       totalTicketsSold: totalSold,
       totalRevenue: totalRevenue,
-      activeEvents: events.filter(e => e.status === 'PUBLISHED').length,
+      activeEvents: events.filter((e) => e.status === 'PUBLISHED').length,
       chartData, // Returns last 30 days of real revenue
-      recentTransactions
+      recentTransactions,
     };
   }
 
@@ -157,7 +177,14 @@ export class EventsService {
     return this.eventsRepository.getOrganizerStaff(organizerId);
   }
 
-  async addStaff(eventId: string, organizerId: string, inviteeId: string, role: StaffRole, commissionType?: CommissionType, commissionValue?: number) {
+  async addStaff(
+    eventId: string,
+    organizerId: string,
+    inviteeId: string,
+    role: StaffRole,
+    commissionType?: CommissionType,
+    commissionValue?: number,
+  ) {
     const event = await this.eventsRepository.findOne(eventId);
     if (!event || event.organizerId !== organizerId) {
       throw new BadRequestException('No tienes permiso sobre este evento');
@@ -165,34 +192,56 @@ export class EventsService {
 
     const user = await this.userRepository.findById(inviteeId);
     if (!user) {
-      throw new BadRequestException('Usuario no registrado. Pídele que se registre en NeoPass primero.');
+      throw new BadRequestException(
+        'Usuario no registrado. Pídele que se registre en NeoPass primero.',
+      );
     }
 
     // Verificar si ya existe para este rol específico
-    const existing = await this.eventsRepository.findEventStaff(eventId, user.id, role);
+    const existing = await this.eventsRepository.findEventStaff(
+      eventId,
+      user.id,
+      role,
+    );
 
     if (existing) {
       if (existing.status === 'PENDING') {
-        throw new BadRequestException(`El usuario ya tiene una invitación pendiente para el rol de ${role} en este evento.`);
+        throw new BadRequestException(
+          `El usuario ya tiene una invitación pendiente para el rol de ${role} en este evento.`,
+        );
       }
       if (existing.status === 'ACCEPTED') {
-        throw new BadRequestException(`El usuario ya es ${role} de este evento.`);
+        throw new BadRequestException(
+          `El usuario ya es ${role} de este evento.`,
+        );
       }
       if (existing.status === 'REJECTED') {
         // Re-invitar: pasar a PENDING y despachar notificación
-        const staff = await this.eventsRepository.updateEventStaff(existing.id, { status: 'PENDING', commissionType, commissionValue });
+        const staff = await this.eventsRepository.updateEventStaff(
+          existing.id,
+          { status: 'PENDING', commissionType, commissionValue },
+        );
         let commString = '';
         if (role === 'PROMOTER' && commissionType && commissionValue) {
-          commString = commissionType === 'PERCENTAGE' ? ` (${commissionValue}% por ticket)` : ` ($${commissionValue} por ticket)`;
+          commString =
+            commissionType === 'PERCENTAGE'
+              ? ` (${commissionValue}% por ticket)`
+              : ` ($${commissionValue} por ticket)`;
         }
-        
+
         await this.notificationsService.create({
           userId: user.id,
           type: 'STAFF_INVITE',
           title: `Nueva invitación de Staff`,
           message: `Has sido invitado nuevamente como ${role === 'PROMOTER' ? 'Relaciones Públicas' : 'Escáner'} para el evento "${event.title}".${commString}`,
           eventId: event.id,
-          metadata: { eventStaffId: staff.id, role, commissionType, commissionValue, status: 'PENDING' }
+          metadata: {
+            eventStaffId: staff.id,
+            role,
+            commissionType,
+            commissionValue,
+            status: 'PENDING',
+          },
         });
         return staff;
       }
@@ -208,7 +257,10 @@ export class EventsService {
 
     let commString = '';
     if (role === 'PROMOTER' && commissionType && commissionValue) {
-      commString = commissionType === 'PERCENTAGE' ? ` (${commissionValue}% por ticket)` : ` ($${commissionValue} por ticket)`;
+      commString =
+        commissionType === 'PERCENTAGE'
+          ? ` (${commissionValue}% por ticket)`
+          : ` ($${commissionValue} por ticket)`;
     }
 
     await this.notificationsService.create({
@@ -217,7 +269,13 @@ export class EventsService {
       title: `Nueva invitación de Staff`,
       message: `Has sido invitado como ${role === 'PROMOTER' ? 'Relaciones Públicas' : 'Escáner'} para el evento "${event.title}".${commString}`,
       eventId: event.id,
-      metadata: { eventStaffId: staff.id, role, commissionType, commissionValue, status: 'PENDING' }
+      metadata: {
+        eventStaffId: staff.id,
+        role,
+        commissionType,
+        commissionValue,
+        status: 'PENDING',
+      },
     });
 
     return staff;
@@ -233,34 +291,50 @@ export class EventsService {
 
   async getMyPromoterStats(userId: string) {
     const assignments = await this.eventsRepository.getPromoterStats(userId);
-    
-    const totalEarned = assignments.reduce((acc, curr) => acc + Number(curr.totalEarned), 0);
-    const totalPaid = assignments.reduce((acc, curr) => acc + Number(curr.totalPaid), 0);
-    const totalTicketsSold = assignments.reduce((acc, curr) => acc + curr.totalTicketsSold, 0);
-    
+
+    const totalEarned = assignments.reduce(
+      (acc, curr) => acc + Number(curr.totalEarned),
+      0,
+    );
+    const totalPaid = assignments.reduce(
+      (acc, curr) => acc + Number(curr.totalPaid),
+      0,
+    );
+    const totalTicketsSold = assignments.reduce(
+      (acc, curr) => acc + curr.totalTicketsSold,
+      0,
+    );
+
     return {
       isPromoter: assignments.length > 0,
       totalEarned,
       totalPaid,
       totalTicketsSold,
       pendingBalance: totalEarned - totalPaid,
-      events: assignments
+      events: assignments,
     };
   }
 
   async getPromoterEventStats(userId: string, eventId: string) {
-    const staff = await this.eventsRepository.getPromoterStatsForEvent(userId, eventId);
+    const staff = await this.eventsRepository.getPromoterStatsForEvent(
+      userId,
+      eventId,
+    );
     if (!staff) {
       throw new BadRequestException('No eres promotor de este evento');
     }
 
-    const recentSales = staff.orders.map(order => {
-      const ticketsCount = order.orderItems.reduce((acc, item) => acc + item.quantity, 0);
-      
+    const recentSales = staff.orders.map((order) => {
+      const ticketsCount = order.orderItems.reduce(
+        (acc, item) => acc + item.quantity,
+        0,
+      );
+
       // Calculate order commission based on staff commission settings
       let orderCommission = 0;
       if (staff.commissionType === 'PERCENTAGE' && staff.commissionValue) {
-        orderCommission = (Number(order.ticketAmount) * Number(staff.commissionValue)) / 100;
+        orderCommission =
+          (Number(order.ticketAmount) * Number(staff.commissionValue)) / 100;
       } else if (staff.commissionType === 'FIXED' && staff.commissionValue) {
         orderCommission = ticketsCount * Number(staff.commissionValue);
       }
@@ -271,11 +345,14 @@ export class EventsService {
         tickets: ticketsCount,
         price: Number(order.ticketAmount),
         commission: orderCommission,
-        date: order.createdAt
+        date: order.createdAt,
       };
     });
 
-    const totalTicketsSold = recentSales.reduce((acc, sale) => acc + sale.tickets, 0);
+    const totalTicketsSold = recentSales.reduce(
+      (acc, sale) => acc + sale.tickets,
+      0,
+    );
 
     return {
       staffId: staff.id,
@@ -283,7 +360,7 @@ export class EventsService {
       totalEarned: Number(staff.totalEarned),
       totalTicketsSold,
       clicks: staff.clicks,
-      recentSales
+      recentSales,
     };
   }
 
@@ -291,8 +368,8 @@ export class EventsService {
     const staff = await this.eventsRepository.getEventStaffByEvent(eventId);
     // Return only PROMOTERs with their ID and Name for public use
     return staff
-      .filter(s => s.role === 'PROMOTER' && s.status === 'ACCEPTED')
-      .map(s => ({
+      .filter((s) => s.role === 'PROMOTER' && s.status === 'ACCEPTED')
+      .map((s) => ({
         id: s.id,
         name: s.user.name,
       }));
@@ -301,21 +378,29 @@ export class EventsService {
   async acceptInvitation(eventStaffId: string, userId: string) {
     const staff = await this.eventsRepository.findEventStaffById(eventStaffId);
     if (!staff || staff.userId !== userId) {
-      throw new BadRequestException('Invitación no encontrada o no tienes permiso.');
+      throw new BadRequestException(
+        'Invitación no encontrada o no tienes permiso.',
+      );
     }
     if (staff.status !== 'PENDING') {
       throw new BadRequestException('Esta invitación ya fue procesada.');
     }
 
-    await this.eventsRepository.updateEventStaff(eventStaffId, { status: 'ACCEPTED' });
-    await this.notificationsService.updateStaffInviteStatus(userId, eventStaffId, 'ACCEPTED');
+    await this.eventsRepository.updateEventStaff(eventStaffId, {
+      status: 'ACCEPTED',
+    });
+    await this.notificationsService.updateStaffInviteStatus(
+      userId,
+      eventStaffId,
+      'ACCEPTED',
+    );
 
     await this.notificationsService.create({
       userId: staff.event.organizerId,
       type: 'SYSTEM',
       title: 'Invitación Aceptada',
       message: `${staff.user.name} ha aceptado tu invitación para ser ${staff.role === 'PROMOTER' ? 'Relaciones Públicas' : 'Escáner'} en "${staff.event.title}".`,
-      eventId: staff.event.id
+      eventId: staff.event.id,
     });
 
     return { success: true, message: 'Invitación aceptada correctamente' };
@@ -324,21 +409,29 @@ export class EventsService {
   async rejectInvitation(eventStaffId: string, userId: string) {
     const staff = await this.eventsRepository.findEventStaffById(eventStaffId);
     if (!staff || staff.userId !== userId) {
-      throw new BadRequestException('Invitación no encontrada o no tienes permiso.');
+      throw new BadRequestException(
+        'Invitación no encontrada o no tienes permiso.',
+      );
     }
     if (staff.status !== 'PENDING') {
       throw new BadRequestException('Esta invitación ya fue procesada.');
     }
 
-    await this.eventsRepository.updateEventStaff(eventStaffId, { status: 'REJECTED' });
-    await this.notificationsService.updateStaffInviteStatus(userId, eventStaffId, 'REJECTED');
+    await this.eventsRepository.updateEventStaff(eventStaffId, {
+      status: 'REJECTED',
+    });
+    await this.notificationsService.updateStaffInviteStatus(
+      userId,
+      eventStaffId,
+      'REJECTED',
+    );
 
     await this.notificationsService.create({
       userId: staff.event.organizerId,
       type: 'SYSTEM',
       title: 'Invitación Rechazada',
       message: `${staff.user.name} ha rechazado tu invitación para ser ${staff.role === 'PROMOTER' ? 'Relaciones Públicas' : 'Escáner'} en "${staff.event.title}".`,
-      eventId: staff.event.id
+      eventId: staff.event.id,
     });
 
     return { success: true, message: 'Invitación rechazada correctamente' };

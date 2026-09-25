@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Put, Body, Param, UseGuards, Req, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Body,
+  Param,
+  UseGuards,
+  Req,
+  Query,
+} from '@nestjs/common';
 import { EventsService } from './events.service';
 import { Prisma, StaffRole, CommissionType } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -59,7 +69,11 @@ export class EventsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ORGANIZER', 'ADMIN')
   @Put(':id')
-  update(@Param('id') id: string, @Body() body: UpdateEventDto, @Req() req: any) {
+  update(
+    @Param('id') id: string,
+    @Body() body: UpdateEventDto,
+    @Req() req: any,
+  ) {
     return this.eventsService.update(id, req.user.userId, body);
   }
 
@@ -67,11 +81,15 @@ export class EventsController {
   @Roles('ORGANIZER', 'ADMIN')
   @Put(':id/batches')
   updateBatches(
-    @Param('id') eventId: string, 
-    @Body() body: UpdateBatchesDto, 
-    @Req() req: any
+    @Param('id') eventId: string,
+    @Body() body: UpdateBatchesDto,
+    @Req() req: any,
   ) {
-    return this.eventsService.updateBatches(eventId, req.user.userId, body.batches);
+    return this.eventsService.updateBatches(
+      eventId,
+      req.user.userId,
+      body.batches,
+    );
   }
 
   // --- STAFF ENDPOINTS ---
@@ -92,11 +110,18 @@ export class EventsController {
   @Roles('ORGANIZER', 'ADMIN')
   @Post(':id/staff')
   addStaff(
-    @Param('id') eventId: string, 
-    @Body() body: AddStaffDto, 
-    @Req() req: any
+    @Param('id') eventId: string,
+    @Body() body: AddStaffDto,
+    @Req() req: any,
   ) {
-    return this.eventsService.addStaff(eventId, req.user.userId, body.userId, body.role, body.commissionType, body.commissionValue);
+    return this.eventsService.addStaff(
+      eventId,
+      req.user.userId,
+      body.userId,
+      body.role,
+      body.commissionType,
+      body.commissionValue,
+    );
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -108,13 +133,19 @@ export class EventsController {
 
   @UseGuards(JwtAuthGuard)
   @Put('staff/:eventStaffId/accept')
-  acceptInvitation(@Param('eventStaffId') eventStaffId: string, @Req() req: any) {
+  acceptInvitation(
+    @Param('eventStaffId') eventStaffId: string,
+    @Req() req: any,
+  ) {
     return this.eventsService.acceptInvitation(eventStaffId, req.user.userId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Put('staff/:eventStaffId/reject')
-  rejectInvitation(@Param('eventStaffId') eventStaffId: string, @Req() req: any) {
+  rejectInvitation(
+    @Param('eventStaffId') eventStaffId: string,
+    @Req() req: any,
+  ) {
     return this.eventsService.rejectInvitation(eventStaffId, req.user.userId);
   }
 }

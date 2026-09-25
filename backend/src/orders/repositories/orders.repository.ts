@@ -6,7 +6,11 @@ import { Prisma, Order } from '@prisma/client';
 export class OrdersRepository {
   constructor(private prisma: PrismaService) {}
 
-  async createCheckoutOrderTransaction(userId: string, items: { ticketTypeId: string; quantity: number }[], promoterId?: string) {
+  async createCheckoutOrderTransaction(
+    userId: string,
+    items: { ticketTypeId: string; quantity: number }[],
+    promoterId?: string,
+  ) {
     return this.prisma.$transaction(async (tx) => {
       let ticketAmount = 0;
       const mpItems = [];
@@ -17,13 +21,16 @@ export class OrdersRepository {
       for (const item of items) {
         const ticketType = await tx.ticketType.findUnique({
           where: { id: item.ticketTypeId },
-          include: { 
+          include: {
             event: { include: { organizer: true } },
-            batch: true 
+            batch: true,
           },
         });
 
-        if (!ticketType) throw new BadRequestException(`TicketType ${item.ticketTypeId} not found`);
+        if (!ticketType)
+          throw new BadRequestException(
+            `TicketType ${item.ticketTypeId} not found`,
+          );
 
         const event = ticketType.event;
         const now = new Date();
@@ -36,18 +43,25 @@ export class OrdersRepository {
           throw new BadRequestException(`El evento ya ha finalizado.`);
         }
         if (ticketType.saleStart > now || ticketType.saleEnd < now) {
-          throw new BadRequestException(`La tanda de venta para este ticket no está activa en este momento.`);
+          throw new BadRequestException(
+            `La tanda de venta para este ticket no está activa en este momento.`,
+          );
         }
         // If it belongs to a batch, ensure the batch is PUBLISHED
         if (ticketType.batchId && ticketType.batch?.status !== 'PUBLISHED') {
-          throw new BadRequestException(`El lote de entradas no está publicado.`);
+          throw new BadRequestException(
+            `El lote de entradas no está publicado.`,
+          );
         }
-        
+
         // Calculate available stock
-        const availableStock = ticketType.stock - ticketType.sold - ticketType.reserved;
-        
+        const availableStock =
+          ticketType.stock - ticketType.sold - ticketType.reserved;
+
         if (availableStock < item.quantity) {
-          throw new BadRequestException(`Not enough stock for ${ticketType.name}`);
+          throw new BadRequestException(
+            `Not enough stock for ${ticketType.name}`,
+          );
         }
 
         // Increment reserved stock
@@ -56,7 +70,8 @@ export class OrdersRepository {
           data: { reserved: { increment: item.quantity } },
         });
 
-        eventFeePercentage = Number(ticketType.event.neoPassFeePercentage) / 100;
+        eventFeePercentage =
+          Number(ticketType.event.neoPassFeePercentage) / 100;
 
         const itemTotal = Number(ticketType.price) * item.quantity;
         ticketAmount += itemTotal;
@@ -107,9 +122,13 @@ export class OrdersRepository {
         },
         include: {
           orderItems: {
-            include: { ticketType: { include: { event: { include: { organizer: true } } } } }
-          }
-        }
+            include: {
+              ticketType: {
+                include: { event: { include: { organizer: true } } },
+              },
+            },
+          },
+        },
       });
 
       return { order, mpItems, serviceFee, organizer };
@@ -120,20 +139,20 @@ export class OrdersRepository {
     return this.prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({
         where: { id: orderId },
-        include: { orderItems: true }
+        include: { orderItems: true },
       });
 
       if (!order || order.status !== 'PENDING') return;
 
       await tx.order.update({
         where: { id: orderId },
-        data: { status: 'CANCELLED' }
+        data: { status: 'CANCELLED' },
       });
 
       for (const item of order.orderItems) {
         await tx.ticketType.update({
           where: { id: item.ticketTypeId },
-          data: { reserved: { decrement: item.quantity } }
+          data: { reserved: { decrement: item.quantity } },
         });
       }
     });

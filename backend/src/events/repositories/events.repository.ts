@@ -43,26 +43,41 @@ export class EventsRepository {
         ticketBatches: { include: { ticketTypes: true } },
         ticketTypes: true,
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     });
   }
 
-  async updateBatchesTransaction(eventId: string, batchesData: any[], eventContext: any) {
+  async updateBatchesTransaction(
+    eventId: string,
+    batchesData: any[],
+    eventContext: any,
+  ) {
     return this.prisma.$transaction(async (tx) => {
-      const incomingBatchIds = batchesData.filter(b => b.id).map(b => b.id);
-      
-      const batchesToDelete = eventContext.ticketBatches.filter((b: any) => !incomingBatchIds.includes(b.id));
+      const incomingBatchIds = batchesData.filter((b) => b.id).map((b) => b.id);
+
+      const batchesToDelete = eventContext.ticketBatches.filter(
+        (b: any) => !incomingBatchIds.includes(b.id),
+      );
       for (const b of batchesToDelete) {
-        const totalSold = b.ticketTypes.reduce((acc: number, tt: any) => acc + tt.sold, 0);
+        const totalSold = b.ticketTypes.reduce(
+          (acc: number, tt: any) => acc + tt.sold,
+          0,
+        );
         if (totalSold > 0) {
-          throw new BadRequestException(`No puedes eliminar la tanda "${b.name}" porque ya tiene entradas vendidas. Pausa su venta en su lugar.`);
+          throw new BadRequestException(
+            `No puedes eliminar la tanda "${b.name}" porque ya tiene entradas vendidas. Pausa su venta en su lugar.`,
+          );
         }
         await tx.ticketType.deleteMany({ where: { batchId: b.id } });
         await tx.ticketBatch.delete({ where: { id: b.id } });
       }
       for (const batch of batchesData) {
         let status = batch.status || 'DRAFT';
-        if (batch.publishAt && new Date(batch.publishAt) > new Date() && status !== 'DRAFT') {
+        if (
+          batch.publishAt &&
+          new Date(batch.publishAt) > new Date() &&
+          status !== 'DRAFT'
+        ) {
           status = 'SCHEDULED';
         }
 
@@ -75,8 +90,9 @@ export class EventsRepository {
               status: status,
               publishAt: batch.publishAt ? new Date(batch.publishAt) : null,
               closeAt: batch.closeAt ? new Date(batch.closeAt) : null,
-              publishWhenPreviousSoldOut: batch.publishWhenPreviousSoldOut || false,
-            }
+              publishWhenPreviousSoldOut:
+                batch.publishWhenPreviousSoldOut || false,
+            },
           });
         } else {
           savedBatch = await tx.ticketBatch.create({
@@ -86,18 +102,28 @@ export class EventsRepository {
               status: status,
               publishAt: batch.publishAt ? new Date(batch.publishAt) : null,
               closeAt: batch.closeAt ? new Date(batch.closeAt) : null,
-              publishWhenPreviousSoldOut: batch.publishWhenPreviousSoldOut || false,
-            }
+              publishWhenPreviousSoldOut:
+                batch.publishWhenPreviousSoldOut || false,
+            },
           });
         }
 
-        const incomingTypeIds = batch.ticketTypes.filter((t: any) => t.id).map((t: any) => t.id);
-        const existingTypes = batch.id ? eventContext.ticketBatches.find((b: any) => b.id === batch.id)?.ticketTypes || [] : [];
-        const typesToDelete = existingTypes.filter((t: any) => !incomingTypeIds.includes(t.id));
+        const incomingTypeIds = batch.ticketTypes
+          .filter((t: any) => t.id)
+          .map((t: any) => t.id);
+        const existingTypes = batch.id
+          ? eventContext.ticketBatches.find((b: any) => b.id === batch.id)
+              ?.ticketTypes || []
+          : [];
+        const typesToDelete = existingTypes.filter(
+          (t: any) => !incomingTypeIds.includes(t.id),
+        );
 
         for (const t of typesToDelete) {
           if (t.sold > 0) {
-            throw new BadRequestException(`No puedes eliminar el ticket "${t.name}" porque ya tiene ventas. Pon su stock en 0 en su lugar.`);
+            throw new BadRequestException(
+              `No puedes eliminar el ticket "${t.name}" porque ya tiene ventas. Pon su stock en 0 en su lugar.`,
+            );
           }
           await tx.ticketType.delete({ where: { id: t.id } });
         }
@@ -111,8 +137,9 @@ export class EventsRepository {
                 price: tType.price,
                 stock: tType.stock,
                 saleStart: savedBatch.publishAt || new Date(),
-                saleEnd: savedBatch.closeAt || new Date(Date.now() + 31536000000),
-              }
+                saleEnd:
+                  savedBatch.closeAt || new Date(Date.now() + 31536000000),
+              },
             });
           } else {
             await tx.ticketType.create({
@@ -123,8 +150,9 @@ export class EventsRepository {
                 price: tType.price,
                 stock: tType.stock,
                 saleStart: savedBatch.publishAt || new Date(),
-                saleEnd: savedBatch.closeAt || new Date(Date.now() + 31536000000),
-              }
+                saleEnd:
+                  savedBatch.closeAt || new Date(Date.now() + 31536000000),
+              },
             });
           }
         }
@@ -132,7 +160,7 @@ export class EventsRepository {
 
       return tx.event.findUnique({
         where: { id: eventId },
-        include: { ticketBatches: { include: { ticketTypes: true } } }
+        include: { ticketBatches: { include: { ticketTypes: true } } },
       });
     });
   }
@@ -142,7 +170,7 @@ export class EventsRepository {
       where: { organizerId: userId },
       include: {
         ticketTypes: true,
-      }
+      },
     });
   }
 
@@ -154,24 +182,24 @@ export class EventsRepository {
         orderItems: {
           some: {
             ticketType: {
-              eventId: { in: eventIds }
-            }
-          }
-        }
+              eventId: { in: eventIds },
+            },
+          },
+        },
       },
       include: {
         orderItems: {
-          include: { 
+          include: {
             ticketType: {
               include: {
-                event: { select: { title: true } }
-              }
-            } 
-          }
+                event: { select: { title: true } },
+              },
+            },
+          },
         },
-        user: { select: { name: true } }
+        user: { select: { name: true } },
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     });
   }
 
@@ -179,26 +207,26 @@ export class EventsRepository {
     return this.prisma.eventStaff.findMany({
       where: {
         event: {
-          organizerId
-        }
+          organizerId,
+        },
       },
       include: {
         user: {
-          select: { name: true, email: true }
+          select: { name: true, email: true },
         },
         event: {
-          select: { title: true }
-        }
+          select: { title: true },
+        },
       },
       orderBy: {
-        event: { title: 'asc' }
-      }
+        event: { title: 'asc' },
+      },
     });
   }
 
   async findEventStaff(eventId: string, userId: string, role: StaffRole) {
     return this.prisma.eventStaff.findUnique({
-      where: { eventId_userId_role: { eventId, userId, role } }
+      where: { eventId_userId_role: { eventId, userId, role } },
     });
   }
 
@@ -208,7 +236,7 @@ export class EventsRepository {
       include: {
         event: true,
         user: true,
-      }
+      },
     });
   }
 
@@ -219,14 +247,14 @@ export class EventsRepository {
   async updateEventStaff(id: string, data: Prisma.EventStaffUpdateInput) {
     return this.prisma.eventStaff.update({
       where: { id },
-      data
+      data,
     });
   }
 
   async getEventStaffByEvent(eventId: string) {
     return this.prisma.eventStaff.findMany({
       where: { eventId },
-      include: { user: { select: { name: true, email: true } } }
+      include: { user: { select: { name: true, email: true } } },
     });
   }
 
@@ -237,20 +265,22 @@ export class EventsRepository {
         event: { select: { title: true, status: true, startDate: true } },
         orders: {
           where: { status: 'PAID' },
-          include: { orderItems: true }
-        }
+          include: { orderItems: true },
+        },
       },
-      orderBy: { event: { startDate: 'desc' } }
+      orderBy: { event: { startDate: 'desc' } },
     });
 
-    return staffList.map(staff => {
+    return staffList.map((staff) => {
       const totalTicketsSold = staff.orders.reduce((acc, order) => {
-        return acc + order.orderItems.reduce((sum, item) => sum + item.quantity, 0);
+        return (
+          acc + order.orderItems.reduce((sum, item) => sum + item.quantity, 0)
+        );
       }, 0);
       const { orders, ...rest } = staff;
       return {
         ...rest,
-        totalTicketsSold
+        totalTicketsSold,
       };
     });
   }
@@ -258,7 +288,7 @@ export class EventsRepository {
   async incrementPromoterClicks(staffId: string) {
     return this.prisma.eventStaff.update({
       where: { id: staffId },
-      data: { clicks: { increment: 1 } }
+      data: { clicks: { increment: 1 } },
     });
   }
 
@@ -269,16 +299,15 @@ export class EventsRepository {
         event: { select: { title: true } },
         orders: {
           where: { status: 'PAID' },
-          include: { 
+          include: {
             orderItems: { include: { ticketType: true } },
-            user: { select: { name: true } }
+            user: { select: { name: true } },
           },
-          orderBy: { createdAt: 'desc' }
-        }
-      }
+          orderBy: { createdAt: 'desc' },
+        },
+      },
     });
 
     return staff;
   }
 }
-

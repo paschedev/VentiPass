@@ -1,4 +1,14 @@
-import { Controller, Post, Body, Req, Headers, Get, Query, Res, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Req,
+  Headers,
+  Get,
+  Query,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import type { Response } from 'express';
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -25,15 +35,20 @@ export class PaymentsController {
   async oauthCallback(
     @Query('code') code: string,
     @Query('state') stateToken: string,
-    @Res() res: Response
+    @Res() res: Response,
   ) {
     if (!code || !stateToken) {
-      return res.redirect(`${process.env.FRONTEND_URL}/panel?mp_error=missing_params`);
+      return res.redirect(
+        `${process.env.FRONTEND_URL}/panel?mp_error=missing_params`,
+      );
     }
 
     try {
       const jwt = require('jsonwebtoken');
-      const payload = jwt.verify(stateToken, process.env.JWT_SECRET || 'super-secret-jwt-key');
+      const payload = jwt.verify(
+        stateToken,
+        process.env.JWT_SECRET || 'super-secret-jwt-key',
+      );
       if (payload.purpose !== 'oauth_state' || !payload.sub) {
         throw new Error('Invalid state token purpose');
       }
@@ -52,15 +67,15 @@ export class PaymentsController {
   async getOauthLink(@Req() req: any) {
     const jwt = require('jsonwebtoken');
     const stateToken = jwt.sign(
-      { sub: req.user.userId, purpose: 'oauth_state' }, 
-      process.env.JWT_SECRET || 'super-secret-jwt-key', 
-      { expiresIn: '15m' }
+      { sub: req.user.userId, purpose: 'oauth_state' },
+      process.env.JWT_SECRET || 'super-secret-jwt-key',
+      { expiresIn: '15m' },
     );
-    
+
     const clientId = process.env.MERCADOPAGO_CLIENT_ID;
     const redirectUri = `${process.env.BACKEND_URL || 'http://localhost:3001'}/payments/oauth/callback`;
     const url = `https://auth.mercadopago.com/authorization?client_id=${clientId}&response_type=code&platform_id=mp&redirect_uri=${redirectUri}&state=${stateToken}`;
-    
+
     return { url };
   }
 

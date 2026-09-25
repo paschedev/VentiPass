@@ -1,7 +1,15 @@
-"use client";
+'use client';
 
 import { useEffect, useState } from 'react';
-import { Ticket as TicketIcon, Calendar, MapPin, X, ArrowRightLeft, Eye, EyeOff } from 'lucide-react';
+import {
+  Ticket as TicketIcon,
+  Calendar,
+  MapPin,
+  X,
+  ArrowRightLeft,
+  Eye,
+  EyeOff,
+} from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import toast from 'react-hot-toast';
 import { apiFetch } from '@/utils/api';
@@ -58,9 +66,9 @@ export default function MisEntradasPage() {
     if (searchTerm.length >= 3) {
       const delayFn = setTimeout(() => {
         apiFetch(`/auth/users/search?q=${searchTerm}`)
-          .then(res => res.ok ? res.json() : [])
-          .then(data => setSearchResults(data))
-          .catch(() => { });
+          .then((res) => (res.ok ? res.json() : []))
+          .then((data) => setSearchResults(data))
+          .catch(() => {});
       }, 300);
       return () => clearTimeout(delayFn);
     } else {
@@ -76,7 +84,7 @@ export default function MisEntradasPage() {
     try {
       const res = await apiFetch(`/tickets/${selectedTicket.id}/transfer`, {
         method: 'POST',
-        body: JSON.stringify({ targetUserId: selectedUser.id })
+        body: JSON.stringify({ targetUserId: selectedUser.id }),
       });
 
       const data = await res.json();
@@ -96,21 +104,33 @@ export default function MisEntradasPage() {
   };
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center text-neutral-400">Cargando tus entradas...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center text-neutral-400">
+        Cargando tus entradas...
+      </div>
+    );
   }
 
   return (
     <div className="max-w-4xl mx-auto px-6 pb-24 pt-8 md:py-12 md:pt-24">
-      <h1 className="font-outfit text-4xl font-bold text-white mb-2">Mis Tickets</h1>
-      <p className="text-neutral-400 mb-10">Tus accesos a los mejores eventos.</p>
+      <h1 className="font-outfit text-4xl font-bold text-white mb-2">
+        Mis Tickets
+      </h1>
+      <p className="text-neutral-400 mb-10">
+        Tus accesos a los mejores eventos.
+      </p>
 
       {tickets.length === 0 ? (
         <div className="bg-white/5 border border-white/10 rounded-3xl p-12 text-center">
           <div className="w-20 h-20 bg-indigo-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
             <TicketIcon className="w-10 h-10 text-indigo-400" />
           </div>
-          <h3 className="text-2xl font-bold text-white mb-2">No tienes entradas</h3>
-          <p className="text-neutral-400">Aún no has comprado entradas para ningún evento.</p>
+          <h3 className="text-2xl font-bold text-white mb-2">
+            No tienes entradas
+          </h3>
+          <p className="text-neutral-400">
+            Aún no has comprado entradas para ningún evento.
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -145,7 +165,15 @@ export default function MisEntradasPage() {
                 <div className="space-y-3 mb-6">
                   <div className="flex items-center gap-3 text-sm text-neutral-400">
                     <Calendar className="w-4 h-4 text-indigo-400" />
-                    {new Date(ticket.ticketType.event.startDate).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
+                    {new Date(
+                      ticket.ticketType.event.startDate,
+                    ).toLocaleDateString('es-AR', {
+                      weekday: 'long',
+                      day: 'numeric',
+                      month: 'long',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
                   </div>
                   <div className="flex items-center gap-3 text-sm text-neutral-400">
                     <MapPin className="w-4 h-4 text-indigo-400" />
@@ -154,9 +182,12 @@ export default function MisEntradasPage() {
                 </div>
 
                 <div className="pt-4 border-t border-white/10 border-dashed flex items-center justify-between">
-                  <div className="text-xs text-neutral-500 font-mono">ID: {ticket.id.slice(-8).toUpperCase()}</div>
+                  <div className="text-xs text-neutral-500 font-mono">
+                    ID: {ticket.id.slice(-8).toUpperCase()}
+                  </div>
                   <div className="text-sm font-medium text-indigo-400 group-hover:text-indigo-300 transition-colors flex items-center gap-1">
-                    Ver Entrada <ArrowRightLeft className="w-3 h-3 opacity-0 group-hover:opacity-100 -ml-4 group-hover:ml-1 transition-all" />
+                    Ver Entrada{' '}
+                    <ArrowRightLeft className="w-3 h-3 opacity-0 group-hover:opacity-100 -ml-4 group-hover:ml-1 transition-all" />
                   </div>
                 </div>
               </div>
@@ -169,13 +200,15 @@ export default function MisEntradasPage() {
       {selectedTicket && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 overflow-hidden">
           <div className="bg-neutral-900 border border-white/10 rounded-[2rem] w-full max-w-md relative flex flex-col max-h-[75vh] md:max-h-[85vh] my-auto">
-
             {/* Header del Ticket Modal */}
             <div className="p-6 pb-0 flex justify-between items-start shrink-0">
               <div className="bg-indigo-500/20 text-indigo-300 px-4 py-1.5 rounded-full text-xs font-bold border border-indigo-500/30">
                 {selectedTicket.ticketType.name.toUpperCase()}
               </div>
-              <button onClick={closeTicket} className="w-8 h-8 bg-white/5 rounded-full flex items-center justify-center text-neutral-400 hover:text-white hover:bg-white/10 transition-colors">
+              <button
+                onClick={closeTicket}
+                className="w-8 h-8 bg-white/5 rounded-full flex items-center justify-center text-neutral-400 hover:text-white hover:bg-white/10 transition-colors"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -183,15 +216,27 @@ export default function MisEntradasPage() {
             {/* Contenido scrolleable */}
             <div className="p-8 overflow-y-auto overscroll-contain">
               <div className="text-center mb-8">
-                <h2 className="font-outfit text-2xl font-bold text-white mb-2">{selectedTicket.ticketType.event.title}</h2>
+                <h2 className="font-outfit text-2xl font-bold text-white mb-2">
+                  {selectedTicket.ticketType.event.title}
+                </h2>
                 <p className="text-neutral-400 text-sm">
-                  {new Date(selectedTicket.ticketType.event.startDate).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
+                  {new Date(
+                    selectedTicket.ticketType.event.startDate,
+                  ).toLocaleDateString('es-AR', {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
                 </p>
               </div>
 
               {/* Zona del QR */}
               <div className="bg-white rounded-[2rem] p-6 mb-8 mx-auto w-64 relative group">
-                <div className={`transition-all duration-500 ${!qrRevealed ? 'blur-md brightness-50' : ''}`}>
+                <div
+                  className={`transition-all duration-500 ${!qrRevealed ? 'blur-md brightness-50' : ''}`}
+                >
                   <QRCodeSVG
                     value={selectedTicket.qrCode}
                     size={208}
@@ -207,7 +252,9 @@ export default function MisEntradasPage() {
                     onClick={() => setQrRevealed(true)}
                   >
                     <Eye className="w-10 h-10 mb-2 drop-shadow-md" />
-                    <span className="font-bold text-sm drop-shadow-md bg-white/80 px-3 py-1 rounded-full">Toca para revelar</span>
+                    <span className="font-bold text-sm drop-shadow-md bg-white/80 px-3 py-1 rounded-full">
+                      Toca para revelar
+                    </span>
                   </div>
                 )}
 
@@ -238,7 +285,10 @@ export default function MisEntradasPage() {
                     </button>
                   ) : (
                     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
-                      <p className="text-sm text-neutral-400">Ingresa el email o usuario al que deseas transferir esta entrada.</p>
+                      <p className="text-sm text-neutral-400">
+                        Ingresa el email o usuario al que deseas transferir esta
+                        entrada.
+                      </p>
 
                       {!selectedUser ? (
                         <div className="relative">
@@ -251,7 +301,7 @@ export default function MisEntradasPage() {
                           />
                           {searchResults.length > 0 && (
                             <div className="absolute bottom-full mb-2 left-0 right-0 bg-neutral-800 border border-white/10 rounded-xl shadow-2xl overflow-hidden z-10 max-h-48 overflow-y-auto overscroll-contain">
-                              {searchResults.map(u => (
+                              {searchResults.map((u) => (
                                 <button
                                   key={u.id}
                                   onClick={() => {
@@ -266,8 +316,12 @@ export default function MisEntradasPage() {
                                       {u.name.charAt(0)}
                                     </div>
                                     <div className="min-w-0">
-                                      <div className="text-white font-medium text-sm truncate">{u.name}</div>
-                                      <div className="text-neutral-400 text-xs truncate">{u.email}</div>
+                                      <div className="text-white font-medium text-sm truncate">
+                                        {u.name}
+                                      </div>
+                                      <div className="text-neutral-400 text-xs truncate">
+                                        {u.email}
+                                      </div>
                                     </div>
                                   </div>
                                 </button>
@@ -282,8 +336,12 @@ export default function MisEntradasPage() {
                               {selectedUser.name.charAt(0)}
                             </div>
                             <div className="min-w-0">
-                              <div className="text-white font-medium text-sm truncate">{selectedUser.name}</div>
-                              <div className="text-neutral-400 text-xs truncate">{selectedUser.email}</div>
+                              <div className="text-white font-medium text-sm truncate">
+                                {selectedUser.name}
+                              </div>
+                              <div className="text-neutral-400 text-xs truncate">
+                                {selectedUser.email}
+                              </div>
                             </div>
                           </div>
                           <button

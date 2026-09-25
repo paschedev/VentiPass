@@ -10,6 +10,6 @@ import { NotificationsModule } from '../notifications/notifications.module';
 @Module({
   imports: [PrismaModule, AuthModule, NotificationsModule],
   controllers: [EventsController],
-  providers: [EventsService, BatchCronService, EventsRepository]
+  providers: [EventsService, BatchCronService, EventsRepository],
 })
 export class EventsModule {}
