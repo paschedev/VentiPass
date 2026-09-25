@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { UserPlus, ChevronDown } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { apiFetch } from '@/utils/api';
+import { toE164Phone } from '@/utils/phone';
 import { AsYouType, CountryCode } from 'libphonenumber-js';
 import { z } from 'zod';
 import { useForm, Controller } from 'react-hook-form';
@@ -56,10 +57,16 @@ const registerSchema = z
       });
     }
     if (data.isOrganizer) {
-      if (!data.phoneNumber || data.phoneNumber.length < 8) {
+      if (!data.phoneNumber) {
         ctx.addIssue({
           code: 'custom',
           message: 'El número de teléfono es obligatorio',
+          path: ['phoneNumber'],
+        });
+      } else if (!toE164Phone(data.phonePrefix, data.phoneNumber)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'El número de teléfono no es válido',
           path: ['phoneNumber'],
         });
       }
@@ -146,7 +153,7 @@ export default function RegistroPage() {
     };
 
     if (data.isOrganizer) {
-      payload.phone = `${data.phonePrefix}${data.phoneNumber}`;
+      payload.phone = toE164Phone(data.phonePrefix, data.phoneNumber ?? '');
       if (data.companyName?.trim()) {
         payload.companyName = data.companyName.trim();
       }

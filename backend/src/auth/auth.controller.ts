@@ -36,7 +36,7 @@ export class AuthController {
   }
 
   @Post('register')
-  async register(@Body() body: RegisterUserDto & { captchaToken: string }) {
+  async register(@Body() body: RegisterUserDto) {
     await this.captchaService.assertHuman(body.captchaToken);
 
     return this.authService.register(body);

@@ -20,17 +20,22 @@ export class RegisterUserDto {
   email: string;
 
   @IsString({ message: 'La contraseña debe ser un texto' })
-  @MinLength(6, { message: 'La contraseña debe tener al menos 6 caracteres' })
+  @MinLength(8, { message: 'La contraseña debe tener al menos 8 caracteres' })
   @MaxLength(32, {
     message: 'La contraseña no puede tener más de 32 caracteres',
   })
   password: string;
 
+  // ADMIN is never self-assigned.
   @IsString({ message: 'El rol debe ser un texto' })
-  @IsIn(['CUSTOMER', 'ORGANIZER', 'ADMIN'], {
+  @IsIn(['CUSTOMER', 'ORGANIZER'], {
     message: 'El rol proporcionado no es válido',
   })
   role: string;
+
+  @IsOptional()
+  @IsString()
+  captchaToken?: string;
 
   // Organizer specific fields
   @ValidateIf((o) => o.role === 'ORGANIZER')
