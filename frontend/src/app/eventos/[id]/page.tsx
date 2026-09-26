@@ -18,6 +18,11 @@ import { getApiErrorMessage } from '@/utils/api-error';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { optimizeCloudinaryUrl } from '@/utils/cloudinary';
 import { formatCurrency } from '@/utils/format';
+import {
+  MAX_TICKETS_PER_ORDER,
+  calculateCheckoutTotals,
+  updateCart,
+} from '@/utils/checkout';
 
 const getYouTubeEmbedUrl = (url: string) => {
   if (!url) return null;
@@ -72,19 +77,8 @@ function EventContent() {
     delta: number,
     maxStock: number,
   ) => {
-    setCart((prev) => {
-      const current = prev[ticketTypeId] || 0;
-      const next = current + delta;
-      if (next < 0) return prev;
-      if (next > maxStock) return prev;
-      const newCart = { ...prev };
-      if (next === 0) delete newCart[ticketTypeId];
-      else newCart[ticketTypeId] = next;
-      return newCart;
-    });
+    setCart((prev) => updateCart(prev, ticketTypeId, delta, maxStock));
   };
-
-  const getTotalItems = () => Object.values(cart).reduce((a, b) => a + b, 0);
 
   const initiateCheckout = async (email?: string) => {
     const items = Object.entries(cart).map(([ticketTypeId, quantity]) => ({
@@ -143,6 +137,12 @@ function EventContent() {
   if (loading) return <div className="text-center py-20">Cargando...</div>;
   if (!event)
     return <div className="text-center py-20">Evento no encontrado</div>;
+
+  const totals = calculateCheckoutTotals(
+    (event.ticketBatches || []).flatMap((b: any) => b.ticketTypes || []),
+    cart,
+    event.neoPassFeePercentage,
+  );
 
   return (
     <div className="max-w-5xl mx-auto px-4 pt-6 pb-24 md:py-12">
@@ -354,7 +354,10 @@ function EventContent() {
                                       )
                                     }
                                     className="w-8 h-8 flex items-center justify-center text-white hover:bg-white/10 rounded-md transition-colors disabled:opacity-50"
-                                    disabled={qty >= available}
+                                    disabled={
+                                      qty >= available ||
+                                      totals.tickets >= MAX_TICKETS_PER_ORDER
+                                    }
                                   >
                                     +
                                   </button>
@@ -371,19 +374,37 @@ function EventContent() {
 
               {/* Checkout Button Global */}
               <div className="pt-4 mt-6 border-t border-white/10">
-                <div className="flex justify-between items-center mb-4">
-                  <span className="text-neutral-400">Total</span>
-                  <span className="text-2xl font-bold text-emerald-400">
-                    {formatCurrency(
-                      (event.ticketBatches || [])
-                        .flatMap((b: any) => b.ticketTypes || [])
-                        .reduce(
-                          (sum: number, t: any) =>
-                            sum + (cart[t.id] || 0) * t.price,
-                          0,
-                        ),
-                    )}
-                  </span>
+                <div className="space-y-2 mb-4">
+                  {totals.tickets > 0 && (
+                    <>
+                      <div className="flex justify-between text-sm text-neutral-400">
+                        <span>Subtotal</span>
+                        <span>{formatCurrency(totals.subtotal)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm text-neutral-400">
+                        <span>
+                          Cargo de servicio (
+                          {Number(event.neoPassFeePercentage).toLocaleString(
+                            'es-AR',
+                          )}
+                          %)
+                        </span>
+                        <span>{formatCurrency(totals.serviceFee)}</span>
+                      </div>
+                    </>
+                  )}
+                  <div className="flex justify-between items-center">
+                    <span className="text-neutral-400">Total</span>
+                    <span className="text-2xl font-bold text-emerald-400">
+                      {formatCurrency(totals.total)}
+                    </span>
+                  </div>
+                  {totals.tickets >= MAX_TICKETS_PER_ORDER && (
+                    <p className="text-xs text-amber-400 text-right">
+                      Podés comprar hasta {MAX_TICKETS_PER_ORDER} entradas por
+                      orden.
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex flex-col items-center md:items-end gap-4 w-full">
@@ -398,7 +419,7 @@ function EventContent() {
 
                   <button
                     onClick={handleBuy}
-                    disabled={buying || getTotalItems() === 0 || !captchaToken}
+                    disabled={buying || totals.tickets === 0 || !captchaToken}
                     className="w-full md:w-auto px-8 bg-indigo-600 hover:bg-indigo-500 text-white py-3.5 rounded-xl font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {buying ? (
@@ -406,7 +427,7 @@ function EventContent() {
                     ) : (
                       <>
                         <CreditCard className="w-5 h-5" /> Comprar{' '}
-                        {getTotalItems() > 0 ? `(${getTotalItems()})` : ''}
+                        {totals.tickets > 0 ? `(${totals.tickets})` : ''}
                       </>
                     )}
                   </button>
