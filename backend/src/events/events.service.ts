@@ -9,6 +9,7 @@ import { EventsRepository } from './repositories/events.repository';
 import { UserRepository } from '../auth/repositories/user.repository';
 import { Prisma, StaffRole, CommissionType } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
+import { buildRevenueChart } from './revenue-chart';
 
 type EventDates = { startDate: string; endDate: string };
 
@@ -201,34 +202,7 @@ export class EventsService {
       });
     });
 
-    // Group revenue by day for the last 30 days (for the chart)
-    const chartMap = new Map<string, number>();
-    // Initialize last 30 days with 0
-    for (let i = 29; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
-      chartMap.set(dateStr, 0);
-    }
-
-    paidOrders.forEach((order) => {
-      const dateStr = order.createdAt.toISOString().split('T')[0];
-      if (chartMap.has(dateStr)) {
-        let orderRevenue = 0;
-        order.orderItems.forEach((item) => {
-          if (eventIds.includes(item.ticketType.eventId)) {
-            // Organizer revenue is based on the ticket face value, without NeoPass fee
-            orderRevenue += item.quantity * Number(item.unitPrice);
-          }
-        });
-        chartMap.set(dateStr, chartMap.get(dateStr)! + orderRevenue);
-      }
-    });
-
-    const chartData = Array.from(chartMap.entries()).map(([date, revenue]) => ({
-      date,
-      revenue,
-    }));
+    const chartData = buildRevenueChart(paidOrders, eventIds, new Date());
 
     // Las últimas 50 ventas para el widget de "Últimas Ventas" y el Historial
     const recentTransactions = paidOrders.slice(0, 50).map((order) => ({

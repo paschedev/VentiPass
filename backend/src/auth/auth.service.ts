@@ -94,8 +94,8 @@ export class AuthService {
 
       userCreateInput.ticketPresets = {
         create: [
-          { name: 'General', price: 5000 },
-          { name: 'VIP', price: 15000 },
+          { name: 'General', price: 0 },
+          { name: 'VIP', price: 0 },
         ],
       };
     }
