@@ -1,10 +1,8 @@
 'use client';
 
 import {
-  DollarSign,
   Ticket,
   Activity,
-  TrendingUp,
   Calendar as CalendarIcon,
   Link2,
   X,
@@ -16,40 +14,21 @@ import {
   Check,
   MapPin,
   ExternalLink,
-  Library,
 } from 'lucide-react';
-import { useState, useEffect, useMemo, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import CustomSelect from '@/components/CustomSelect';
+import DashboardTab from '@/components/panel/DashboardTab';
+import type { DashboardStats } from '@/components/panel/types';
 import { apiFetch } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { isOrganizer as hasOrganizerRole } from '@/utils/roles';
 import { useUserSearch } from '@/hooks/useUserSearch';
-import {
-  formatCompactNumber,
-  formatCurrency,
-  formatRelativeDate,
-} from '@/utils/format';
-
-function getSmartMax(max: number) {
-  if (max === 0) return 100;
-  const magnitude = Math.pow(10, Math.floor(Math.log10(max)));
-  const fraction = max / magnitude;
-
-  let niceFraction;
-  if (fraction <= 1) niceFraction = 1;
-  else if (fraction <= 2) niceFraction = 2;
-  else if (fraction <= 4) niceFraction = 4;
-  else if (fraction <= 5) niceFraction = 5;
-  else if (fraction <= 8) niceFraction = 8;
-  else niceFraction = 10;
-
-  return niceFraction * magnitude;
-}
+import { formatCurrency } from '@/utils/format';
 
 function OrganizerDashboardContent() {
   const router = useRouter();
@@ -58,17 +37,14 @@ function OrganizerDashboardContent() {
     searchParams.get('tab') || 'dashboard',
   );
   const [showMpModal, setShowMpModal] = useState(false);
-  const [mpToken, setMpToken] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [timeFilter, setTimeFilter] = useState('Esta semana');
 
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<DashboardStats>({
     totalEvents: 0,
     totalTicketsSold: 0,
     totalRevenue: 0,
     activeEvents: 0,
     chartData: [],
-    recentTransactions: [] as any[],
+    recentTransactions: [],
   });
   const { user, refresh } = useCurrentUser();
   const isOrganizer = hasOrganizerRole(user);
@@ -76,8 +52,6 @@ function OrganizerDashboardContent() {
 
   // --- Invite Staff States ---
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [showTransactionsModal, setShowTransactionsModal] = useState(false);
-  const [searchTxTerm, setSearchTxTerm] = useState('');
   const [myEvents, setMyEvents] = useState<any[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
   const [fetchError, setFetchError] = useState(false);
@@ -295,79 +269,6 @@ function OrganizerDashboardContent() {
     router.push('/panel/eventos/nuevo');
   };
 
-  // Chart Logic
-  const chartData = useMemo(() => {
-    const data = (stats as any).chartData || [];
-    const today = new Date();
-    const monthNames = [
-      'Ene',
-      'Feb',
-      'Mar',
-      'Abr',
-      'May',
-      'Jun',
-      'Jul',
-      'Ago',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dic',
-    ];
-
-    if (timeFilter === 'Esta semana') {
-      return Array.from({ length: 7 }, (_, i) => {
-        const d = new Date();
-        d.setDate(today.getDate() - (6 - i));
-        const dateStr = d.toISOString().split('T')[0];
-        const days = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
-        const dayData = data.find((x: any) => x.date === dateStr);
-        return {
-          label: days[d.getDay()],
-          subLabel: String(d.getDate()),
-          val: dayData ? dayData.revenue : 0,
-          future: false,
-        };
-      });
-    } else if (timeFilter === 'Este mes') {
-      const daysInMonth = new Date(
-        today.getFullYear(),
-        today.getMonth() + 1,
-        0,
-      ).getDate();
-      const currentDay = today.getDate();
-      const monthStr = monthNames[today.getMonth()];
-      return Array.from({ length: daysInMonth }, (_, i) => {
-        const isFuture = i + 1 > currentDay;
-        const d = new Date(today.getFullYear(), today.getMonth(), i + 1);
-        const dateStr = d.toISOString().split('T')[0];
-        const dayData = data.find((x: any) => x.date === dateStr);
-        return {
-          label: String(i + 1),
-          subLabel: monthStr,
-          val: dayData && !isFuture ? dayData.revenue : 0,
-          future: isFuture,
-        };
-      });
-    } else if (timeFilter === 'Últimos 30 días') {
-      return Array.from({ length: 30 }, (_, i) => {
-        const d = new Date();
-        d.setDate(today.getDate() - (29 - i));
-        const dateStr = d.toISOString().split('T')[0];
-        const dayData = data.find((x: any) => x.date === dateStr);
-        return {
-          label: String(d.getDate()),
-          subLabel: monthNames[d.getMonth()],
-          val: dayData ? dayData.revenue : 0,
-          future: false,
-        };
-      });
-    }
-    return [];
-  }, [timeFilter, stats]);
-
-  const rawMax = Math.max(...chartData.map((d) => d.val), 100);
-  const maxVal = getSmartMax(rawMax);
-
   if (!isOrganizer) return null;
 
   return (
@@ -464,178 +365,7 @@ function OrganizerDashboardContent() {
       </div>
 
       {/* Tab Content: Dashboard */}
-      {activeTab === 'dashboard' && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          {/* Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-            <MetricCard
-              title="Ingresos Totales"
-              value={formatCurrency(stats.totalRevenue)}
-              icon={<DollarSign className="text-emerald-400 w-6 h-6" />}
-              color="emerald"
-            />
-            <MetricCard
-              title="Entradas Vendidas"
-              value={stats.totalTicketsSold.toString()}
-              icon={<Ticket className="text-indigo-400 w-6 h-6" />}
-              color="indigo"
-            />
-            <MetricCard
-              title="Eventos Activos"
-              value={stats.activeEvents.toString()}
-              icon={<CalendarIcon className="text-purple-400 w-6 h-6" />}
-              color="purple"
-            />
-            <MetricCard
-              title="Eventos Totales"
-              value={stats.totalEvents.toString()}
-              icon={<Library className="text-blue-400 w-6 h-6" />}
-              color="blue"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Chart Area */}
-            <div className="lg:col-span-2 bg-neutral-900 border border-white/5 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
-              <div className="hidden md:block absolute top-0 right-0 w-96 h-96 bg-indigo-500/5 rounded-full blur-[100px] pointer-events-none" />
-              <div className="flex items-center justify-between mb-8 relative z-30">
-                <h2 className="font-outfit text-xl font-bold">Ventas</h2>
-                <CustomSelect
-                  value={timeFilter}
-                  onChange={setTimeFilter}
-                  options={[
-                    { value: 'Esta semana', label: 'Esta semana' },
-                    { value: 'Este mes', label: 'Este mes' },
-                    { value: 'Últimos 30 días', label: 'Últimos 30 días' },
-                  ]}
-                  className="w-44"
-                />
-              </div>
-
-              {/* Dynamic Bar Chart */}
-              <div className="h-96 relative flex items-end justify-between gap-0.5 sm:gap-2 z-10 pt-8 ml-4 sm:ml-6">
-                {/* Y-Axis Grid Lines */}
-                <div className="absolute inset-0 flex flex-col justify-between pt-8 pb-0 pointer-events-none z-0">
-                  {[1, 0.8, 0.6, 0.4, 0.2, 0].map((tick, i) => (
-                    <div key={i} className="flex items-center w-full relative">
-                      <span className="absolute -left-2 -translate-x-full text-[10px] text-neutral-500 font-medium">
-                        {formatCompactNumber(maxVal * tick)}
-                      </span>
-                      <div className="w-full h-[1px] bg-white/[0.03]"></div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Bars */}
-                {chartData.map((d, i) => (
-                  <div
-                    key={i}
-                    className={`w-full h-full bg-white/5 rounded-t-lg group relative flex items-end transition-all z-10 ${!d.future && 'hover:bg-white/10 cursor-crosshair'}`}
-                  >
-                    <motion.div
-                      initial={{ height: '0%' }}
-                      animate={{ height: `${(d.val / maxVal) * 100}%` }}
-                      transition={{
-                        duration: 1,
-                        delay: i * 0.02,
-                        ease: 'easeOut',
-                      }}
-                      className={`w-full ${d.future ? 'bg-transparent' : 'bg-gradient-to-t from-indigo-600 to-purple-400 opacity-80 group-hover:opacity-100'} rounded-t-lg transition-opacity relative`}
-                    >
-                      {!d.future && (
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-white text-black text-[10px] sm:text-xs font-bold px-1 sm:px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
-                          {formatCurrency(d.val)}
-                        </div>
-                      )}
-                    </motion.div>
-                  </div>
-                ))}
-              </div>
-              <div className="flex justify-between mt-4 text-[10px] sm:text-xs font-medium text-neutral-500 relative z-10 overflow-visible ml-4 sm:ml-6">
-                {chartData.map((d, i) => {
-                  const showLabel =
-                    timeFilter === 'Esta semana'
-                      ? true
-                      : i % Math.ceil(chartData.length / 7) === 0;
-                  return (
-                    <div
-                      key={i}
-                      className="flex-1 flex justify-center relative"
-                    >
-                      {showLabel && (
-                        <div className="absolute top-0 flex flex-col items-center">
-                          <span className="whitespace-nowrap">{d.label}</span>
-                          {d.subLabel && (
-                            <span className="text-[8px] sm:text-[10px] text-neutral-600 font-normal">
-                              {d.subLabel}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Recent Sales List */}
-            <div className="bg-neutral-900 border border-white/5 rounded-3xl p-8 shadow-2xl">
-              <h2 className="font-outfit text-xl font-bold mb-6">
-                Últimas Ventas
-              </h2>
-              <div className="space-y-2">
-                {stats.recentTransactions &&
-                  stats.recentTransactions
-                    .slice(0, 5)
-                    .map((sale: any, i: number) => (
-                      <div
-                        key={i}
-                        className="flex items-center justify-between p-3 rounded-2xl hover:bg-white/5 transition-colors cursor-default border border-transparent hover:border-white/5"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-neutral-800 to-neutral-700 border border-white/10 flex items-center justify-center font-bold text-sm text-neutral-300">
-                            {sale.name.charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <div className="font-medium text-sm text-white">
-                              {sale.name}
-                            </div>
-                            <div className="text-xs text-neutral-500">
-                              {sale.event}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-bold text-sm text-emerald-400">
-                            {formatCurrency(sale.amount)}
-                          </div>
-                          <div className="text-xs text-neutral-500">
-                            {formatRelativeDate(sale.time)}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                {(!stats.recentTransactions ||
-                  stats.recentTransactions.length === 0) && (
-                  <div className="text-center py-6 text-sm text-neutral-500">
-                    Aún no hay ventas recientes.
-                  </div>
-                )}
-              </div>
-              <button
-                onClick={() => setShowTransactionsModal(true)}
-                className="w-full mt-6 py-3 text-sm font-medium text-neutral-400 hover:text-white bg-white/[0.02] hover:bg-white/5 rounded-xl transition-colors"
-              >
-                Ver todas las transacciones
-              </button>
-            </div>
-          </div>
-        </motion.div>
-      )}
+      {activeTab === 'dashboard' && <DashboardTab stats={stats} />}
 
       {/* Tab Content: Staff & RPPs (Mock for UI Demo) */}
       {activeTab === 'staff' && (
@@ -1195,138 +925,6 @@ function OrganizerDashboardContent() {
           </div>
         )}
       </AnimatePresence>
-
-      {/* Transactions Modal */}
-      <AnimatePresence>
-        {showTransactionsModal && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-neutral-900 border border-white/10 p-6 md:p-8 rounded-3xl w-full max-w-lg h-[700px] max-h-[85vh] flex flex-col relative shadow-2xl overscroll-contain"
-            >
-              <button
-                onClick={() => setShowTransactionsModal(false)}
-                className="absolute top-6 right-6 text-neutral-500 hover:text-white transition-colors bg-white/5 p-2 rounded-full hover:bg-white/10 z-10"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              <div className="shrink-0">
-                <h2 className="text-2xl font-bold mb-6 flex items-center gap-2 pr-8">
-                  <Activity className="w-6 h-6 text-emerald-400" />
-                  Historial de Transacciones
-                </h2>
-
-                <div className="relative mb-6">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
-                  <input
-                    type="text"
-                    value={searchTxTerm}
-                    onChange={(e) => setSearchTxTerm(e.target.value)}
-                    placeholder="Buscar por nombre o evento..."
-                    className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-emerald-500 transition-colors"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-3 flex-1 overflow-y-auto pr-2">
-                {stats.recentTransactions &&
-                  stats.recentTransactions
-                    .filter(
-                      (sale: any) =>
-                        sale.name
-                          .toLowerCase()
-                          .includes(searchTxTerm.toLowerCase()) ||
-                        sale.event
-                          .toLowerCase()
-                          .includes(searchTxTerm.toLowerCase()),
-                    )
-                    .map((sale: any, i: number) => (
-                      <div
-                        key={i}
-                        className="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/5"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-neutral-800 to-neutral-700 border border-white/10 flex items-center justify-center font-bold text-sm text-neutral-300">
-                            {sale.name.charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <div className="font-medium text-sm text-white">
-                              {sale.name}
-                            </div>
-                            <div className="text-xs text-neutral-500">
-                              {sale.event}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-bold text-sm text-white">
-                            {formatCurrency(sale.amount)}
-                          </div>
-                          <div
-                            className={`text-xs ${sale.status === 'PAID' ? 'text-emerald-400' : 'text-red-400'} bg-black/40 px-2 py-0.5 rounded-full inline-block mt-1`}
-                          >
-                            {sale.status === 'PAID' ? 'Aprobada' : 'Rechazada'}
-                          </div>
-                          <div className="text-[10px] text-neutral-500 mt-1">
-                            {formatRelativeDate(sale.time)}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                {(!stats.recentTransactions ||
-                  stats.recentTransactions.length === 0) && (
-                  <div className="text-center py-6 text-sm text-neutral-500">
-                    Aún no hay transacciones.
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-function MetricCard({
-  title,
-  value,
-  trend,
-  icon,
-  color,
-}: {
-  title: string;
-  value: string;
-  trend?: string;
-  icon: React.ReactNode;
-  color: string;
-}) {
-  const colorStyles: Record<string, string> = {
-    emerald: 'bg-emerald-500/10 group-hover:bg-emerald-500/20',
-    indigo: 'bg-indigo-500/10 group-hover:bg-indigo-500/20',
-    purple: 'bg-purple-500/10 group-hover:bg-purple-500/20',
-    blue: 'bg-blue-500/10 group-hover:bg-blue-500/20',
-  };
-
-  const bgStyle = colorStyles[color] || 'bg-white/10 group-hover:bg-white/20';
-
-  return (
-    <div className="bg-neutral-900 border border-white/5 rounded-3xl p-5 relative overflow-hidden group hover:border-white/10 transition-all hover:-translate-y-1 shadow-xl flex items-center justify-between">
-      <div
-        className={`absolute top-0 right-0 w-32 h-32 ${bgStyle} rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none transition-colors`}
-      />
-      <div className="relative z-10 flex flex-col">
-        <div className="text-sm font-medium text-neutral-400 mb-1">{title}</div>
-        <div className="font-outfit text-3xl lg:text-4xl font-bold tracking-tight text-white">
-          {value}
-        </div>
-      </div>
-      <div className="relative z-10 p-3 bg-white/5 rounded-2xl border border-white/5 shadow-inner shrink-0">
-        {icon}
-      </div>
     </div>
   );
 }

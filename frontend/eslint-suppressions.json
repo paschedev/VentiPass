@@ -52,7 +52,7 @@
   },
   "src/app/panel/page.tsx": {
     "@typescript-eslint/no-explicit-any": {
-      "count": 13
+      "count": 5
     },
     "react-hooks/set-state-in-effect": {
       "count": 1
