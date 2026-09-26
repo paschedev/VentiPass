@@ -9,6 +9,7 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react';
+import { canScan, canSeeRppPanel, isOrganizer, type RoleFlags } from './roles';
 
 // La home y las pantallas de acceso van sin sidebar ni barra inferior.
 const ROUTES_WITHOUT_APP_NAV = [
@@ -21,12 +22,6 @@ const ROUTES_WITHOUT_APP_NAV = [
 
 export function showsAppNav(pathname: string): boolean {
   return !ROUTES_WITHOUT_APP_NAV.includes(pathname);
-}
-
-export interface NavUser {
-  role: string;
-  isCurrentlyScanner?: boolean;
-  hasBeenRpp?: boolean;
 }
 
 export interface NavLink {
@@ -93,17 +88,16 @@ const SCANNER: NavItem = {
 const asLink = (link: NavLink): NavItem => ({ ...link, kind: 'link' });
 
 // Items de la barra inferior mobile según los roles del usuario.
-export function getNavItems(user: NavUser | null): NavItem[] {
+export function getNavItems(user: RoleFlags | null): NavItem[] {
   if (!user) return [EVENTS, LOGIN].map(asLink);
 
-  const isOrganizer = user.role === 'ORGANIZER' || user.role === 'ADMIN';
   const links = [EVENTS];
-  if (isOrganizer) links.push(ORGANIZATION);
-  if (isOrganizer || user.hasBeenRpp) links.push(RPP);
+  if (isOrganizer(user)) links.push(ORGANIZATION);
+  if (canSeeRppPanel(user)) links.push(RPP);
   links.push(TICKETS, SETTINGS);
 
   const items = links.map(asLink);
-  if (!isOrganizer && !user.isCurrentlyScanner) return items;
+  if (!canScan(user)) return items;
 
   // Hasta 5 lugares: el QR va al medio y lo que sobra pasa a "Más".
   if (links.length <= 4) {

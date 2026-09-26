@@ -6,19 +6,13 @@ import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useScrollLock } from '@/hooks/useScrollLock';
-import { getNavItems, showsAppNav, type NavUser } from '@/utils/navigation';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { getNavItems, showsAppNav } from '@/utils/navigation';
 
 export default function BottomNav() {
   const pathname = usePathname();
-  const [user, setUser] = useState<NavUser | null>(null);
+  const { user } = useCurrentUser();
   const [showMenu, setShowMenu] = useState(false);
-
-  useEffect(() => {
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      setUser(JSON.parse(userStr));
-    }
-  }, [pathname]); // refresh on navigation
 
   useScrollLock(showMenu);
   useEffect(() => {

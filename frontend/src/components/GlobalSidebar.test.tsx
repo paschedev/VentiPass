@@ -15,7 +15,7 @@ describe('GlobalSidebar', () => {
     localStorage.setItem('user', JSON.stringify({ role: 'CUSTOMER' }));
     Object.defineProperty(window, 'location', {
       configurable: true,
-      value: { href: '/panel/tickets' },
+      value: { replace: vi.fn() },
     });
   });
 
@@ -44,7 +44,7 @@ describe('GlobalSidebar', () => {
 
     expect(localStorage.getItem('token')).toBeNull();
     expect(localStorage.getItem('user')).toBeNull();
-    expect(window.location.href).toBe('/');
+    expect(window.location.replace).toHaveBeenCalledWith('/');
   });
 
   it('al cancelar la sesión sigue abierta', () => {
