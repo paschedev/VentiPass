@@ -11,35 +11,19 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Modal from '@/components/ui/Modal';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { canSeeRppPanel, isOrganizer } from '@/utils/roles';
 
 export default function GlobalSidebar() {
   const pathname = usePathname();
-  const [user, setUser] = useState<any>(null);
+  const { user, ready, logout } = useCurrentUser();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  if (!ready) return null;
 
-  useEffect(() => {
-    const loadUser = () => {
-      const userStr = localStorage.getItem('user');
-      if (userStr) {
-        setUser(JSON.parse(userStr));
-      }
-    };
-    loadUser();
-    window.addEventListener('userUpdated', loadUser);
-    return () => window.removeEventListener('userUpdated', loadUser);
-  }, [pathname]);
-
-  if (!mounted) return null;
-
-  const isOrganizer = user?.role === 'ORGANIZER' || user?.role === 'ADMIN';
   const isLoggedIn = !!user;
 
   const NavItem = ({
@@ -73,12 +57,6 @@ export default function GlobalSidebar() {
         </span>
       </Link>
     );
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.href = '/';
   };
 
   return (
@@ -117,13 +95,13 @@ export default function GlobalSidebar() {
                 href="/panel"
                 icon={CalendarRange}
                 label="Organización"
-                show={isOrganizer}
+                show={isOrganizer(user)}
               />
               <NavItem
                 href="/panel/rpp"
                 icon={Users}
                 label="Panel RPP"
-                show={!!user?.hasBeenRpp || isOrganizer}
+                show={canSeeRppPanel(user)}
               />
               <NavItem
                 href="/panel/tickets"
@@ -204,7 +182,7 @@ export default function GlobalSidebar() {
             Cancelar
           </button>
           <button
-            onClick={handleLogout}
+            onClick={logout}
             className="flex-1 bg-red-600 hover:bg-red-500 text-white px-4 py-3 rounded-xl font-medium transition-all active:scale-95"
           >
             Sí, cerrar sesión

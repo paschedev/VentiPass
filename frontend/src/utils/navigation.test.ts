@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { getNavItems, showsAppNav, type NavUser } from './navigation';
+import { getNavItems, showsAppNav } from './navigation';
+import type { RoleFlags } from './roles';
 
-const ids = (user: NavUser | null) => getNavItems(user).map((item) => item.id);
+const ids = (user: RoleFlags | null) =>
+  getNavItems(user).map((item) => item.id);
 
 describe('getNavItems', () => {
   it('sin sesión muestra eventos e ingresar', () => {

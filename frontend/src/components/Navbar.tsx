@@ -13,10 +13,11 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export default function Navbar() {
-  const [user, setUser] = useState<any>(null);
-  const [isMounted, setIsMounted] = useState(false);
+  const { user, refresh, logout } = useCurrentUser();
+  const isLoggedIn = !!user;
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
 
@@ -40,18 +41,11 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
-    setIsMounted(true);
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      setUser(JSON.parse(userStr));
-      fetchNotifications();
-    } else {
-      setUser(null);
-    }
+    if (isLoggedIn) fetchNotifications();
     // Cerrar modales al cambiar de ruta
     setShowProfile(false);
     setShowNotifications(false);
-  }, [pathname]);
+  }, [pathname, isLoggedIn]);
 
   const fetchNotifications = async () => {
     try {
@@ -83,12 +77,7 @@ export default function Navbar() {
         setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
 
         // Actualizar sesión para refrescar los flags hasBeenRpp y isCurrentlyScanner
-        const userRes = await apiFetch('/auth/me');
-        if (userRes.ok) {
-          const userData = await userRes.json();
-          localStorage.setItem('user', JSON.stringify(userData));
-          setUser(userData);
-        }
+        await refresh();
 
         // Marcar notificación original como leída (registro histórico)
         await apiFetch(`/notifications/${notificationId}/read`, {
@@ -114,12 +103,6 @@ export default function Navbar() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setUser(null);
-    window.location.replace('/');
-  };
   const handleMarkAllAsRead = async () => {
     try {
       const { apiFetch } = await import('@/utils/api');
@@ -160,7 +143,7 @@ export default function Navbar() {
           >
             Descubrir Eventos
           </Link>
-          {isMounted && user && (
+          {user && (
             <Link
               href="/panel"
               className="hidden md:block text-sm font-medium text-indigo-400 hover:text-indigo-300 transition-colors bg-indigo-500/10 px-3 py-1.5 rounded-full border border-indigo-500/20"
@@ -170,7 +153,7 @@ export default function Navbar() {
           )}
           <div className="hidden md:block w-px h-4 bg-white/10 mx-2" />
 
-          {isMounted && user ? (
+          {user ? (
             <div className="flex items-center gap-4 md:gap-6">
               {/* Notifications Bell */}
               {!pathname.includes('/panel/notificaciones') && (
@@ -362,7 +345,7 @@ export default function Navbar() {
                       </a>
 
                       <button
-                        onClick={handleLogout}
+                        onClick={logout}
                         className="flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-xl transition-colors w-full text-left"
                       >
                         <LogOut className="w-4 h-4" /> Cerrar sesión
