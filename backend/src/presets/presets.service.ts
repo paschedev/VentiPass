@@ -9,23 +9,13 @@ import { PrismaService } from '../prisma/prisma.service';
 export class PresetsService {
   constructor(private prisma: PrismaService) {}
 
+  // Read-only: the default presets are created at sign-up, so two concurrent
+  // reads can't create duplicates.
   async findAll(organizerId: string) {
-    let presets = await this.prisma.ticketPreset.findMany({
+    return this.prisma.ticketPreset.findMany({
       where: { organizerId },
       orderBy: { name: 'asc' },
     });
-
-    if (presets.length === 0) {
-      const general = await this.prisma.ticketPreset.create({
-        data: { organizerId, name: 'General', price: 0 },
-      });
-      const vip = await this.prisma.ticketPreset.create({
-        data: { organizerId, name: 'VIP', price: 0 },
-      });
-      presets = [general, vip];
-    }
-
-    return presets;
   }
 
   async create(organizerId: string, name: string, price: number) {
