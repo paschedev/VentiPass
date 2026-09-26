@@ -1,42 +1,41 @@
 import { execSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { PrismaClient } from '@prisma/client';
-import { assertConnectedToTestDatabase, resetDb } from '../utils/test-database';
+import { assertConnectedToTestDatabase } from '../utils/test-database';
 import { testEnv } from './test-env';
 
 const BACKEND_DIR = join(__dirname, '..', '..');
-const STOCK_CONSTRAINT_SQL = join(
-  BACKEND_DIR,
-  'prisma/migrations/20260910213000_add_ticket_stock_constraint/migration.sql',
-);
 
-// Deja la base de test vacía y con el schema al día antes de correr la suite.
+function prisma(command: string) {
+  return execSync(`npx prisma ${command}`, {
+    cwd: BACKEND_DIR,
+    env: process.env,
+    stdio: ['ignore', 'pipe', 'inherit'],
+  }).toString();
+}
+
+// Arma la base de test desde cero aplicando las migraciones, igual que en
+// producción, y falla si schema.prisma tiene cambios sin su migración.
 export default async function globalSetup() {
   Object.assign(process.env, testEnv);
 
-  const prisma = new PrismaClient();
+  const client = new PrismaClient();
   try {
-    await assertConnectedToTestDatabase(prisma);
-
-    execSync('npx prisma db push --skip-generate', {
-      cwd: BACKEND_DIR,
-      env: process.env,
-      stdio: ['ignore', 'ignore', 'inherit'],
-    });
-    await resetDb(prisma);
-
-    // db push no conoce los CHECK: la restricción de stock se aplica aparte.
-    const [{ exists }] = await prisma.$queryRaw<{ exists: boolean }[]>`
-      SELECT EXISTS (
-        SELECT 1 FROM pg_constraint WHERE conname = 'check_stock_limits'
-      ) AS "exists"`;
-    if (!exists) {
-      await prisma.$executeRawUnsafe(
-        readFileSync(STOCK_CONSTRAINT_SQL, 'utf8'),
-      );
-    }
+    await assertConnectedToTestDatabase(client);
+    await client.$executeRawUnsafe('DROP SCHEMA IF EXISTS public CASCADE');
+    await client.$executeRawUnsafe('CREATE SCHEMA public');
   } finally {
-    await prisma.$disconnect();
+    await client.$disconnect();
+  }
+
+  prisma('migrate deploy');
+
+  const drift = prisma(
+    `migrate diff --from-url "${testEnv.DATABASE_URL}" --to-schema-datamodel prisma/schema.prisma --script`,
+  );
+  if (!drift.includes('empty migration')) {
+    throw new Error(
+      `schema.prisma tiene cambios sin migración. Creala con \`npx prisma migrate dev --create-only\`:\n${drift}`,
+    );
   }
 }
