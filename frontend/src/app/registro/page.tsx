@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { UserPlus, ChevronDown } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { apiFetch } from '@/utils/api';
+import { getApiErrorMessage } from '@/utils/api-error';
 import { toE164Phone } from '@/utils/phone';
 import { AsYouType, CountryCode } from 'libphonenumber-js';
 import { z } from 'zod';
@@ -173,7 +174,9 @@ export default function RegistroPage() {
           router.push('/login');
         }, 2000);
       } else {
-        setError(responseData.message || 'Error al registrar el usuario');
+        setError(
+          getApiErrorMessage(responseData, 'Error al registrar el usuario'),
+        );
       }
     } catch (err) {
       setError('Error de conexión con el servidor');

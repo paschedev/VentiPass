@@ -5,18 +5,7 @@ import { Plus, Trash2, Calendar, Edit2, Save, Ticket } from 'lucide-react';
 import toast from 'react-hot-toast';
 import CustomSelect from '@/components/CustomSelect';
 import { apiFetch } from '@/utils/api';
-
-const toLocalInputFormat = (isoString: string | null) => {
-  if (!isoString) return '';
-  const d = new Date(isoString);
-  const tzOffset = d.getTimezoneOffset() * 60000;
-  return new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
-};
-
-const fromLocalInputToUTC = (localString: string) => {
-  if (!localString) return null;
-  return new Date(localString).toISOString();
-};
+import { fromDateTimeLocalInput, toDateTimeLocalInput } from '@/utils/format';
 
 export default function TandasManager({
   batches,
@@ -249,15 +238,15 @@ export default function TandasManager({
                         type="datetime-local"
                         max={
                           batch.closeAt
-                            ? toLocalInputFormat(batch.closeAt)
+                            ? toDateTimeLocalInput(batch.closeAt)
                             : undefined
                         }
-                        value={toLocalInputFormat(batch.publishAt)}
+                        value={toDateTimeLocalInput(batch.publishAt)}
                         onChange={(e) =>
                           updateBatch(
                             bIdx,
                             'publishAt',
-                            fromLocalInputToUTC(e.target.value),
+                            fromDateTimeLocalInput(e.target.value),
                           )
                         }
                         className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-indigo-500 [color-scheme:dark]"
@@ -301,15 +290,15 @@ export default function TandasManager({
                         type="datetime-local"
                         min={
                           batch.publishAt
-                            ? toLocalInputFormat(batch.publishAt)
+                            ? toDateTimeLocalInput(batch.publishAt)
                             : undefined
                         }
-                        value={toLocalInputFormat(batch.closeAt)}
+                        value={toDateTimeLocalInput(batch.closeAt)}
                         onChange={(e) =>
                           updateBatch(
                             bIdx,
                             'closeAt',
-                            fromLocalInputToUTC(e.target.value),
+                            fromDateTimeLocalInput(e.target.value),
                           )
                         }
                         className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-pink-500 [color-scheme:dark]"

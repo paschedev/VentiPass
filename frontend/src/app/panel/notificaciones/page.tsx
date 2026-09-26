@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { apiFetch } from '@/utils/api';
 import toast from 'react-hot-toast';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useStaffInvitation } from '@/hooks/useStaffInvitation';
 
 type Notification = {
   id: string;
@@ -30,10 +30,9 @@ type Notification = {
 };
 
 export default function NotificacionesPage() {
-  const { refresh } = useCurrentUser();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showOnlyRequests, setShowOnlyRequests] = useState(false);
-  const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
+  const { processingIds, respond } = useStaffInvitation();
 
   useEffect(() => {
     fetchNotifications();
@@ -96,49 +95,27 @@ export default function NotificacionesPage() {
     action: 'accept' | 'reject',
     eventStaffId: string,
   ) => {
-    setProcessingIds((prev) => new Set(prev).add(id));
-    try {
-      const res = await apiFetch(`/events/staff/${eventStaffId}/${action}`, {
-        method: 'PUT',
-      });
-      if (res.ok) {
-        toast.success(
-          `Invitación ${action === 'accept' ? 'aceptada' : 'rechazada'}`,
-        );
-        // Aceptar suma el rol de RPP o scanner: la navegación lo muestra al instante
-        if (action === 'accept') await refresh();
-        // Mark as read in backend
-        await apiFetch(`/notifications/${id}/read`, { method: 'PUT' });
-        // Update local state to reflect new status and read state
-        setNotifications((prev) =>
-          prev.map((n) =>
-            n.id === id
-              ? {
-                  ...n,
-                  isRead: true,
-                  metadata: {
-                    ...n.metadata,
-                    status: action === 'accept' ? 'ACCEPTED' : 'REJECTED',
-                  },
-                }
-              : n,
-          ),
-        );
-      } else {
-        const error = await res.json();
-        toast.error(error.message || 'Error al procesar la invitación');
-        if (res.status === 400 && error.message?.includes('procesada')) {
-          setNotifications((prev) => prev.filter((n) => n.id !== id));
-        }
-      }
-    } catch (e) {
-      toast.error('Error de conexión');
-    } finally {
-      setProcessingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
+    const outcome = await respond(id, eventStaffId, action);
+    if (outcome === 'done') {
+      toast.success(
+        `Invitación ${action === 'accept' ? 'aceptada' : 'rechazada'}`,
+      );
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n.id === id
+            ? {
+                ...n,
+                isRead: true,
+                metadata: {
+                  ...n.metadata,
+                  status: action === 'accept' ? 'ACCEPTED' : 'REJECTED',
+                },
+              }
+            : n,
+        ),
+      );
+    } else if (outcome === 'already-processed') {
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
     }
   };
 

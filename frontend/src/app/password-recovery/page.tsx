@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Send } from 'lucide-react';
 import { apiFetch } from '@/utils/api';
+import { getApiErrorMessage } from '@/utils/api-error';
 import { z } from 'zod';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -46,7 +47,10 @@ export default function PasswordRecoveryPage() {
       } else {
         const responseData = await response.json();
         setError(
-          responseData.message || 'Error al intentar recuperar la contraseña',
+          getApiErrorMessage(
+            responseData,
+            'Error al intentar recuperar la contraseña',
+          ),
         );
       }
     } catch (err) {

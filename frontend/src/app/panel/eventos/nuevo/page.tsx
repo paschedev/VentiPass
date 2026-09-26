@@ -16,6 +16,8 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import TandasManager from '@/components/TandasManager';
 import { apiFetch } from '@/utils/api';
+import { getApiErrorMessage } from '@/utils/api-error';
+import { toDateTimeLocalInput } from '@/utils/format';
 
 export default function CrearEventoPage() {
   const router = useRouter();
@@ -23,13 +25,6 @@ export default function CrearEventoPage() {
   const [imageUrl, setImageUrl] = useState<string>('');
   const [batches, setBatches] = useState<any[]>([]);
   const [startDate, setStartDate] = useState('');
-
-  const toLocalInputFormat = (isoString: string | null) => {
-    if (!isoString) return '';
-    const d = new Date(isoString);
-    const tzOffset = d.getTimezoneOffset() * 60000;
-    return new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
-  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -79,13 +74,8 @@ export default function CrearEventoPage() {
         toast.success('Evento creado exitosamente.');
         router.push(`/panel?tab=events`);
       } else {
-        const errorMsg = Array.isArray(responseData.message)
-          ? responseData.message.join(' \n• ')
-          : responseData.message || 'Error al crear el evento';
         toast.error(
-          <div style={{ whiteSpace: 'pre-line' }}>
-            {Array.isArray(responseData.message) ? `• ${errorMsg}` : errorMsg}
-          </div>,
+          getApiErrorMessage(responseData, 'Error al crear el evento'),
           { duration: 5000 },
         );
         setLoading(false);
@@ -269,7 +259,7 @@ export default function CrearEventoPage() {
                 name="startDate"
                 required
                 type="datetime-local"
-                min={toLocalInputFormat(new Date().toISOString())}
+                min={toDateTimeLocalInput(new Date().toISOString())}
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 className="w-full max-w-full bg-white/5 border border-white/10 rounded-xl px-2 md:px-4 py-3 text-sm md:text-base text-white focus:outline-none focus:border-indigo-500 transition-colors [color-scheme:dark] block"
@@ -283,7 +273,9 @@ export default function CrearEventoPage() {
                 name="endDate"
                 required
                 type="datetime-local"
-                min={startDate || toLocalInputFormat(new Date().toISOString())}
+                min={
+                  startDate || toDateTimeLocalInput(new Date().toISOString())
+                }
                 className="w-full max-w-full bg-white/5 border border-white/10 rounded-xl px-2 md:px-4 py-3 text-sm md:text-base text-white focus:outline-none focus:border-indigo-500 transition-colors [color-scheme:dark] block"
               />
             </div>

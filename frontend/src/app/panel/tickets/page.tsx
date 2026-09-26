@@ -13,6 +13,8 @@ import {
 import { QRCodeSVG } from 'qrcode.react';
 import toast from 'react-hot-toast';
 import { apiFetch } from '@/utils/api';
+import { getApiErrorMessage } from '@/utils/api-error';
+import { useUserSearch } from '@/hooks/useUserSearch';
 import Modal from '@/components/ui/Modal';
 
 export default function MisEntradasPage() {
@@ -25,7 +27,7 @@ export default function MisEntradasPage() {
   const [showTransfer, setShowTransfer] = useState(false);
   const [transferring, setTransferring] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const searchResults = useUserSearch(searchTerm);
   const [selectedUser, setSelectedUser] = useState<any>(null);
 
   const fetchTickets = async () => {
@@ -63,20 +65,6 @@ export default function MisEntradasPage() {
     setSelectedTicket(null);
   };
 
-  useEffect(() => {
-    if (searchTerm.length >= 3) {
-      const delayFn = setTimeout(() => {
-        apiFetch(`/auth/users/search?q=${searchTerm}`)
-          .then((res) => (res.ok ? res.json() : []))
-          .then((data) => setSearchResults(data))
-          .catch(() => {});
-      }, 300);
-      return () => clearTimeout(delayFn);
-    } else {
-      setSearchResults([]);
-    }
-  }, [searchTerm]);
-
   const handleTransfer = async () => {
     if (!selectedUser) return;
     setTransferring(true);
@@ -95,7 +83,7 @@ export default function MisEntradasPage() {
         closeTicket();
         fetchTickets(); // Refresh list
       } else {
-        toast.error(data.message || 'Error al transferir');
+        toast.error(getApiErrorMessage(data, 'Error al transferir'));
       }
     } catch (e) {
       toast.error('Error de conexión');
@@ -313,7 +301,6 @@ export default function MisEntradasPage() {
                                   onClick={() => {
                                     setSelectedUser(u);
                                     setSearchTerm('');
-                                    setSearchResults([]);
                                   }}
                                   className="w-full text-left px-4 py-3 hover:bg-white/5 flex items-center justify-between transition-colors border-b border-white/5 last:border-0"
                                 >

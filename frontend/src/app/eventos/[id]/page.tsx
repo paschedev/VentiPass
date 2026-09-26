@@ -14,8 +14,10 @@ import toast from 'react-hot-toast';
 import CustomSelect from '@/components/CustomSelect';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { apiFetch } from '@/utils/api';
+import { getApiErrorMessage } from '@/utils/api-error';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { optimizeCloudinaryUrl } from '@/utils/cloudinary';
+import { formatCurrency } from '@/utils/format';
 
 const getYouTubeEmbedUrl = (url: string) => {
   if (!url) return null;
@@ -110,7 +112,7 @@ function EventContent() {
       if (response.ok && data.checkoutUrl) {
         window.location.href = data.checkoutUrl;
       } else {
-        toast.error(data.message || 'Error al iniciar el pago');
+        toast.error(getApiErrorMessage(data, 'Error al iniciar el pago'));
         setBuying(false);
       }
     } catch (error) {
@@ -319,7 +321,7 @@ function EventContent() {
                                   </div>
                                 </div>
                                 <div className="font-bold text-lg text-emerald-400 shrink-0">
-                                  ${ticket.price}
+                                  {formatCurrency(ticket.price)}
                                 </div>
                               </div>
                               <div className="flex items-center justify-between mt-1">
@@ -372,15 +374,15 @@ function EventContent() {
                 <div className="flex justify-between items-center mb-4">
                   <span className="text-neutral-400">Total</span>
                   <span className="text-2xl font-bold text-emerald-400">
-                    $
-                    {(event.ticketBatches || [])
-                      .flatMap((b: any) => b.ticketTypes || [])
-                      .reduce(
-                        (sum: number, t: any) =>
-                          sum + (cart[t.id] || 0) * t.price,
-                        0,
-                      )
-                      .toLocaleString('es-AR')}
+                    {formatCurrency(
+                      (event.ticketBatches || [])
+                        .flatMap((b: any) => b.ticketTypes || [])
+                        .reduce(
+                          (sum: number, t: any) =>
+                            sum + (cart[t.id] || 0) * t.price,
+                          0,
+                        ),
+                    )}
                   </span>
                 </div>
 

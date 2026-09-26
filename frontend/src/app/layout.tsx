@@ -46,6 +46,8 @@ export default function RootLayout({
                 background: '#171717',
                 color: '#fff',
                 border: '1px solid rgba(255,255,255,0.1)',
+                // getApiErrorMessage separa los errores de validación con \n
+                whiteSpace: 'pre-line',
               },
             }}
           />

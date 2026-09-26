@@ -5,6 +5,7 @@ import { Link2, Save, Key, Lock, Ticket } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { apiFetch } from '@/utils/api';
+import { getApiErrorMessage } from '@/utils/api-error';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { isOrganizer } from '@/utils/roles';
 
@@ -33,7 +34,9 @@ export default function ConfiguracionPage() {
       if (response.ok && data.url) {
         window.location.href = data.url;
       } else {
-        toast.error(data.message || 'Error al generar link de MercadoPago');
+        toast.error(
+          getApiErrorMessage(data, 'Error al generar link de MercadoPago'),
+        );
       }
     } catch (err) {
       toast.error('Error de conexión al servidor');
@@ -62,7 +65,7 @@ export default function ConfiguracionPage() {
         setNewPassword('');
         setConfirmPassword('');
       } else {
-        toast.error(data.message || 'Error al cambiar la contraseña');
+        toast.error(getApiErrorMessage(data, 'Error al cambiar la contraseña'));
       }
     } catch (error) {
       toast.error('Error de conexión con el servidor');
@@ -326,7 +329,7 @@ function ResetPasswordView({ token }: { token: string }) {
         toast.success('Contraseña restablecida con éxito');
         setSuccess(true);
       } else {
-        toast.error(data.message || 'El enlace es inválido o expiró');
+        toast.error(getApiErrorMessage(data, 'El enlace es inválido o expiró'));
       }
     } catch (err) {
       toast.error('Error de conexión');

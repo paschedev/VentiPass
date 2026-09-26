@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { LogIn } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { apiFetch } from '@/utils/api';
+import { getApiErrorMessage } from '@/utils/api-error';
 import { getSafeRedirect } from '@/utils/redirect';
 import { saveSession } from '@/hooks/useCurrentUser';
 import { getHomePath } from '@/utils/navigation';
@@ -71,7 +72,7 @@ export default function LoginPage() {
         const callbackUrl = getSafeRedirect(urlParams.get('callbackUrl'));
         window.location.replace(callbackUrl ?? getHomePath(responseData.user));
       } else {
-        setError(responseData.message || 'Credenciales inválidas');
+        setError(getApiErrorMessage(responseData, 'Credenciales inválidas'));
       }
     } catch (err) {
       setError('Error de conexión con el servidor');
