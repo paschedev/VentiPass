@@ -2,8 +2,12 @@
 // La base es el servicio db-test de docker-compose.yml.
 // Definir acá todo lo que lee la app: @prisma/client carga backend/.env al
 // importarse y cualquier variable que falte acá se colaría desde ese archivo.
+const TEST_DATABASE_URL =
+  'postgresql://user:password@localhost:5433/neopass_test';
+
 export const testEnv = {
-  DATABASE_URL: 'postgresql://user:password@localhost:5433/neopass_test',
+  DATABASE_URL: TEST_DATABASE_URL,
+  DIRECT_URL: TEST_DATABASE_URL,
   JWT_SECRET: 'test-jwt-secret',
   FRONTEND_URL: 'https://app.neopass.test',
   BACKEND_URL: 'http://localhost:3001',

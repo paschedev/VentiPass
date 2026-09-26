@@ -16,12 +16,13 @@ export async function assertConnectedToTestDatabase(prisma: PrismaClient) {
   assertTestDatabaseName(name);
 }
 
-// Vacía todas las tablas del schema, así cada test arranca de cero.
+// Vacía todas las tablas del schema (menos el historial de migraciones), así
+// cada test arranca de cero.
 export async function resetDb(prisma: PrismaClient) {
   await assertConnectedToTestDatabase(prisma);
-  const tables = await prisma.$queryRaw<
-    { tablename: string }[]
-  >`SELECT tablename FROM pg_tables WHERE schemaname = 'public'`;
+  const tables = await prisma.$queryRaw<{ tablename: string }[]>`
+    SELECT tablename FROM pg_tables
+    WHERE schemaname = 'public' AND tablename <> '_prisma_migrations'`;
   if (tables.length === 0) return;
 
   const tableList = tables
