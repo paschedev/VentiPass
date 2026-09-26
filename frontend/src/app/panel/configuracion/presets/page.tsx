@@ -5,6 +5,7 @@ import { Ticket, Plus, Trash2, Edit2, Check, X, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { apiFetch } from '@/utils/api';
+import Modal from '@/components/ui/Modal';
 
 export default function PresetsPage() {
   const router = useRouter();
@@ -243,36 +244,36 @@ export default function PresetsPage() {
       </div>
 
       {/* Delete Confirmation Modal */}
-      {presetToDelete && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-neutral-900 border border-white/10 p-8 rounded-3xl w-full max-w-sm relative shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-            <div className="w-16 h-16 bg-red-500/10 text-red-400 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <Trash2 className="w-8 h-8" />
-            </div>
-            <h2 className="text-xl font-bold text-center mb-2">
-              Eliminar Plantilla
-            </h2>
-            <p className="text-sm text-neutral-400 text-center mb-8">
-              ¿Estás seguro de que deseas eliminar esta plantilla? Esta acción
-              no se puede deshacer.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setPresetToDelete(null)}
-                className="flex-1 px-4 py-3 rounded-xl font-medium text-neutral-400 hover:bg-white/5 transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="flex-1 bg-red-600 hover:bg-red-500 text-white px-4 py-3 rounded-xl font-medium transition-all active:scale-95"
-              >
-                Eliminar
-              </button>
-            </div>
-          </div>
+      <Modal
+        open={!!presetToDelete}
+        onClose={() => setPresetToDelete(null)}
+        className="bg-neutral-900 border border-white/10 p-8 rounded-3xl w-full max-w-sm relative shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+      >
+        <div className="w-16 h-16 bg-red-500/10 text-red-400 rounded-2xl flex items-center justify-center mx-auto mb-6">
+          <Trash2 className="w-8 h-8" />
         </div>
-      )}
+        <h2 className="text-xl font-bold text-center mb-2">
+          Eliminar Plantilla
+        </h2>
+        <p className="text-sm text-neutral-400 text-center mb-8">
+          ¿Estás seguro de que deseas eliminar esta plantilla? Esta acción no se
+          puede deshacer.
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setPresetToDelete(null)}
+            className="flex-1 px-4 py-3 rounded-xl font-medium text-neutral-400 hover:bg-white/5 transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={confirmDelete}
+            className="flex-1 bg-red-600 hover:bg-red-500 text-white px-4 py-3 rounded-xl font-medium transition-all active:scale-95"
+          >
+            Eliminar
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

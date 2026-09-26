@@ -218,7 +218,7 @@ export default function Navbar() {
                             </div>
                           </div>
                         </div>
-                        <div className="max-h-[300px] overflow-y-auto">
+                        <div className="max-h-[300px] overflow-y-auto overscroll-contain">
                           {finalDisplayNotifs.length === 0 ? (
                             <div className="p-6 text-center text-sm text-neutral-500">
                               No tienes notificaciones.
