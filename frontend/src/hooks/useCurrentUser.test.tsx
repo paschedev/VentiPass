@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
 import { apiFetch } from '@/utils/api';
-import { useCurrentUser, type SessionUser } from './useCurrentUser';
+import {
+  saveSession,
+  useCurrentUser,
+  type SessionUser,
+} from './useCurrentUser';
 
 vi.mock('@/utils/api', () => ({ apiFetch: vi.fn() }));
 
@@ -94,14 +98,12 @@ describe('useCurrentUser', () => {
     expect(window.location.replace).toHaveBeenCalledWith('/');
   });
 
-  it('se actualiza cuando otra pantalla guarda el usuario y avisa', async () => {
+  it('al guardar la sesión del login, queda disponible en toda la app', () => {
     const { result } = renderHook(() => useCurrentUser());
 
-    act(() => {
-      localStorage.setItem('user', JSON.stringify(CUSTOMER));
-      window.dispatchEvent(new Event('userUpdated'));
-    });
+    act(() => saveSession('jwt', CUSTOMER));
 
-    await waitFor(() => expect(result.current.user).toEqual(CUSTOMER));
+    expect(localStorage.getItem('token')).toBe('jwt');
+    expect(result.current.user).toEqual(CUSTOMER);
   });
 });

@@ -24,6 +24,11 @@ export function showsAppNav(pathname: string): boolean {
   return !ROUTES_WITHOUT_APP_NAV.includes(pathname);
 }
 
+// Adónde va el usuario al entrar o desde el botón principal de la home.
+export function getHomePath(user: RoleFlags): string {
+  return isOrganizer(user) ? '/panel' : '/panel/tickets';
+}
+
 export interface NavLink {
   id: string;
   href: string;

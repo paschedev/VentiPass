@@ -13,8 +13,8 @@ export interface SessionUser {
   isCurrentlyScanner: boolean;
 }
 
-// La sesión vive en localStorage ('token' y 'user'). Quien la cambie avisa
-// con este evento para que todos los componentes se actualicen.
+// La sesión vive en localStorage ('token' y 'user') y solo se escribe desde
+// este módulo, que avisa con este evento a todos los componentes.
 const USER_UPDATED = 'userUpdated';
 
 let cache: { raw: string | null; user: SessionUser | null } | undefined;
@@ -47,13 +47,23 @@ function subscribe(onChange: () => void) {
   return () => window.removeEventListener(USER_UPDATED, onChange);
 }
 
+function saveUser(user: SessionUser): void {
+  localStorage.setItem('user', JSON.stringify(user));
+  window.dispatchEvent(new Event(USER_UPDATED));
+}
+
+// Guarda la sesión que devuelve el login.
+export function saveSession(token: string, user: SessionUser): void {
+  localStorage.setItem('token', token);
+  saveUser(user);
+}
+
 // Trae los datos del usuario de nuevo (por ejemplo, después de aceptar una
-// invitación). Si falla, queda la sesión guardada.
+// invitación o vincular Mercado Pago). Si falla, queda la sesión guardada.
 async function refresh(): Promise<void> {
   const res = await apiFetch('/auth/me');
   if (!res.ok) return;
-  localStorage.setItem('user', JSON.stringify(await res.json()));
-  window.dispatchEvent(new Event(USER_UPDATED));
+  saveUser(await res.json());
 }
 
 function logout(): void {

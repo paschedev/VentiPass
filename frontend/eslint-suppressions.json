@@ -6,7 +6,7 @@
   },
   "src/app/eventos/[id]/page.tsx": {
     "@typescript-eslint/no-explicit-any": {
-      "count": 7
+      "count": 6
     }
   },
   "src/app/eventos/page.tsx": {
@@ -15,19 +15,6 @@
     }
   },
   "src/app/login/page.tsx": {
-    "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "src/app/page.tsx": {
-    "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "src/app/panel/configuracion/page.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    },
     "react-hooks/set-state-in-effect": {
       "count": 1
     }
@@ -68,18 +55,10 @@
       "count": 14
     },
     "react-hooks/set-state-in-effect": {
-      "count": 3
+      "count": 2
     },
     "react/no-unescaped-entities": {
       "count": 2
-    }
-  },
-  "src/app/panel/perfil/page.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
     }
   },
   "src/app/panel/rpp/[eventId]/page.tsx": {

@@ -10,34 +10,13 @@ import {
   LayoutDashboard,
   Users,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { getHomePath } from '@/utils/navigation';
+import { isOrganizer } from '@/utils/roles';
 
 export default function Home() {
-  const [isLogged, setIsLogged] = useState(false);
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [isMounted, setIsMounted] = useState(false);
-  const router = useRouter();
-
-  useEffect(() => {
-    setIsMounted(true);
-
-    // The forced redirect to /eventos on mobile was causing a deadend. Let users stay on the landing page.
-
-    const token = localStorage.getItem('token');
-    const userStr = localStorage.getItem('user');
-
-    if (token && userStr) {
-      setIsLogged(true);
-      try {
-        const user = JSON.parse(userStr);
-        setUserRole(user.role);
-      } catch (e) {
-        console.error('Error parsing user from localStorage', e);
-      }
-    }
-  }, [router]);
+  const { user } = useCurrentUser();
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -79,22 +58,12 @@ export default function Home() {
                     <ArrowRight className="w-5 h-5 relative z-10 group-hover:translate-x-1 transition-transform" />
                   </Link>
 
-                  {isMounted && isLogged ? (
+                  {user ? (
                     <Link
-                      href={
-                        userRole === 'ORGANIZER' || userRole === 'ADMIN'
-                          ? '/panel'
-                          : userRole === 'PROMOTER'
-                            ? '/panel/rpp'
-                            : '/panel/tickets'
-                      }
+                      href={getHomePath(user)}
                       className="inline-flex w-max items-center justify-center gap-2 bg-indigo-600 border border-indigo-500 text-white px-6 py-3 md:px-8 md:py-4 rounded-full font-semibold text-base md:text-lg transition-all hover:bg-indigo-500 active:scale-95 shadow-lg shadow-indigo-600/20"
                     >
-                      {userRole === 'ORGANIZER' || userRole === 'ADMIN'
-                        ? 'Ir a mi Panel'
-                        : userRole === 'PROMOTER'
-                          ? 'Panel RPP'
-                          : 'Mis Tickets'}
+                      {isOrganizer(user) ? 'Ir a mi Panel' : 'Mis Tickets'}
                     </Link>
                   ) : (
                     <>

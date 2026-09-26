@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { apiFetch } from '@/utils/api';
 import toast from 'react-hot-toast';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 type Notification = {
   id: string;
@@ -29,6 +30,7 @@ type Notification = {
 };
 
 export default function NotificacionesPage() {
+  const { refresh } = useCurrentUser();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showOnlyRequests, setShowOnlyRequests] = useState(false);
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
@@ -103,19 +105,8 @@ export default function NotificacionesPage() {
         toast.success(
           `Invitación ${action === 'accept' ? 'aceptada' : 'rechazada'}`,
         );
-        // Update local user if accepting a promoter invite to instantly show the RPP panel
-        if (
-          action === 'accept' &&
-          notifications.find((n) => n.id === id)?.metadata?.role === 'PROMOTER'
-        ) {
-          const userStr = localStorage.getItem('user');
-          if (userStr) {
-            const user = JSON.parse(userStr);
-            user.hasBeenRpp = true;
-            localStorage.setItem('user', JSON.stringify(user));
-            window.dispatchEvent(new Event('userUpdated'));
-          }
-        }
+        // Aceptar suma el rol de RPP o scanner: la navegación lo muestra al instante
+        if (action === 'accept') await refresh();
         // Mark as read in backend
         await apiFetch(`/notifications/${id}/read`, { method: 'PUT' });
         // Update local state to reflect new status and read state

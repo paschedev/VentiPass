@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getNavItems, showsAppNav } from './navigation';
+import { getHomePath, getNavItems, showsAppNav } from './navigation';
 import type { RoleFlags } from './roles';
 
 const ids = (user: RoleFlags | null) =>
@@ -61,6 +61,23 @@ describe('getNavItems', () => {
       ]);
     },
   );
+});
+
+describe('getHomePath', () => {
+  it.each(['ORGANIZER', 'ADMIN'])('un %s entra a su panel', (role) => {
+    expect(getHomePath({ role })).toBe('/panel');
+  });
+
+  it('el resto entra a sus tickets, aunque escanee o sea RPP', () => {
+    expect(getHomePath({ role: 'CUSTOMER' })).toBe('/panel/tickets');
+    expect(
+      getHomePath({
+        role: 'CUSTOMER',
+        isCurrentlyScanner: true,
+        hasBeenRpp: true,
+      }),
+    ).toBe('/panel/tickets');
+  });
 });
 
 describe('showsAppNav', () => {
