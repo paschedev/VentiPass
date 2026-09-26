@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import { CheckCircle2, XCircle, ScanLine, AlertTriangle } from 'lucide-react';
 import { apiFetch } from '@/utils/api';
+import { getApiErrorMessage } from '@/utils/api-error';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { canScan } from '@/utils/roles';
 import { isRepeatedScan, LastScan } from '@/utils/scan-cooldown';
@@ -54,7 +55,7 @@ export default function EscanearPage() {
         setScanResult({
           success: false,
           status: 'INVALID',
-          message: data.message || 'Error del servidor',
+          message: getApiErrorMessage(data, 'Error del servidor'),
         });
       }
     } catch (error) {

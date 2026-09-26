@@ -17,6 +17,8 @@ import {
 import toast from 'react-hot-toast';
 import TandasManager from '@/components/TandasManager';
 import { apiFetch } from '@/utils/api';
+import { getApiErrorMessage } from '@/utils/api-error';
+import { toDateTimeLocalInput } from '@/utils/format';
 
 export default function EditarEventoPage() {
   const router = useRouter();
@@ -29,13 +31,6 @@ export default function EditarEventoPage() {
   const [batches, setBatches] = useState<any[]>([]);
   const [startDate, setStartDate] = useState('');
 
-  const toLocalInputFormat = (isoString: string | null) => {
-    if (!isoString) return '';
-    const d = new Date(isoString);
-    const tzOffset = d.getTimezoneOffset() * 60000;
-    return new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
-  };
-
   useEffect(() => {
     apiFetch(`/events/organizer/${id}`)
       .then(async (res) => {
@@ -46,7 +41,7 @@ export default function EditarEventoPage() {
       .then((data) => {
         setEventData(data);
         if (data.imageUrl) setImageUrl(data.imageUrl);
-        if (data.startDate) setStartDate(toLocalInputFormat(data.startDate));
+        if (data.startDate) setStartDate(toDateTimeLocalInput(data.startDate));
         if (data.ticketBatches) {
           const mappedBatches = data.ticketBatches.map((b: any) => ({
             ...b,
@@ -98,7 +93,7 @@ export default function EditarEventoPage() {
         toast.success('Evento actualizado exitosamente');
         router.push('/panel?tab=events');
       } else {
-        toast.error(responseData.message || 'Error al actualizar');
+        toast.error(getApiErrorMessage(responseData, 'Error al actualizar'));
         setLoading(false);
       }
     } catch (error) {
@@ -293,7 +288,7 @@ export default function EditarEventoPage() {
                 name="startDate"
                 required
                 type="datetime-local"
-                min={toLocalInputFormat(new Date().toISOString())}
+                min={toDateTimeLocalInput(new Date().toISOString())}
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 className="w-full max-w-full bg-white/5 border border-white/10 rounded-xl px-2 md:px-4 py-3 text-sm md:text-base text-white focus:outline-none focus:border-indigo-500 transition-colors [color-scheme:dark] block"
@@ -307,9 +302,13 @@ export default function EditarEventoPage() {
                 name="endDate"
                 required
                 type="datetime-local"
-                min={startDate || toLocalInputFormat(new Date().toISOString())}
+                min={
+                  startDate || toDateTimeLocalInput(new Date().toISOString())
+                }
                 defaultValue={
-                  eventData.endDate ? toLocalInputFormat(eventData.endDate) : ''
+                  eventData.endDate
+                    ? toDateTimeLocalInput(eventData.endDate)
+                    : ''
                 }
                 className="w-full max-w-full bg-white/5 border border-white/10 rounded-xl px-2 md:px-4 py-3 text-sm md:text-base text-white focus:outline-none focus:border-indigo-500 transition-colors [color-scheme:dark] block"
               />

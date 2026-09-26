@@ -16,6 +16,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { apiFetch } from '@/utils/api';
+import { formatCurrency } from '@/utils/format';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { canSeeRppPanel } from '@/utils/roles';
 
@@ -92,7 +93,7 @@ export default function RppDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
         <MetricCard
           title="Dinero Total Generado"
-          value={`$${stats.totalEarned.toLocaleString('es-AR')}`}
+          value={formatCurrency(stats.totalEarned)}
           icon={<DollarSign className="text-emerald-400 w-6 h-6" />}
           color="emerald"
         />
@@ -132,8 +133,8 @@ export default function RppDashboard() {
                     <Ticket className="w-4 h-4" /> {ev.sold} vendidos
                   </span>
                   <span className="flex items-center gap-1">
-                    <DollarSign className="w-4 h-4" /> $
-                    {ev.earned.toLocaleString('es-AR')} generados
+                    <DollarSign className="w-4 h-4" />{' '}
+                    {formatCurrency(ev.earned)} generados
                   </span>
                   <span className="flex items-center gap-1 bg-white/10 px-2 py-1 rounded-md text-white font-medium">
                     Comisión: {ev.commission}

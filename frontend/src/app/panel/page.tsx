@@ -25,58 +25,15 @@ import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import CustomSelect from '@/components/CustomSelect';
 import { apiFetch } from '@/utils/api';
+import { getApiErrorMessage } from '@/utils/api-error';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { isOrganizer as hasOrganizerRole } from '@/utils/roles';
-
-function formatRelativeDate(dateString: string) {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffTime = Math.abs(now.getTime() - date.getTime());
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-  const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
-  const diffMinutes = Math.floor(diffTime / (1000 * 60));
-
-  if (diffDays === 0) {
-    if (diffHours === 0) {
-      if (diffMinutes === 0) return 'Justo ahora';
-      return `${diffMinutes} min`;
-    }
-    return `${diffHours} hr${diffHours > 1 ? 's' : ''}`;
-  } else if (diffDays === 1) {
-    return 'Ayer';
-  } else if (diffDays <= 7) {
-    return `Hace ${diffDays} días`;
-  } else {
-    const months = [
-      'Ene',
-      'Feb',
-      'Mar',
-      'Abr',
-      'May',
-      'Jun',
-      'Jul',
-      'Ago',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dic',
-    ];
-    return `${date.getDate()} ${months[date.getMonth()]}`;
-  }
-}
-
-function formatCompactNumber(num: number) {
-  if (num >= 1000000) {
-    return (
-      (num / 1000000).toFixed(1).replace(/\.0$/, '').replace('.', ',') + 'M'
-    );
-  }
-  if (num >= 1000) {
-    return (num / 1000).toFixed(1).replace(/\.0$/, '').replace('.', ',') + 'k';
-  }
-  return Math.round(num).toString();
-}
+import { useUserSearch } from '@/hooks/useUserSearch';
+import {
+  formatCompactNumber,
+  formatCurrency,
+  formatRelativeDate,
+} from '@/utils/format';
 
 function getSmartMax(max: number) {
   if (max === 0) return 100;
@@ -133,7 +90,7 @@ function OrganizerDashboardContent() {
   );
   const [inviteCommValue, setInviteCommValue] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const searchResults = useUserSearch(searchTerm);
   const [selectedUsers, setSelectedUsers] = useState<any[]>([]);
   const [sendingInvites, setSendingInvites] = useState(false);
 
@@ -207,20 +164,6 @@ function OrganizerDashboardContent() {
       fetchStaff();
     }
   }, [isOrganizer]);
-
-  useEffect(() => {
-    if (searchTerm.length >= 3) {
-      const delayFn = setTimeout(() => {
-        apiFetch(`/auth/users/search?q=${searchTerm}`)
-          .then((res) => (res.ok ? res.json() : []))
-          .then((data) => setSearchResults(data))
-          .catch(() => {});
-      }, 300);
-      return () => clearTimeout(delayFn);
-    } else {
-      setSearchResults([]);
-    }
-  }, [searchTerm]);
 
   const handleCommValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value;
@@ -303,7 +246,9 @@ function OrganizerDashboardContent() {
           successCount++;
         } else {
           const errData = await res.json();
-          toast.error(errData.message || `No se pudo invitar a ${user.name}`);
+          toast.error(
+            getApiErrorMessage(errData, `No se pudo invitar a ${user.name}`),
+          );
         }
       } catch (e) {
         console.error(e);
@@ -330,7 +275,9 @@ function OrganizerDashboardContent() {
       if (response.ok && data.url) {
         window.location.href = data.url;
       } else {
-        toast.error(data.message || 'Error al generar link de MercadoPago');
+        toast.error(
+          getApiErrorMessage(data, 'Error al generar link de MercadoPago'),
+        );
       }
     } catch (err) {
       toast.error('Error de conexión al servidor');
@@ -527,7 +474,7 @@ function OrganizerDashboardContent() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
             <MetricCard
               title="Ingresos Totales"
-              value={`$${stats.totalRevenue.toLocaleString('es-AR')}`}
+              value={formatCurrency(stats.totalRevenue)}
               icon={<DollarSign className="text-emerald-400 w-6 h-6" />}
               color="emerald"
             />
@@ -601,7 +548,7 @@ function OrganizerDashboardContent() {
                     >
                       {!d.future && (
                         <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-white text-black text-[10px] sm:text-xs font-bold px-1 sm:px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
-                          ${d.val.toLocaleString('es-AR')}
+                          {formatCurrency(d.val)}
                         </div>
                       )}
                     </motion.div>
@@ -664,7 +611,7 @@ function OrganizerDashboardContent() {
                         </div>
                         <div className="text-right">
                           <div className="font-bold text-sm text-emerald-400">
-                            ${sale.amount.toLocaleString('es-AR')}
+                            {formatCurrency(sale.amount)}
                           </div>
                           <div className="text-xs text-neutral-500">
                             {formatRelativeDate(sale.time)}
@@ -955,7 +902,7 @@ function OrganizerDashboardContent() {
                             Ingresos
                           </div>
                           <div className="text-lg font-bold text-emerald-400">
-                            ${totalRevenue.toLocaleString('es-AR')}
+                            {formatCurrency(totalRevenue)}
                           </div>
                         </div>
                         <div className="bg-black/40 rounded-xl p-3 border border-white/5">
@@ -1161,7 +1108,6 @@ function OrganizerDashboardContent() {
                               onClick={() => {
                                 setSelectedUsers([...selectedUsers, u]);
                                 setSearchTerm('');
-                                setSearchResults([]);
                               }}
                               className="w-full text-left px-4 py-3 hover:bg-white/5 flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed transition-colors border-b border-white/5 last:border-0"
                             >
@@ -1317,7 +1263,7 @@ function OrganizerDashboardContent() {
                         </div>
                         <div className="text-right">
                           <div className="font-bold text-sm text-white">
-                            ${sale.amount.toLocaleString('es-AR')}
+                            {formatCurrency(sale.amount)}
                           </div>
                           <div
                             className={`text-xs ${sale.status === 'PAID' ? 'text-emerald-400' : 'text-red-400'} bg-black/40 px-2 py-0.5 rounded-full inline-block mt-1`}

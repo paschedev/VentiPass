@@ -12,11 +12,11 @@ import {
   CheckCheck,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import toast from 'react-hot-toast';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useStaffInvitation } from '@/hooks/useStaffInvitation';
 
 export default function Navbar() {
-  const { user, refresh, logout } = useCurrentUser();
+  const { user, logout } = useCurrentUser();
   const isLoggedIn = !!user;
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -27,7 +27,7 @@ export default function Navbar() {
   const pathname = usePathname();
 
   const [notifications, setNotifications] = useState<any[]>([]);
-  const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
+  const { processingIds, respond } = useStaffInvitation();
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -64,42 +64,9 @@ export default function Navbar() {
     action: 'accept' | 'reject',
     notificationId: string,
   ) => {
-    if (processingIds.has(notificationId)) return;
-    setProcessingIds((prev) => new Set(prev).add(notificationId));
-
-    try {
-      const { apiFetch } = await import('@/utils/api');
-      const res = await apiFetch(`/events/staff/${eventStaffId}/${action}`, {
-        method: 'PUT',
-      });
-      if (res.ok) {
-        // Optimistic UI updates
-        setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
-
-        // Actualizar sesión para refrescar los flags hasBeenRpp y isCurrentlyScanner
-        await refresh();
-
-        // Marcar notificación original como leída (registro histórico)
-        await apiFetch(`/notifications/${notificationId}/read`, {
-          method: 'PUT',
-        });
-      } else {
-        const error = await res.json();
-        toast.error(error.message || 'Hubo un error procesando la invitación');
-        if (res.status === 400 && error.message?.includes('procesada')) {
-          setNotifications((prev) =>
-            prev.filter((n) => n.id !== notificationId),
-          );
-        }
-      }
-    } catch (e) {
-      console.error('Error procesando invitación', e);
-    } finally {
-      setProcessingIds((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(notificationId);
-        return newSet;
-      });
+    const outcome = await respond(notificationId, eventStaffId, action);
+    if (outcome !== 'failed') {
+      setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
     }
   };
 

@@ -15,43 +15,7 @@ import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { apiFetch } from '@/utils/api';
 import { toCsvCell } from '@/utils/csv';
-
-function formatRelativeDate(dateString: string) {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffTime = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-  const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
-  const diffMinutes = Math.floor(diffTime / (1000 * 60));
-
-  if (diffDays === 0) {
-    if (diffHours === 0) {
-      if (diffMinutes === 0) return 'Justo ahora';
-      return `Hace ${diffMinutes} min`;
-    }
-    return `Hace ${diffHours} horas`;
-  } else if (diffDays === 1) {
-    return 'Ayer';
-  } else if (diffDays <= 7) {
-    return `Hace ${diffDays} días`;
-  } else {
-    const months = [
-      'Ene',
-      'Feb',
-      'Mar',
-      'Abr',
-      'May',
-      'Jun',
-      'Jul',
-      'Ago',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dic',
-    ];
-    return `${date.getDate()}-${months[date.getMonth()]}`;
-  }
-}
+import { formatCurrency, formatRelativeDate } from '@/utils/format';
 
 export default function RppEventDetailsPage() {
   const { eventId } = useParams();
@@ -189,7 +153,7 @@ export default function RppEventDetailsPage() {
               Dinero Generado
             </h3>
             <div className="text-3xl lg:text-4xl font-outfit font-bold tracking-tight text-emerald-400">
-              ${stats.totalEarned.toLocaleString('es-AR')}
+              {formatCurrency(stats.totalEarned)}
             </div>
           </div>
           <div className="p-3 bg-emerald-500/20 rounded-2xl shrink-0">
@@ -285,12 +249,12 @@ export default function RppEventDetailsPage() {
                   </td>
                   <td className="py-4 px-6">
                     <span className="text-neutral-300">
-                      ${sale.price.toLocaleString('es-AR')}
+                      {formatCurrency(sale.price)}
                     </span>
                   </td>
                   <td className="py-4 px-6">
                     <span className="text-emerald-400 font-medium">
-                      +${sale.commission.toLocaleString('es-AR')}
+                      +{formatCurrency(sale.commission)}
                     </span>
                   </td>
                   <td className="py-4 px-6 text-right text-sm text-neutral-500">
