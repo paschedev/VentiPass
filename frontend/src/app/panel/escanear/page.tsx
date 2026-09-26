@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import { CheckCircle2, XCircle, ScanLine, AlertTriangle } from 'lucide-react';
 import { apiFetch } from '@/utils/api';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { canScan } from '@/utils/roles';
 import { isRepeatedScan, LastScan } from '@/utils/scan-cooldown';
 
 export default function EscanearPage() {
@@ -18,19 +20,11 @@ export default function EscanearPage() {
   const [loading, setLoading] = useState(false);
   const lastScan = useRef<LastScan | null>(null);
   const router = useRouter();
+  const { user } = useCurrentUser();
 
   useEffect(() => {
-    const userStr = localStorage.getItem('user');
-    if (!userStr) {
-      router.push('/login');
-      return;
-    }
-    const user = JSON.parse(userStr);
-    const isOrganizer = user.role === 'ORGANIZER' || user.role === 'ADMIN';
-    if (!isOrganizer && !user.isCurrentlyScanner) {
-      router.push('/panel');
-    }
-  }, [router]);
+    if (!canScan(user)) router.push('/panel');
+  }, [user, router]);
 
   const handleScan = async (result: any) => {
     if (!result || !result[0] || loading) return;

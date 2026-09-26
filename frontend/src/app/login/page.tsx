@@ -7,6 +7,8 @@ import { LogIn } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { apiFetch } from '@/utils/api';
 import { getSafeRedirect } from '@/utils/redirect';
+import { saveSession } from '@/hooks/useCurrentUser';
+import { getHomePath } from '@/utils/navigation';
 import { z } from 'zod';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -63,24 +65,11 @@ export default function LoginPage() {
       const responseData = await response.json();
 
       if (response.ok) {
-        localStorage.setItem('token', responseData.access_token);
-        localStorage.setItem('user', JSON.stringify(responseData.user));
+        saveSession(responseData.access_token, responseData.user);
 
         const urlParams = new URLSearchParams(window.location.search);
         const callbackUrl = getSafeRedirect(urlParams.get('callbackUrl'));
-
-        if (callbackUrl) {
-          window.location.replace(callbackUrl);
-        } else if (
-          responseData.user.role === 'ORGANIZER' ||
-          responseData.user.role === 'ADMIN'
-        ) {
-          window.location.replace('/panel');
-        } else if (responseData.user.role === 'SCANNER') {
-          window.location.replace('/panel/escanear');
-        } else {
-          window.location.replace('/panel/tickets');
-        }
+        window.location.replace(callbackUrl ?? getHomePath(responseData.user));
       } else {
         setError(responseData.message || 'Credenciales inválidas');
       }

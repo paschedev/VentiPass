@@ -16,9 +16,12 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { apiFetch } from '@/utils/api';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { canSeeRppPanel } from '@/utils/roles';
 
 export default function RppDashboard() {
   const router = useRouter();
+  const { user } = useCurrentUser();
   const [stats, setStats] = useState({
     totalEarned: 0,
     totalPaid: 0,
@@ -30,14 +33,7 @@ export default function RppDashboard() {
   const [events, setEvents] = useState<any[]>([]);
 
   useEffect(() => {
-    const userStr = localStorage.getItem('user');
-    if (!userStr) {
-      router.push('/login');
-      return;
-    }
-    const user = JSON.parse(userStr);
-    const isOrganizer = user.role === 'ORGANIZER' || user.role === 'ADMIN';
-    if (!isOrganizer && !user.hasBeenRpp) {
+    if (!canSeeRppPanel(user)) {
       router.push('/panel');
       return;
     }
@@ -66,7 +62,7 @@ export default function RppDashboard() {
         setEvents(mappedEvents);
       })
       .catch(console.error);
-  }, [router]);
+  }, [user, router]);
 
   const handleCopy = (eventId: string, staffId: string) => {
     const baseUrl =

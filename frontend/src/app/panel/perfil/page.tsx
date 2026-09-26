@@ -1,15 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { User as UserIcon, Mail, ShieldCheck } from 'lucide-react';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export default function PerfilPage() {
-  const [user, setUser] = useState<any>(null);
-
-  useEffect(() => {
-    const userStr = localStorage.getItem('user');
-    if (userStr) setUser(JSON.parse(userStr));
-  }, []);
+  const { user } = useCurrentUser();
 
   if (!user)
     return <div className="p-8 text-neutral-400">Cargando perfil...</div>;

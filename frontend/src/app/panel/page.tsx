@@ -25,6 +25,8 @@ import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import CustomSelect from '@/components/CustomSelect';
 import { apiFetch } from '@/utils/api';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { isOrganizer as hasOrganizerRole } from '@/utils/roles';
 
 function formatRelativeDate(dateString: string) {
   if (!dateString) return '';
@@ -103,7 +105,6 @@ function OrganizerDashboardContent() {
   const [loading, setLoading] = useState(false);
   const [timeFilter, setTimeFilter] = useState('Esta semana');
 
-  const [hasLinkedMp, setHasLinkedMp] = useState(true);
   const [stats, setStats] = useState({
     totalEvents: 0,
     totalTicketsSold: 0,
@@ -112,7 +113,9 @@ function OrganizerDashboardContent() {
     chartData: [],
     recentTransactions: [] as any[],
   });
-  const [isOrganizer, setIsOrganizer] = useState<boolean | null>(null);
+  const { user, refresh } = useCurrentUser();
+  const isOrganizer = hasOrganizerRole(user);
+  const hasLinkedMp = !!user?.hasLinkedMp;
 
   // --- Invite Staff States ---
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -135,20 +138,10 @@ function OrganizerDashboardContent() {
   const [sendingInvites, setSendingInvites] = useState(false);
 
   useEffect(() => {
-    const userStr = localStorage.getItem('user');
-    if (!userStr) {
-      router.replace('/login');
-      return;
-    }
-
-    const parsedUser = JSON.parse(userStr);
-    if (parsedUser.role !== 'ORGANIZER' && parsedUser.role !== 'ADMIN') {
+    if (!isOrganizer) {
       router.replace('/panel/tickets');
       return;
     }
-
-    setIsOrganizer(true);
-    setHasLinkedMp(parsedUser.hasLinkedMp || false);
 
     const loadStats = async () => {
       try {
@@ -170,15 +163,13 @@ function OrganizerDashboardContent() {
 
     if (searchParams.get('mp_success') === 'true') {
       toast.success('Cuenta de Mercado Pago vinculada con éxito');
-      parsedUser.hasLinkedMp = true;
-      localStorage.setItem('user', JSON.stringify(parsedUser));
-      setHasLinkedMp(true);
+      refresh();
       window.history.replaceState(null, '', '/panel');
     } else if (searchParams.get('mp_error') === 'true') {
       toast.error('Hubo un error al vincular la cuenta de Mercado Pago');
       window.history.replaceState(null, '', '/panel');
     }
-  }, [router, searchParams]);
+  }, [isOrganizer, refresh, router, searchParams]);
 
   const fetchEvents = async () => {
     setLoadingEvents(true);

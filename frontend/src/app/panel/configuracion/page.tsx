@@ -1,16 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link2, Save, Key, Lock, Ticket } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { apiFetch } from '@/utils/api';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { isOrganizer } from '@/utils/roles';
 
 export default function ConfiguracionPage() {
-  const [mpToken, setMpToken] = useState('');
   const [loadingMp, setLoadingMp] = useState(false);
-  const [hasLinkedMp, setHasLinkedMp] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const { user } = useCurrentUser();
+  const hasLinkedMp = !!user?.hasLinkedMp;
 
   // Password state
   const [showPasswordForm, setShowPasswordForm] = useState(false);
@@ -23,17 +24,6 @@ export default function ConfiguracionPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const resetToken = searchParams.get('token');
-
-  useEffect(() => {
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      const parsed = JSON.parse(userStr);
-      setUser(parsed);
-      if (parsed.hasLinkedMp) {
-        setHasLinkedMp(true);
-      }
-    }
-  }, []);
 
   const handleConnectMp = async () => {
     if (!user) return;
@@ -236,7 +226,7 @@ export default function ConfiguracionPage() {
       </div>
 
       {/* Mercado Pago Section */}
-      {user?.role === 'ORGANIZER' && (
+      {isOrganizer(user) && (
         <div className="bg-white/5 border border-white/10 rounded-3xl p-8 mb-8">
           <div className="flex items-center gap-4 mb-6">
             <div className="w-12 h-12 bg-indigo-500/20 rounded-xl flex items-center justify-center text-indigo-400">
@@ -284,7 +274,7 @@ export default function ConfiguracionPage() {
       )}
 
       {/* Ticket Presets Section */}
-      {user?.role === 'ORGANIZER' && (
+      {isOrganizer(user) && (
         <div className="bg-white/5 border border-white/10 rounded-3xl p-8 mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">

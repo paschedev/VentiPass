@@ -14,6 +14,7 @@ import toast from 'react-hot-toast';
 import CustomSelect from '@/components/CustomSelect';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { apiFetch } from '@/utils/api';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { optimizeCloudinaryUrl } from '@/utils/cloudinary';
 
 const getYouTubeEmbedUrl = (url: string) => {
@@ -28,6 +29,7 @@ const getYouTubeEmbedUrl = (url: string) => {
 function EventContent() {
   const { id } = useParams();
   const router = useRouter();
+  const { user } = useCurrentUser();
   const searchParams = useSearchParams();
   const rppFromUrl = searchParams.get('rpp');
 
@@ -92,18 +94,11 @@ function EventContent() {
 
     setBuying(true);
     try {
-      const userStr = localStorage.getItem('user');
-      const payload: any = { items, captchaToken };
-
-      if (userStr) {
-        payload.userId = JSON.parse(userStr).id;
-      } else {
-        throw new Error('No user provided');
-      }
-
-      if (selectedRpp) {
-        payload.promoterId = selectedRpp;
-      }
+      const payload = {
+        items,
+        captchaToken,
+        ...(selectedRpp && { promoterId: selectedRpp }),
+      };
 
       const response = await apiFetch('/orders/checkout', {
         method: 'POST',
@@ -133,8 +128,7 @@ function EventContent() {
     if (items.length === 0)
       return toast.error('Selecciona al menos una entrada');
 
-    const userStr = localStorage.getItem('user');
-    if (!userStr) {
+    if (!user) {
       const currentUrl = encodeURIComponent(
         `${window.location.pathname}${window.location.search}`,
       );
