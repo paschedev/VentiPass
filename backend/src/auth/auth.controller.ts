@@ -8,6 +8,7 @@ import {
   Req,
   Query,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { CaptchaService } from './captcha.service';
 import { RegisterUserDto } from './dto/register-user.dto';
@@ -68,6 +69,8 @@ export class AuthController {
     return this.authService.resetPassword(body.token, body.newPassword);
   }
 
+  // Stricter than the global limit: it lists other users' names.
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @UseGuards(JwtAuthGuard)
   @Get('users/search')
   searchUsers(@Query('q') query: string, @Req() req: any) {

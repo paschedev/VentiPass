@@ -52,7 +52,7 @@ export class UserRepository {
 
     const users = await this.prisma.user.findMany({
       where: whereClause,
-      select: { id: true, name: true, email: true, role: true },
+      select: { id: true, name: true, email: true },
       take: 10,
     });
 

@@ -14,6 +14,7 @@ import {
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { apiFetch } from '@/utils/api';
+import { toCsvCell } from '@/utils/csv';
 
 function formatRelativeDate(dateString: string) {
   const date = new Date(dateString);
@@ -111,9 +112,16 @@ export default function RppEventDetailsPage() {
 
     const headers = 'Comprador,Tickets,Precio Total,Comision,Fecha\n';
     const rows = filteredSales
-      .map(
-        (sale) =>
-          `"${sale.buyer}",${sale.tickets},${sale.price},${sale.commission},"${new Date(sale.date).toLocaleString('es-AR')}"`,
+      .map((sale) =>
+        [
+          sale.buyer,
+          sale.tickets,
+          sale.price,
+          sale.commission,
+          new Date(sale.date).toLocaleString('es-AR'),
+        ]
+          .map(toCsvCell)
+          .join(','),
       )
       .join('\n');
 
