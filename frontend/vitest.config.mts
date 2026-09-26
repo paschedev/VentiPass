@@ -10,5 +10,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],
+    // Fechas deterministas en cualquier máquina (la CI corre en UTC).
+    env: { TZ: 'America/Argentina/Buenos_Aires' },
   },
 });
