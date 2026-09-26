@@ -6,7 +6,7 @@
   },
   "src/app/eventos/[id]/page.tsx": {
     "@typescript-eslint/no-explicit-any": {
-      "count": 6
+      "count": 5
     }
   },
   "src/app/eventos/page.tsx": {
