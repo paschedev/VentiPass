@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
@@ -76,7 +75,26 @@ export class TicketsRepository {
       include: {
         ticketType: {
           select: {
+            name: true,
             event: { select: { id: true, title: true, status: true } },
+          },
+        },
+      },
+    });
+  }
+
+  async findOrderTicketsForMail(orderId: string) {
+    return this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: {
+        user: { select: { email: true, name: true } },
+        tickets: {
+          select: {
+            id: true,
+            qrCode: true,
+            ticketType: {
+              select: { name: true, event: { select: { title: true } } },
+            },
           },
         },
       },
@@ -127,10 +145,11 @@ export class TicketsRepository {
     ticketId: string,
     currentUserId: string,
     newUserId: string,
+    newQrCode: string,
   ) {
     const { count } = await this.prisma.ticket.updateMany({
       where: { id: ticketId, userId: currentUserId, status: 'VALID' },
-      data: { userId: newUserId, qrCode: randomUUID() },
+      data: { userId: newUserId, qrCode: newQrCode },
     });
     return count === 1;
   }

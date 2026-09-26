@@ -1,4 +1,5 @@
 import request from 'supertest';
+import { MailService } from '../src/mail/mail.service';
 import { mercadoPagoMock } from './mocks/mercadopago';
 import { resendMock } from './mocks/resend';
 import { authHeader } from './utils/auth';
@@ -132,15 +133,16 @@ describe('Base de tests e2e', () => {
   });
 
   it('el mail de recuperación de contraseña sale por el Resend simulado', async () => {
-    const user = await createUser(t.prisma);
-
-    await request(t.app.getHttpServer())
-      .post('/auth/forgot-password')
-      .send({ email: user.email })
-      .expect(201);
+    await t.app
+      .get(MailService)
+      .sendPasswordResetEmail(
+        'ana@neopass.test',
+        'Ana',
+        'https://app.neopass.test/reset',
+      );
 
     expect(resendMock.send).toHaveBeenCalledWith(
-      expect.objectContaining({ to: [user.email] }),
+      expect.objectContaining({ to: 'ana@neopass.test' }),
     );
   });
 

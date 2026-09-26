@@ -1,11 +1,9 @@
+import { randomUUID } from 'node:crypto';
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
-import * as qrcode from 'qrcode';
 import { TicketsRepository } from './repositories/tickets.repository';
 import { NotificationsService } from '../notifications/notifications.service';
+import { MailService } from '../mail/mail.service';
 import { Prisma } from '@prisma/client';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
-import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class TicketsService {
@@ -13,7 +11,7 @@ export class TicketsService {
 
   constructor(
     private readonly ticketsRepository: TicketsRepository,
-    @InjectQueue('mail') private mailQueue: Queue,
+    private readonly mailService: MailService,
     private readonly notificationsService: NotificationsService,
   ) {}
 
@@ -37,37 +35,35 @@ export class TicketsService {
       }
     }
 
-    const createdTickets =
-      await this.ticketsRepository.createTicketsTransaction(
-        order.id,
-        ticketData,
-        tx,
-      );
+    await this.ticketsRepository.createTicketsTransaction(
+      order.id,
+      ticketData,
+      tx,
+    );
+    this.logger.log(
+      `Generated ${ticketData.length} tickets for Order ${order.id}`,
+    );
+  }
 
-    const generatedTickets = await Promise.all(
-      createdTickets.map(async (ticket: any) => {
-        const qrDataUrl = await qrcode.toDataURL(ticket.qrCode);
-        return {
+  // Called after the payment commits, never inside its transaction: a payment
+  // that rolls back must not send tickets. One mail per order (jobId).
+  async queueOrderTicketsEmail(orderId: string) {
+    const order = await this.ticketsRepository.findOrderTicketsForMail(orderId);
+    if (!order || order.tickets.length === 0) return;
+
+    await this.mailService.queueTicketsEmail(
+      {
+        to: order.user.email,
+        name: order.user.name,
+        tickets: order.tickets.map((ticket) => ({
           id: ticket.id,
+          qrCode: ticket.qrCode,
           eventName: ticket.ticketType.event.title,
           ticketTypeName: ticket.ticketType.name,
-          qrDataUrl,
-        };
-      }),
+        })),
+      },
+      `tickets-${orderId}`,
     );
-
-    this.logger.log(
-      `Generated ${generatedTickets.length} tickets for Order ${order.id}`,
-    );
-
-    // Offload email sending to BullMQ
-    await this.mailQueue.add('send-tickets', {
-      to: order.user.email,
-      name: order.user.name,
-      tickets: generatedTickets,
-    });
-
-    return generatedTickets;
   }
 
   async findMyTickets(userId: string) {
@@ -185,10 +181,12 @@ export class TicketsService {
       );
     }
 
+    const newQrCode = randomUUID();
     const transferred = await this.ticketsRepository.transferTicket(
       ticketId,
       currentUserId,
       targetUser.id,
+      newQrCode,
     );
     if (!transferred) {
       throw new BadRequestException(
@@ -203,6 +201,18 @@ export class TicketsService {
       message: `Recibiste una entrada para ${event.title}. La encontrás en Mis entradas.`,
       eventId: event.id,
       actionUrl: '/panel/tickets',
+    });
+    await this.mailService.queueTicketsEmail({
+      to: targetUser.email,
+      name: targetUser.name,
+      tickets: [
+        {
+          id: ticket.id,
+          qrCode: newQrCode,
+          eventName: event.title,
+          ticketTypeName: ticket.ticketType.name,
+        },
+      ],
     });
   }
 }
