@@ -111,12 +111,6 @@
     }
   },
   "src/components/BottomNav.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 4
-    },
-    "prefer-const": {
-      "count": 1
-    },
     "react-hooks/set-state-in-effect": {
       "count": 1
     }
@@ -131,7 +125,7 @@
       "count": 2
     },
     "react-hooks/set-state-in-effect": {
-      "count": 2
+      "count": 1
     },
     "react-hooks/static-components": {
       "count": 7

@@ -1,41 +1,29 @@
 'use client';
 
 import {
-  LayoutDashboard,
   Ticket,
   Settings,
   LogOut,
-  Menu,
   ChevronLeft,
   CalendarRange,
   Globe,
   Users,
-  ScanLine,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import Modal from '@/components/ui/Modal';
 
 export default function GlobalSidebar() {
-  const router = useRouter();
   const pathname = usePathname();
   const [user, setUser] = useState<any>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    if (window.innerWidth >= 768) {
-      setIsSidebarOpen(true);
-    }
   }, []);
-
-  useEffect(() => {
-    if (window.innerWidth < 768) {
-      setIsSidebarOpen(false);
-    }
-  }, [pathname]);
 
   useEffect(() => {
     const loadUser = () => {
@@ -52,7 +40,6 @@ export default function GlobalSidebar() {
   if (!mounted) return null;
 
   const isOrganizer = user?.role === 'ORGANIZER' || user?.role === 'ADMIN';
-  const canScan = isOrganizer || user?.role === 'SCANNER';
   const isLoggedIn = !!user;
 
   const NavItem = ({
@@ -96,13 +83,6 @@ export default function GlobalSidebar() {
 
   return (
     <>
-      <button
-        onClick={() => setIsSidebarOpen(true)}
-        className={`md:hidden absolute top-4 left-4 z-40 bg-black/80 backdrop-blur border border-white/10 p-2 rounded-xl text-white ${isSidebarOpen ? 'hidden' : 'block'}`}
-      >
-        <Menu className="w-5 h-5" />
-      </button>
-
       <aside
         className={`border-r border-white/10 bg-black/50 backdrop-blur-xl transition-all duration-300 ease-in-out relative z-50 h-[calc(100vh-4rem)] sticky top-16 hidden md:flex flex-col ${
           isSidebarOpen ? 'w-64' : 'w-20'
@@ -116,10 +96,6 @@ export default function GlobalSidebar() {
             className={`w-5 h-5 transition-transform ${!isSidebarOpen && 'rotate-180'}`}
           />
         </button>
-
-        <div className="h-16 md:hidden flex items-center px-6 border-b border-white/10 shrink-0">
-          <span className="font-outfit text-xl font-bold">Menú</span>
-        </div>
 
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto overflow-x-hidden">
           <div
@@ -204,6 +180,37 @@ export default function GlobalSidebar() {
           </div>
         )}
       </aside>
+
+      <Modal
+        open={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        labelledBy="logout-title"
+        className="bg-neutral-900 border border-white/10 p-8 rounded-3xl w-full max-w-sm shadow-2xl"
+      >
+        <div className="w-16 h-16 bg-red-500/10 text-red-400 rounded-2xl flex items-center justify-center mx-auto mb-6">
+          <LogOut className="w-8 h-8" />
+        </div>
+        <h2 id="logout-title" className="text-xl font-bold text-center mb-2">
+          ¿Cerrar sesión?
+        </h2>
+        <p className="text-sm text-neutral-400 text-center mb-8">
+          Vas a tener que ingresar de nuevo para ver tus tickets y tu panel.
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setShowLogoutConfirm(false)}
+            className="flex-1 px-4 py-3 rounded-xl font-medium text-neutral-400 hover:bg-white/5 transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleLogout}
+            className="flex-1 bg-red-600 hover:bg-red-500 text-white px-4 py-3 rounded-xl font-medium transition-all active:scale-95"
+          >
+            Sí, cerrar sesión
+          </button>
+        </div>
+      </Modal>
     </>
   );
 }

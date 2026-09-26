@@ -239,7 +239,7 @@ export default function NotificacionesPage() {
                   )}
                 </div>
 
-                <div className="flex-1 min-w-0 pr-10 sm:pr-32">
+                <div className="flex-1 min-w-0">
                   <h3
                     className={`font-semibold ${n.isRead ? 'text-neutral-300' : 'text-white'}`}
                   >
@@ -279,39 +279,46 @@ export default function NotificacionesPage() {
                       </div>
                     )}
 
+                  {n.type === 'STAFF_INVITE' &&
+                    n.metadata?.status !== 'PENDING' && (
+                      <InviteStatusBadge
+                        status={n.metadata?.status}
+                        className="sm:hidden w-fit mt-3"
+                      />
+                    )}
+
                   <span className="text-xs text-neutral-500 mt-3 block">
                     {new Date(n.createdAt).toLocaleString()}
                   </span>
                 </div>
-              </div>
 
-              <div className="absolute top-4 right-4 flex flex-col items-end gap-2">
-                {n.type === 'STAFF_INVITE' &&
-                  n.metadata?.status !== 'PENDING' && (
-                    <div className="px-3 py-1 rounded-full text-xs font-medium bg-white/5 border border-white/10 text-neutral-400">
-                      {n.metadata?.status === 'ACCEPTED'
-                        ? '✓ Aceptada'
-                        : '× Rechazada'}
-                    </div>
-                  )}
+                <div className="shrink-0 flex flex-col items-end gap-2">
+                  {n.type === 'STAFF_INVITE' &&
+                    n.metadata?.status !== 'PENDING' && (
+                      <InviteStatusBadge
+                        status={n.metadata?.status}
+                        className="hidden sm:block"
+                      />
+                    )}
 
-                <div className="flex items-center gap-1">
-                  {!n.isRead && (
+                  <div className="flex items-center gap-1">
+                    {!n.isRead && (
+                      <button
+                        onClick={() => markAsRead(n.id)}
+                        title="Marcar como leída"
+                        className="p-2 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 rounded-xl transition-colors"
+                      >
+                        <CheckCircle2 className="w-5 h-5" />
+                      </button>
+                    )}
                     <button
-                      onClick={() => markAsRead(n.id)}
-                      title="Marcar como leída"
-                      className="p-2 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 rounded-xl transition-colors"
+                      onClick={() => deleteNotification(n.id)}
+                      title="Eliminar"
+                      className="p-2 text-neutral-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors md:opacity-0 md:group-hover:opacity-100"
                     >
-                      <CheckCircle2 className="w-5 h-5" />
+                      <Trash2 className="w-5 h-5" />
                     </button>
-                  )}
-                  <button
-                    onClick={() => deleteNotification(n.id)}
-                    title="Eliminar"
-                    className="p-2 text-neutral-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors md:opacity-0 md:group-hover:opacity-100"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -338,6 +345,24 @@ export default function NotificacionesPage() {
           )}
         </AnimatePresence>
       </div>
+    </div>
+  );
+}
+
+// Estado de una invitación ya respondida. En mobile va dentro del contenido para
+// no pisar el título; desde sm, en la columna de acciones.
+function InviteStatusBadge({
+  status,
+  className,
+}: {
+  status?: string;
+  className: string;
+}) {
+  return (
+    <div
+      className={`px-3 py-1 rounded-full text-xs font-medium bg-white/5 border border-white/10 text-neutral-400 ${className}`}
+    >
+      {status === 'ACCEPTED' ? '✓ Aceptada' : '× Rechazada'}
     </div>
   );
 }

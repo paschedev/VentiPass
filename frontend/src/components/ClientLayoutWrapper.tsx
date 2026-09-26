@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation';
 import GlobalSidebar from './GlobalSidebar';
 import toast from 'react-hot-toast';
+import { showsAppNav } from '@/utils/navigation';
 
 // Evitar múltiples popups iguales o spam de popups aplicando un ID global
 if (typeof window !== 'undefined') {
@@ -27,15 +28,7 @@ export default function ClientLayoutWrapper({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const hiddenRoutes = [
-    '/',
-    '/login',
-    '/registro',
-    '/password-recovery',
-    '/reset-password',
-  ];
-
-  if (hiddenRoutes.includes(pathname)) {
+  if (!showsAppNav(pathname)) {
     return <>{children}</>;
   }
 

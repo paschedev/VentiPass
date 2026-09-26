@@ -2,25 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import {
-  LayoutDashboard,
-  Ticket,
-  Settings,
-  Globe,
-  Users,
-  User,
-  ScanLine,
-  Menu,
-  X,
-  CalendarRange,
-} from 'lucide-react';
+import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useScrollLock } from '@/hooks/useScrollLock';
+import { getNavItems, showsAppNav, type NavUser } from '@/utils/navigation';
 
 export default function BottomNav() {
   const pathname = usePathname();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<NavUser | null>(null);
   const [showMenu, setShowMenu] = useState(false);
 
   useEffect(() => {
@@ -40,115 +30,18 @@ export default function BottomNav() {
     return () => document.removeEventListener('keydown', closeOnEscape);
   }, [showMenu]);
 
-  const hiddenRoutes = [
-    '/',
-    '/login',
-    '/registro',
-    '/password-recovery',
-    '/reset-password',
-  ];
-  if (hiddenRoutes.includes(pathname)) return null;
+  if (!showsAppNav(pathname)) return null;
 
-  let navItems: any[] = [];
-
-  if (user) {
-    const isOrganizer = user.role === 'ORGANIZER' || user.role === 'ADMIN';
-    const isScanner = isOrganizer || user.isCurrentlyScanner;
-    const isRpp = isOrganizer || user.hasBeenRpp;
-
-    let availableItems = [
-      { id: 'eventos', href: '/eventos', icon: Globe, label: 'Eventos' },
-    ];
-
-    if (isOrganizer) {
-      availableItems.push({
-        id: 'metricas',
-        href: '/panel',
-        icon: CalendarRange,
-        label: 'Organización',
-      });
-    }
-
-    if (isRpp) {
-      availableItems.push({
-        id: 'rpp',
-        href: '/panel/rpp',
-        icon: Users,
-        label: 'Panel RPP',
-      });
-    }
-
-    availableItems.push({
-      id: 'tickets',
-      href: '/panel/tickets',
-      icon: Ticket,
-      label: 'Tickets',
-    });
-    availableItems.push({
-      id: 'ajustes',
-      href: '/panel/configuracion',
-      icon: Settings,
-      label: 'Ajustes',
-    });
-
-    if (isScanner) {
-      const scannerItem = {
-        id: 'scanner',
-        href: '/panel/escanear',
-        icon: ScanLine,
-        label: 'QR',
-        isSpecial: true,
-      };
-
-      if (availableItems.length <= 4) {
-        navItems = [...availableItems];
-        navItems.splice(2, 0, scannerItem);
-      } else {
-        navItems.push(availableItems[0]);
-        navItems.push(availableItems[1]);
-        navItems.push(scannerItem);
-        navItems.push(availableItems[2]);
-        navItems.push({
-          id: 'mas',
-          icon: Menu,
-          label: 'Más',
-          isMenu: true,
-          menuItems: availableItems.slice(3),
-        });
-      }
-    } else {
-      if (availableItems.length <= 5) {
-        navItems = [...availableItems];
-      } else {
-        navItems = [
-          availableItems[0],
-          availableItems[1],
-          availableItems[2],
-          availableItems[3],
-          {
-            id: 'mas',
-            icon: Menu,
-            label: 'Más',
-            isMenu: true,
-            menuItems: availableItems.slice(4),
-          },
-        ];
-      }
-    }
-  } else {
-    navItems = [
-      { id: 'eventos', href: '/eventos', icon: Globe, label: 'Eventos' },
-      { id: 'login', href: '/login', icon: User, label: 'Ingresar' },
-    ];
-  }
+  const navItems = getNavItems(user);
+  const menu = navItems.find((item) => item.kind === 'menu');
 
   return (
     <>
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-[90] bg-black/90 backdrop-blur-xl border-t border-white/10 pb-safe">
         <div className="flex items-end justify-around h-16 px-1 relative">
           {navItems.map((item) => {
-            if (item.isMenu) {
-              const isMenuActive = item.menuItems.some((mi: any) =>
+            if (item.kind === 'menu') {
+              const isMenuActive = item.items.some((mi) =>
                 pathname.startsWith(mi.href),
               );
               return (
@@ -174,7 +67,7 @@ export default function BottomNav() {
               );
             }
 
-            if (item.isSpecial) {
+            if (item.kind === 'scanner') {
               const isActive = pathname.startsWith(item.href);
               return (
                 <Link
@@ -255,9 +148,8 @@ export default function BottomNav() {
                 </button>
               </div>
               <div className="space-y-3">
-                {navItems
-                  .find((i) => i.isMenu)
-                  ?.menuItems.map((mi: any) => {
+                {menu?.kind === 'menu' &&
+                  menu.items.map((mi) => {
                     const isMiActive = pathname.startsWith(mi.href);
                     return (
                       <Link
