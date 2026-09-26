@@ -13,6 +13,7 @@ import {
 import { QRCodeSVG } from 'qrcode.react';
 import toast from 'react-hot-toast';
 import { apiFetch } from '@/utils/api';
+import Modal from '@/components/ui/Modal';
 
 export default function MisEntradasPage() {
   const [tickets, setTickets] = useState<any[]>([]);
@@ -197,9 +198,14 @@ export default function MisEntradasPage() {
       )}
 
       {/* Modal del Ticket */}
-      {selectedTicket && (
-        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 overflow-hidden">
-          <div className="bg-neutral-900 border border-white/10 rounded-[2rem] w-full max-w-md relative flex flex-col max-h-[75vh] md:max-h-[85vh] my-auto">
+      <Modal
+        open={!!selectedTicket}
+        onClose={closeTicket}
+        overlayClassName="bg-black/90"
+        className="bg-neutral-900 border border-white/10 rounded-[2rem] w-full max-w-md relative flex flex-col max-h-[75vh] md:max-h-[85vh] my-auto"
+      >
+        {selectedTicket && (
+          <>
             {/* Header del Ticket Modal */}
             <div className="p-6 pb-0 flex justify-between items-start shrink-0">
               <div className="bg-indigo-500/20 text-indigo-300 px-4 py-1.5 rounded-full text-xs font-bold border border-indigo-500/30">
@@ -376,9 +382,9 @@ export default function MisEntradasPage() {
                 </div>
               )}
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </Modal>
     </div>
   );
 }

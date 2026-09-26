@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useScrollLock } from '@/hooks/useScrollLock';
 
 export default function BottomNav() {
   const pathname = usePathname();
@@ -28,6 +29,16 @@ export default function BottomNav() {
       setUser(JSON.parse(userStr));
     }
   }, [pathname]); // refresh on navigation
+
+  useScrollLock(showMenu);
+  useEffect(() => {
+    if (!showMenu) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowMenu(false);
+    };
+    document.addEventListener('keydown', closeOnEscape);
+    return () => document.removeEventListener('keydown', closeOnEscape);
+  }, [showMenu]);
 
   const hiddenRoutes = [
     '/',

@@ -67,7 +67,7 @@ export default function CustomSelect({
 
       {isOpen && (
         <div className="absolute top-full left-0 right-0 z-50 mt-1.5 bg-neutral-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-100 origin-top">
-          <div className="max-h-60 overflow-y-auto custom-scrollbar p-1.5 flex flex-col gap-1">
+          <div className="max-h-60 overflow-y-auto overscroll-contain custom-scrollbar p-1.5 flex flex-col gap-1">
             {options.length > 0 ? (
               options.map((option) => (
                 <button
